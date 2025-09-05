@@ -49,9 +49,9 @@ function withAuthHeaders(token?: string | null, extra?: Record<string, string>) 
 
 function apiOrigin() {
   const baseUrl =
-    import.meta.env.VITE_NODE_ENV === 'production'
-      ? import.meta.env.VITE_PROD_API_BASE
-      : import.meta.env.VITE_DEV_API_BASE;
+     import.meta.env.VITE_NODE_ENV == 'development'
+    ? import.meta.env.VITE_DEV_API_BASE
+    : import.meta.env.VITE_PROD_API_BASE;
 
   return `${baseUrl}/quotes`;
 }

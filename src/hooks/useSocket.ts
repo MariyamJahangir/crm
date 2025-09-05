@@ -10,9 +10,9 @@ export function useSocket() {
   useEffect(() => {
     if (!token) return;
 const url =
-  import.meta.env.MODE === 'production'
-    ? import.meta.env.VITE_PROD_SOCKET_URL
-    : import.meta.env.VITE_DEV_SOCKET_URL;
+   import.meta.env.VITE_NODE_ENV == 'development'
+    ? import.meta.env.VITE_DEV_API_BASE
+    : import.meta.env.VITE_PROD_API_BASE;
 
 
 
