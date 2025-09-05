@@ -43,6 +43,8 @@ function App() {
 <Route path="/quote" element={<Quote />} />
 <Route path="/create-quote" element={<CreateQuote />} />
           </Route>
+
+
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

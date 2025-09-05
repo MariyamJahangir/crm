@@ -41,6 +41,7 @@ async function request<T>(
     ...(body ? { body: isFormData ? body : JSON.stringify(body) } : {}),
     ...(signal ? { signal } : {}),
   };
+console.log(API_BASE_URL);
 
   const res = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
