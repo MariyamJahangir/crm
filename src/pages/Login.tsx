@@ -23,10 +23,10 @@ interface FormErrors {
 }
 
 const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => {
-  const API_BASE_URL =
+ const API_BASE_URL =
   import.meta.env.VITE_NODE_ENV === 'production'
-    ? import.meta.env.VITE_PROD_API_BASE
-    : import.meta.env.VITE_DEV_API_BASE;
+    ? import.meta.env.VITE_DEV_API_BASE
+    : import.meta.env.VITE_PROD_API_BASE;
 console.log(API_BASE_URL);
   const { login } = useAuth();
   const navigate = useNavigate();
