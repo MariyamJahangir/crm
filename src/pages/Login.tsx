@@ -51,6 +51,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
 
     try {
       const data = await authService.login(formData);
+      console.log(data)
       if (data.success && data.token && data.user) {
         login(data.token, data.user);
         navigate('/dashboard', { replace: true });

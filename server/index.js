@@ -27,10 +27,9 @@ const server = http.createServer(app);
 
 // CORS for API
 const allowedOrigins = [
-  process.env.NODE_ENV === 'production'
-    ? 'https://crm-seven-tawny.vercel.app'
-    : process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
-  'http://127.0.0.1:5173', 
+  process.env.FRONTEND_ORIGIN,      
+  process.env.FRONTEND_ORIGIN_PROD,  
+  'http://127.0.0.1:5173',
 ];
 
 app.use(cors({
