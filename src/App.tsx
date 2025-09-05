@@ -43,8 +43,6 @@ function App() {
 <Route path="/quote" element={<Quote />} />
 <Route path="/create-quote" element={<CreateQuote />} />
           </Route>
-
-          {/* Default redirects */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
