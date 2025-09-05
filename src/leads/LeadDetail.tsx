@@ -114,7 +114,11 @@ const LeadDetail: React.FC = () => {
 
   const [openFollowup, setOpenFollowup] = useState(false);
 
-  const API_BASE = 'http://localhost:5000/api';
+const API_BASE =
+  import.meta.env.MODE === 'production'
+    ? import.meta.env.VITE_PROD_API_BASE
+    : import.meta.env.VITE_DEV_API_BASE;
+
   const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '');
   const toFileHref = (url: string) => (/^https?:\/\//i.test(url) ? url : `${API_ORIGIN}${url}`);
 

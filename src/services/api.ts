@@ -3,7 +3,11 @@ export interface ApiError extends Error {
   data?: any;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL =
+  import.meta.env.VITE_NODE_ENV === 'production'
+    ? import.meta.env.VITE_PROD_API_BASE
+    : import.meta.env.VITE_DEV_API_BASE;
+
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 

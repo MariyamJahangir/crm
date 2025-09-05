@@ -48,8 +48,14 @@ function withAuthHeaders(token?: string | null, extra?: Record<string, string>) 
 }
 
 function apiOrigin() {
-  return 'http://localhost:5000/api/quotes';
+  const baseUrl =
+    import.meta.env.VITE_NODE_ENV === 'production'
+      ? import.meta.env.VITE_PROD_API_BASE
+      : import.meta.env.VITE_DEV_API_BASE;
+
+  return `${baseUrl}/quotes`;
 }
+
 
 export const quotesService = {
   // Admin-wide list at GET /api/quotes

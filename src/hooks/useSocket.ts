@@ -9,8 +9,14 @@ export function useSocket() {
 
   useEffect(() => {
     if (!token) return;
+const url =
+  import.meta.env.MODE === 'production'
+    ? import.meta.env.VITE_PROD_SOCKET_URL
+    : import.meta.env.VITE_DEV_SOCKET_URL;
 
-    const s = io('http://localhost:5000', {
+
+
+    const s = io(url, {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
       auth: { token },
