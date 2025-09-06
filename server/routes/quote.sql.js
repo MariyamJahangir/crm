@@ -9,6 +9,11 @@ const Quote = require('../models/Quote');
 const QuoteItem = require('../models/QuoteItem');
 const LeadLog = require('../models/LeadLog');
 const puppeteer = require('puppeteer');
+const os = require('os');
+const path = require('path');
+const fs = require('fs/promises');
+const { setTimeout: delay } = require('timers/promises');
+const { createNotification, notifyAdmins } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -18,7 +23,7 @@ async function resolveActorName(req) {
   if (req.subjectType === 'ADMIN') return 'Admin';
   if (req.subjectType === 'MEMBER') {
     const m = await Member.findByPk(req.subjectId, { attributes: ['name'] });
-    return m?.name || 'Member';
+    return (m && m.name) || 'Member';
   }
   return 'System';
 }
@@ -69,6 +74,8 @@ function buildQuoteHTML({ quote, items, lead, customer }) {
     th { background: #f9fafb; text-align: left; }
     .right { text-align: right; }
     .small { font-size: 11px; }
+    @page { size: A4; margin: 16mm 12mm; }
+    html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   </style>`;
   const head = `
     <div class="row" style="justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
@@ -102,7 +109,7 @@ function buildQuoteHTML({ quote, items, lead, customer }) {
       </div>
     </div>
   `;
-  const rows = items.map(it => {
+  const rows = (items || []).map(it => {
     const qty = Number(it.quantity);
     const cost = Number(it.itemCost);
     const rate = Number(it.itemRate);
@@ -163,9 +170,56 @@ function buildQuoteHTML({ quote, items, lead, customer }) {
   `;
 }
 
+// Puppeteer helpers: reuse in dev; unique profile dir in prod to avoid locks
+const isProd = process.env.NODE_ENV === 'production';
+let sharedBrowser = null;
+
+async function launchBrowser() {
+  const userDataDir = path.join(os.tmpdir(), `pptr_profile_${Date.now()}_${Math.random().toString(16).slice(2)}`);
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    timeout: 0, // disable 30s launch timeout
+    userDataDir,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-gpu'
+    ]
+  });
+  return browser;
+}
+
+async function getBrowser() {
+  if (!isProd) {
+    if (sharedBrowser) return sharedBrowser;
+    sharedBrowser = await launchBrowser();
+    return sharedBrowser;
+  }
+  return launchBrowser();
+}
+
+async function safeRemoveDir(dir) {
+  if (!dir) return;
+  for (let i = 0; i < 5; i++) {
+    try {
+      await fs.rm(dir, { recursive: true, force: true });
+      return;
+    } catch (err) {
+      if (process.platform === 'win32' && err && err.code === 'EBUSY') {
+        await delay(200 + i * 200);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 // ROUTES
 
-// List all quotes at mount path root: GET /api/quotes
+// List all quotes: GET /api/quotes
 router.get('/', authenticateToken, async (req, res) => {
   const where = {};
   if (req.query.leadId) where.leadId = String(req.query.leadId);
@@ -181,7 +235,6 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
   const lead = await Lead.findByPk(req.params.leadId);
   if (!lead) return res.status(404).json({ success:false, message:'Lead not found' });
-
   const quotes = await Quote.findAll({
     where: { leadId: lead.id },
     include: [{ model: QuoteItem, as: 'items' }],
@@ -221,7 +274,8 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
   body('items.*.lineDiscountAmount').optional().isFloat({ min: 0 }),
 ], async (req, res) => {
   try {
-    const errors = validationResult(req); if (!errors.isEmpty())
+    const errors = validationResult(req);
+    if (!errors.isEmpty())
       return res.status(400).json({ success:false, message:'Validation failed', errors: errors.array() });
 
     const lead = await Lead.findByPk(req.params.leadId, { include: [{ model: Customer, as:'customer' }, { model: Member, as:'salesman' }] });
@@ -229,7 +283,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
 
     // Resolve salesman
     let salesmanId = String(req.subjectId);
-    let salesmanName = lead.salesman?.name || '';
+    let salesmanName = (lead.salesman && lead.salesman.name) || '';
     if (isAdmin(req) && req.body.salesmanId) {
       const sm = await Member.findByPk(req.body.salesmanId);
       if (!sm) return res.status(400).json({ success:false, message:'Invalid salesman' });
@@ -240,7 +294,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
     const {
       quoteDate, validityUntil,
       customerId, customerName, contactPerson, phone, email, address, description,
-      discountMode, discountValue, vatPercent, items
+      discountMode, discountValue, vatPercent, items,preparedBy, approvedBy, status
     } = req.body;
 
     // Per-line
@@ -278,6 +332,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         lineCostTotal,
         lineGP,
         lineProfitPercent,
+        
       };
     });
 
@@ -306,7 +361,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
       salesmanId,
       salesmanName,
 
-      customerId: customerId || lead.customer?.id || null,
+      customerId: customerId || (lead.customer && lead.customer.id) || null,
       customerName,
       contactPerson: contactPerson || '',
       phone: phone || '',
@@ -323,15 +378,78 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
       grossProfit: grossProfit.toFixed(2),
       profitPercent: profitPercent.toFixed(3),
       profitRate: profitRate.toFixed(4),
+      preparedBy: preparedBy || null,
+approvedBy: approvedBy || null,
+status: status || 'Draft',
     });
 
     await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: created.id })));
 
     await writeLeadLog(req, lead.id, 'QUOTE_CREATED', `${actorLabel(req)} created quote #${created.quoteNumber}`);
+notifyAdmins(req.app.get('io'), {
+  event: 'QUOTE_CREATED',
+  entityType: 'QUOTE',
+  entityId: String(created.id),
+  title: `Quote #${created.quoteNumber} created`,
+  message: `${actorLabel(req)} created a quote for ${customerName}`,
+}); // admin broadcast [1]
 
+if (lead.salesmanId) {
+  await createNotification({
+    toType: 'MEMBER',
+    toId: String(lead.salesmanId),
+    event: 'QUOTE_CREATED',
+    entityType: 'QUOTE',
+    entityId: String(created.id),
+    title: `Quote #${created.quoteNumber}`,
+    message: `Quote created for Lead #${lead.uniqueNumber}`,
+  }, req.app.get('io'));
+}
     res.status(201).json({ success:true, quoteId: created.id, quoteNumber: created.quoteNumber });
   } catch (e) {
     console.error('Create Quote Error:', e.message);
+    res.status(500).json({ success:false, message:'Server error' });
+  }
+});
+// PUT /api/quotes/leads/:leadId/quotes/:quoteId
+router.put('/leads/:leadId/quotes/:quoteId', authenticateToken, [
+  body('status').optional().isIn(['Draft','Sent','Accepted','Rejected','Expired']),
+  body('preparedBy').optional().isString(),
+  body('approvedBy').optional().isString(),
+], async (req, res) => {
+  try {
+    const quote = await Quote.findByPk(req.params.quoteId);
+    if (!quote || String(quote.leadId) !== String(req.params.leadId)) {
+      return res.status(404).json({ success:false, message:'Quote not found' });
+    }
+    const up = {};
+    ['status','preparedBy','approvedBy','description','validityUntil','quoteDate'].forEach(k => {
+      if (req.body[k] !== undefined) up[k] = k.endsWith('Date') || k === 'validityUntil' ? new Date(req.body[k]) : req.body[k];
+    });
+    await quote.update(up);
+
+    const lead = await Lead.findByPk(quote.leadId, { attributes: ['id','uniqueNumber','salesmanId'] });
+    notifyAdmins(req.app.get('io'), {
+      event: 'QUOTE_UPDATED',
+      entityType: 'QUOTE',
+      entityId: String(quote.id),
+      title: `Quote #${quote.quoteNumber} updated`,
+      message: `${actorLabel(req)} updated quote status/details`,
+    }); // admin broadcast [1]
+    if (lead?.salesmanId) {
+      await createNotification({
+        toType: 'MEMBER',
+        toId: String(lead.salesmanId),
+        event: 'QUOTE_UPDATED',
+        entityType: 'QUOTE',
+        entityId: String(quote.id),
+        title: `Quote #${quote.quoteNumber} updated`,
+        message: `Status: ${quote.status}`,
+      }, req.app.get('io'));
+    }
+    res.json({ success:true });
+  } catch (e) {
+    console.error('Update Quote Error:', e.message);
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
@@ -353,7 +471,7 @@ router.get('/leads/:leadId/quotes/:quoteId/preview', authenticateToken, async (r
       quote: quote.toJSON(),
       items: (quote.items || []).map(i => i.toJSON()),
       lead: lead ? lead.toJSON() : null,
-      customer: lead?.customer ? lead.customer.toJSON() : null
+      customer: (lead && lead.customer) ? lead.customer.toJSON() : null
     });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
@@ -365,6 +483,7 @@ router.get('/leads/:leadId/quotes/:quoteId/preview', authenticateToken, async (r
 
 // PDF: GET /api/quotes/leads/:leadId/quotes/:quoteId/pdf
 router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, res) => {
+  let browser = null;
   try {
     const quote = await Quote.findByPk(req.params.quoteId, {
       include: [{ model: QuoteItem, as: 'items' }]
@@ -379,25 +498,71 @@ router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, 
       ]
     });
 
-    const browser = await puppeteer.launch({ args: ['--no-sandbox','--disable-setuid-sandbox'] });
+    browser = await getBrowser();
     const page = await browser.newPage();
+    page.setDefaultNavigationTimeout(120000);
+    page.setDefaultTimeout(120000);
+
     const html = buildQuoteHTML({
       quote: quote.toJSON(),
       items: (quote.items || []).map(i => i.toJSON()),
       lead: lead ? lead.toJSON() : null,
-      customer: lead?.customer ? lead.customer.toJSON() : null
+      customer: (lead && lead.customer) ? lead.customer.toJSON() : null
     });
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    const pdf = await page.pdf({ format: 'A4', margin: { top: '16mm', right: '12mm', bottom: '16mm', left: '12mm' } });
-    await browser.close();
 
-    await writeLeadLog(req, quote.leadId, 'QUOTE_DOWNLOADED', `${actorLabel(req)} downloaded quote #${quote.quoteNumber} PDF`);
+    // Deterministic render: avoid long waits on external resources
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    await page.addStyleTag({ content: 'html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}' });
+
+    // Wait for fonts to be ready if available
+    try {
+      await page.evaluate(() => {
+        return new Promise((resolve) => {
+          if (document.fonts && 'ready' in document.fonts) {
+            document.fonts.ready.then(() => setTimeout(resolve, 50));
+          } else {
+            setTimeout(resolve, 50);
+          }
+        });
+      });
+    } catch { /* ignore */ }
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: '16mm', right: '12mm', bottom: '16mm', left: '12mm' }
+    });
+
+    await page.close();
+
+    // Non-blocking log
+    writeLeadLog(req, quote.leadId, 'QUOTE_DOWNLOADED', `${actorLabel(req)} downloaded quote #${quote.quoteNumber} PDF`).catch(() => {});
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${quote.quoteNumber}.pdf"`);
     res.send(pdf);
+
+    // If prod, close and cleanup isolated profile to avoid EBUSY
+    if (isProd && browser) {
+      const spawnargs = browser.process && browser.process() && browser.process().spawnargs || [];
+      const udArg = (spawnargs || []).find(a => typeof a === 'string' && a.startsWith('--user-data-dir='));
+      const userDataDir = udArg ? udArg.split('=')[22] : null;
+      await browser.close().catch(() => {});
+      if (userDataDir) {
+        await safeRemoveDir(userDataDir).catch(() => {});
+      }
+    }
+
   } catch (e) {
-    console.error('Quote PDF Error:', e.message);
+    const msg = (e && e.message) ? e.message : String(e);
+    console.error('Quote PDF Error:', msg);
+    if (msg.includes('WS endpoint') || msg.includes('Timed out')) {
+      return res.status(500).json({ success:false, message:'PDF renderer timed out starting the browser. Please retry.' });
+    }
+    if (msg.includes('EBUSY')) {
+      return res.status(500).json({ success:false, message:'PDF created but cleanup was blocked by the OS. Please retry if it persists.' });
+    }
     res.status(500).json({ success:false, message:'Failed to generate PDF' });
   }
 });

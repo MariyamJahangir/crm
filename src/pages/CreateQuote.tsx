@@ -21,7 +21,7 @@ const CreateQuote: React.FC = () => {
   const [leadInfo, setLeadInfo] = useState<any>(null);
   const [leadNumber, setLeadNumber] = useState<string>('');
   const [openLeadModal, setOpenLeadModal] = useState<boolean>(false);
-const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
+  const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
 
   // Team / salesman
   const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
@@ -41,6 +41,12 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
   // Quote meta
   const [quoteDate, setQuoteDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [validityUntil, setValidityUntil] = useState<string>('');
+
+  // New: status + prepared/approved by
+  const STATUS: Array<'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Expired'> = ['Draft', 'Sent', 'Accepted', 'Rejected', 'Expired'];
+  const [status, setStatus] = useState<'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Expired'>('Draft');
+  const [preparedBy, setPreparedBy] = useState<string>('');
+  const [approvedBy, setApprovedBy] = useState<string>('');
 
   // Overall discount (compact toggle)
   const [discountMode, setDiscountMode] = useState<'PERCENT' | 'AMOUNT'>('PERCENT');
@@ -64,7 +70,7 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
       const v = Number(vat);
       if (!Number.isNaN(v) && v >= 0) setVatPercent(v);
     }
-  }, [searchParams]);
+  }, [searchParams]); // [attached_file:1]
 
   // Load team for salesman dropdown
   useEffect(() => {
@@ -74,17 +80,17 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
         const team = await teamService.list(token);
         setSalesmen(team.users);
         const me = team.users.find((u) => String(u.id) === String(user?.id));
-        setSalesmanId(me?.id || team.users[0]?.id || '');
+        setSalesmanId(me?.id || team.users?.id || '');
       } catch {
         // ignore
       }
     })();
-  }, [token, user?.id]);
+  }, [token, user?.id]); // [2]
 
   // If navigated with a lead id (route), initialize selection
   useEffect(() => {
     if (routeLeadId) setSelectedLeadId(routeLeadId);
-  }, [routeLeadId]);
+  }, [routeLeadId]); // [2]
 
   // Load selected lead details, address, and contacts
   useEffect(() => {
@@ -122,7 +128,7 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
             setContacts(list);
             if (list.length > 0) {
               const match = list.find((c) => (c.name || '') === (leadRes.lead.contactPerson || ''));
-              const first = match || list[0];
+              const first = match || list;
               setContactId(first.id);
               setContactPerson(first.name || '');
               setPhone(first.mobile || '');
@@ -142,7 +148,7 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
         setError(e?.data?.message || 'Failed to load lead');
       }
     })();
-  }, [token, selectedLeadId]);
+  }, [token, selectedLeadId]); // [2]
 
   // Totals preview with dual-mode discounts
   const totals = useMemo(() => {
@@ -177,7 +183,7 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
     const grossProfit = netAfterDiscount - totalCost;
     const profitPercent = netAfterDiscount > 0 ? (grossProfit / netAfterDiscount) * 100 : 0;
     return { subtotal, totalCost, overallDiscAmt, netAfterDiscount, vatAmount, grandTotal, grossProfit, profitPercent };
-  }, [items, discountMode, discountValue, vatPercent]);
+  }, [items, discountMode, discountValue, vatPercent]); // [2]
 
   // Item helpers
   const addRow = () => {
@@ -246,6 +252,11 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
           discountMode,
           discountValue,
           vatPercent,
+          // New meta
+          status,
+          preparedBy: preparedBy || undefined,
+          approvedBy: approvedBy || undefined,
+          // Items
           items: items.map((it) => {
             const qty = Number(it.quantity || 0);
             const rate = Number(it.itemRate || 0);
@@ -312,18 +323,21 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
             </div>
             <div className="flex gap-2">
               {lastSavedQuote && (
-  <>
-    <Button type="button" variant="secondary" onClick={async () => {
-      if (!selectedLeadId) return;
-      const html = await quotesService.previewHtml(selectedLeadId, lastSavedQuote.id, token);
-      setPreview({ open: true, html });
-    }}>
-      Preview
-    </Button>
-    <Button type="button" onClick={downloadPdf}>Download PDF</Button>
-  </>
-)}
-
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={async () => {
+                      if (!selectedLeadId) return;
+                      const html = await quotesService.previewHtml(selectedLeadId, lastSavedQuote.id, token);
+                      setPreview({ open: true, html });
+                    }}
+                  >
+                    Preview
+                  </Button>
+                  <Button type="button" onClick={downloadPdf}>Download PDF</Button>
+                </>
+              )}
             </div>
           </div>
 
@@ -359,6 +373,24 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* New: status + prepared/approved by */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="w-full border rounded px-3 py-2 bg-white">
+                  {STATUS.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Prepared By</label>
+                <input value={preparedBy} onChange={(e) => setPreparedBy(e.target.value)} className="w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Approved By</label>
+                <input value={approvedBy} onChange={(e) => setApprovedBy(e.target.value)} className="w-full border rounded px-3 py-2" />
               </div>
             </div>
 
@@ -602,7 +634,7 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
                 setAddress(custRes.customer.address || '');
                 if (list.length > 0) {
                   const prefer = list.find((c) => (c.name || '') === (leadRow.contactPerson || ''));
-                  const first = prefer || list[0];
+                  const first = prefer || list;
                   setContactId(first.id);
                   setContactPerson(first.name || '');
                   setPhone(first.mobile || '');
@@ -638,25 +670,23 @@ const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open:
         }}
       />
       {preview.open && (
-  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-    <div className="bg-white rounded-lg shadow-xl w-[900px] max-w-[95vw]">
-      <div className="px-4 py-2 border-b flex items-center justify-between">
-        <div className="font-semibold">Quote Preview</div>
-        <button onClick={() => setPreview({ open: false })} className="text-gray-500 hover:text-gray-700" aria-label="Close">×</button>
-      </div>
-      <div className="p-0 flex justify-center">
-        <iframe title="Quote Preview" style={{ width: 794, height: 1123, border: 'none', background: '#fff' }} srcDoc={preview.html || ''} />
-      </div>
-      <div className="px-4 py-2 border-t flex justify-end">
-        <Button variant="secondary" onClick={() => setPreview({ open: false })}>Close</Button>
-      </div>
-    </div>
-  </div>
-)}
-
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl w-[900px] max-w-[95vw]">
+            <div className="px-4 py-2 border-b flex items-center justify-between">
+              <div className="font-semibold">Quote Preview</div>
+              <button onClick={() => setPreview({ open: false })} className="text-gray-500 hover:text-gray-700" aria-label="Close">×</button>
+            </div>
+            <div className="p-0 flex justify-center">
+              <iframe title="Quote Preview" style={{ width: 794, height: 1123, border: 'none', background: '#fff' }} srcDoc={preview.html || ''} />
+            </div>
+            <div className="px-4 py-2 border-t flex justify-end">
+              <Button variant="secondary" onClick={() => setPreview({ open: false })}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-  
 };
 
 export default CreateQuote;

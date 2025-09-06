@@ -51,37 +51,37 @@ function canModifyLead(req, lead) {
   return (String(lead.salesmanId) === self) || (lead.creatorType === 'MEMBER' && String(lead.creatorId) === self);
 }
 
-// GET /api/followups/:leadId -> list followups ordered by createdAt DESC
-// router.get('/:leadId', authenticateToken, async (req, res) => {
-//   try {
-//     const lead = await Lead.findByPk(req.params.leadId, {
-//       include: [{ model: Member, as: 'salesman', attributes: ['id','name','email'] }]
-//     });
-//     if (!lead) return res.status(404).json({ success:false, message:'Not found' });
-//     if (!canViewLead(req, lead)) return res.status(403).json({ success:false, message:'Forbidden' });
 
-//     const rows = await LeadFollowup.findAll({
-//       where: { leadId: lead.id },
-//       order: [['createdAt','DESC']]
-//     });
+router.get('/:leadId', authenticateToken, async (req, res) => {
+  try {
+    const lead = await Lead.findByPk(req.params.leadId, {
+      include: [{ model: Member, as: 'salesman', attributes: ['id','name','email'] }]
+    });
+    if (!lead) return res.status(404).json({ success:false, message:'Not found' });
+    if (!canViewLead(req, lead)) return res.status(403).json({ success:false, message:'Forbidden' });
 
-//     res.json({
-//       success: true,
-//       followups: rows.map(f => ({
-//         id: f.id,
-//         status: f.status,
-//         description: f.description || '',
-//         scheduledAt: f.scheduledAt,
-//         createdAt: f.createdAt
-//       }))
-//     });
-//   } catch (e) {
-//     console.error('Followups list error:', e);
-//     res.status(500).json({ success:false, message:'Server error' });
-//   }
-// });
+    const rows = await LeadFollowup.findAll({
+      where: { leadId: lead.id },
+      order: [['createdAt','DESC']]
+    });
 
-// POST /api/followups/:leadId -> create followup
+    res.json({
+      success: true,
+      followups: rows.map(f => ({
+        id: f.id,
+        status: f.status,
+        description: f.description || '',
+        scheduledAt: f.scheduledAt,
+        createdAt: f.createdAt
+      }))
+    });
+  } catch (e) {
+    console.error('Followups list error:', e);
+    res.status(500).json({ success:false, message:'Server error' });
+  }
+});
+
+
 router.post('/:leadId', authenticateToken, [
   body('status').trim().isIn(['Followup', 'Meeting Scheduled', 'No Requirement', 'No Response']),
   body('description').optional().isString(),

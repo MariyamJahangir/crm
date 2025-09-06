@@ -25,6 +25,10 @@ Lead.init({
   actualDate: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
   contactPerson: { type: DataTypes.STRING(160) },
   mobile: { type: DataTypes.STRING(50) },
+  // models/Lead.js (append attributes)
+nextFollowupAt: { type: DataTypes.DATE, allowNull: true },        // planned next follow-up
+lostReason: { type: DataTypes.STRING(300), allowNull: true },     // required if stage = 'Deal Lost'
+
   mobileAlt: { type: DataTypes.STRING(50) },
   email: { type: DataTypes.STRING(180) },
   city: { type: DataTypes.STRING(120) },

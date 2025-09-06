@@ -15,6 +15,9 @@ type FormState = {
   email: string;
   vatNo: string;
   address: string;
+  industry: string;
+  category: '' | 'Enterprise' | 'SMB' | 'Individual';
+  website: string;
 };
 
 const initialForm: FormState = {
@@ -24,6 +27,9 @@ const initialForm: FormState = {
   email: '',
   vatNo: '',
   address: '',
+  industry: '',
+  category: '',
+  website: '',
 };
 
 const EditCustomer: React.FC = () => {
@@ -31,8 +37,6 @@ const EditCustomer: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const isCreate = !id;
   const { token, user } = useAuth();
-
-  const isAdmin = user?.subjectType === 'ADMIN';
 
   const [form, setForm] = useState<FormState>(initialForm);
   const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
@@ -47,22 +51,21 @@ const EditCustomer: React.FC = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // Always load team users for the dropdown, for both admins and members
+  // Load team users
   useEffect(() => {
-    if (!token) return;
-    (async () => {
-      try {
-        const res = await teamService.list(token);
-        setSalesmen(res.users);
-        if (isCreate && res.users.length > 0) {
-          setForm((p) => ({ ...p, salesmanId: res.users.id }));
-        }
-      } catch {
-        // optionally handle error
-      }
-    })();
-  }, [token, isCreate]);
+     if (!token) return;
+     (async () => {
+       try {
+         const res = await teamService.list(token);
+         setSalesmen(res.users);
+         if (isCreate && res.users.length > 0) {
+           setForm((p) => ({ ...p, salesmanId: res.users[0].id }));
+         }
+       } catch { /* ignore */ }
+     })();
+  }, [token, isCreate]); // [attached_file:1]
 
+  // Load customer on edit
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -78,6 +81,9 @@ const EditCustomer: React.FC = () => {
           email: res.customer.email || '',
           vatNo: res.customer.vatNo || '',
           address: res.customer.address || '',
+          industry: (res.customer as any).industry || '',
+          category: ((res.customer as any).category as any) || '',
+          website: (res.customer as any).website || '',
         });
       } catch (e: any) {
         setError(e?.data?.message || 'Failed to load customer');
@@ -85,12 +91,12 @@ const EditCustomer: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, [id, token]);
+  }, [id, token]); // [attached_file:1]
 
   const onChange =
     (key: keyof FormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      setForm((p) => ({ ...p, [key]: e.target.value }));
+      setForm((p) => ({ ...p, [key]: e.target.value as any }));
     };
 
   const saveCustomer = async (e: React.FormEvent) => {
@@ -106,15 +112,21 @@ const EditCustomer: React.FC = () => {
           email?: string;
           vatNo?: string;
           address?: string;
+          industry?: string;
+          category?: 'Enterprise' | 'SMB' | 'Individual';
+          website?: string;
         } = {
           companyName: form.companyName,
           contactNumber: form.contactNumber || undefined,
           email: form.email || undefined,
           vatNo: form.vatNo || undefined,
           address: form.address || undefined,
-          salesmanId: form.salesmanId || undefined, // always send if chosen
+          salesmanId: form.salesmanId || undefined,
+          industry: form.industry || undefined,
+          category: form.category || undefined,
+          website: form.website || undefined,
         };
-        const out = await customerService.create(payload, token);
+        const out = await customerService.create(payload as any, token);
         navigate(`/customers/${out.customerId}/edit`, { replace: true });
       } else {
         const payload: Partial<{
@@ -124,15 +136,21 @@ const EditCustomer: React.FC = () => {
           email: string;
           vatNo: string;
           address: string;
+          industry: string;
+          category: 'Enterprise' | 'SMB' | 'Individual';
+          website: string;
         }> = {
           companyName: form.companyName,
           contactNumber: form.contactNumber,
           email: form.email,
           vatNo: form.vatNo,
           address: form.address,
-          salesmanId: form.salesmanId || undefined, // always include selection
+          salesmanId: form.salesmanId || undefined,
+          industry: form.industry,
+          category: form.category || undefined,
+          website: form.website,
         };
-        await customerService.update(id!, payload, token);
+        await customerService.update(id!, payload as any, token);
         const res = await customerService.getOne(id!, token);
         setCustomer(res.customer);
       }
@@ -175,7 +193,10 @@ const EditCustomer: React.FC = () => {
     setSelectedContacts((prev) => ({ ...prev, [cid]: !prev[cid] }));
   };
 
-  const selectedIds = useMemo(() => Object.keys(selectedContacts).filter((k) => selectedContacts[k]), [selectedContacts]);
+  const selectedIds = useMemo(
+    () => Object.keys(selectedContacts).filter((k) => selectedContacts[k]),
+    [selectedContacts]
+  );
 
   const bulkDeleteContacts = async () => {
     if (!id || selectedIds.length === 0) return;
@@ -186,9 +207,8 @@ const EditCustomer: React.FC = () => {
       setCustomer(res.customer);
       setSelectedContacts({});
       setConfirmOpen(false);
-    } catch {
-      // optional toast
-    } finally {
+    } catch { /* ignore */ }
+    finally {
       setDeleting(false);
     }
   };
@@ -231,7 +251,6 @@ const EditCustomer: React.FC = () => {
                     />
                   </div>
 
-                  {/* Always show Salesman dropdown */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Salesman</label>
                     <select
@@ -240,16 +259,13 @@ const EditCustomer: React.FC = () => {
                       required
                       className="w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     >
-                      <option value="" disabled>
-                        Select salesman
-                      </option>
+                      <option value="" disabled>Select salesman</option>
                       {salesmen.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name} {s.designation ? `(${s.designation})` : ''}
                         </option>
                       ))}
                     </select>
-                    {/* No role-based note; dropdown always visible */}
                   </div>
 
                   <div>
@@ -281,6 +297,41 @@ const EditCustomer: React.FC = () => {
                       rows={3}
                       className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                       placeholder="Full address"
+                    />
+                  </div>
+
+                  {/* New business metadata */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                    <input
+                      value={form.industry}
+                      onChange={onChange('industry')}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      placeholder="Manufacturing, IT, Healthcare, ..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <select
+                      value={form.category}
+                      onChange={onChange('category')}
+                      className="w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    >
+                      <option value="">Select category</option>
+                      <option value="Enterprise">Enterprise</option>
+                      <option value="SMB">SMB</option>
+                      <option value="Individual">Individual</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                    <input
+                      value={form.website}
+                      onChange={onChange('website')}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      placeholder="https://example.com"
                     />
                   </div>
                 </div>

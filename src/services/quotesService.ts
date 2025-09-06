@@ -61,11 +61,15 @@ export const quotesService = {
   // Admin-wide list at GET /api/quotes
   listAll: (token?: string | null) =>
     api.get<{ success: boolean; quotes: Quote[] }>('/quotes', token),
+   setMainQuote: (leadId: string, quoteNumber: string | null, token?: string | null) =>
+    api.post<{ success: boolean }>(`/leads/${leadId}/main-quote`, { quoteNumber }, token),
 
   // Per-lead list at GET /api/quotes/leads/:leadId/quotes
   listByLead: (leadId: string, token?: string | null) =>
-    api.get<{ success: boolean; quotes: Quote[] }>(`/leads/${leadId}/quotes`, token),
-
+    api.get<{ success: boolean; quotes: Quote[] }>(`/quotes/leads/${leadId}/quotes`, token),
+update(leadId: string, quoteId: string, body: { status?: string; preparedBy?: string; approvedBy?: string; description?: string; validityUntil?: string; quoteDate?: string }, token?: string | null) {
+  return api.put(`/quotes/leads/${leadId}/quotes/${quoteId}`, body, token);
+},
   // Get one at GET /api/quotes/leads/:leadId/quotes/:quoteId
   getOne: (leadId: string, quoteId: string, token?: string | null) =>
     api.get<{ success: boolean; quote: Quote & { items: QuoteItem[] } }>(

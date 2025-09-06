@@ -8,6 +8,7 @@ export type TeamUser = {
   role: 'MEMBER';
   parent?: string | null;
   createdAt?: string;
+  isBlocked: boolean;
 };
 
 export type ListTeamResponse = { success: boolean; users: TeamUser[] };
@@ -25,4 +26,10 @@ export const teamService = {
     api.put<{ success: boolean; user: TeamUser }>(`/team/users/${id}`, payload, token),
   remove: (id: string, token?: string | null) =>
     api.delete<void>(`/team/users/${id}`, token),
+  block: (id: string, token?: string | null) =>
+    api.post<{ success: boolean; user: { id: string; isBlocked: boolean } }>(`/team/users/${id}/block`, {}, token),
+  unblock: (id: string, token?: string | null) =>
+    api.post<{ success: boolean; user: { id: string; isBlocked: boolean } }>(`/team/users/${id}/unblock`, {}, token),
+
+  
 };

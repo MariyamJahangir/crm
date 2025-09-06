@@ -23,6 +23,8 @@ export type Lead = {
   ownerId?: string;
   ownerName?: string;
   ownerEmail?: string;
+  nextFollowupAt?: string;
+  lostReason?: string;
   createdAt?: string;
   updatedAt?: string;
   customerId?: string;
@@ -36,40 +38,38 @@ export type ListLeadsResponse = { success: boolean; leads: Lead[] };
 export type GetLeadResponse = { success: boolean; lead: Lead };
 
 export const leadsService = {
-  // Role-based list (admin: self + direct team; member: self)
   list: (token?: string | null) => api.get<ListLeadsResponse>('/leads', token),
 
-  // Single lead view
   getOne: (id: string, token?: string | null) => api.get<GetLeadResponse>(`/leads/${id}`, token),
 
-  // Create lead (admin can pass salesmanId for team; member’s salesman is enforced server-side to self)
   create: (
     body: {
       stage?: Lead['stage'];
       forecastCategory?: Lead['forecastCategory'];
       customerId: string;
-      contactId?: string;        // optional selected customer contact
+      contactId?: string;
       source?: string;
       quoteNumber?: string;
       previewUrl?: string;
-      contactPerson?: string;    // typed overrides; if omitted, server uses contactId or primary
+      contactPerson?: string;
       mobile?: string;
       mobileAlt?: string;
       email?: string;
       city?: string;
-      salesmanId?: string;       // admin only; server enforces policy
+      salesmanId?: string;
       description?: string;
+      nextFollowupAt?: string; // added
+      lostReason?: string;     // optional on create if stage is Deal Lost
     },
     token?: string | null
   ) => api.post<{ success: boolean; id: string; uniqueNumber: string }>('/leads', body, token),
 
-  // Update lead (owner edits; extend backend policy if admin should edit team leads)
   update: (
     id: string,
     body: Partial<{
       stage: Lead['stage'];
       forecastCategory: Lead['forecastCategory'];
-      customerId: string;  // change division
+      customerId: string;
       source: string;
       quoteNumber: string;
       previewUrl: string;
@@ -80,24 +80,25 @@ export const leadsService = {
       city: string;
       salesmanId: string;
       description: string;
+      nextFollowupAt: string | null; // added
+      lostReason: string;            // added
     }>,
     token?: string | null
   ) => api.put<{ success: boolean }>(`/leads/${id}`, body, token),
 
-  // Attachments metadata
   addAttachment: (id: string, body: { filename: string; url: string }, token?: string | null) =>
     api.post<{ success: boolean }>(`/leads/${id}/attachments`, body, token),
-  
+
   search: (query: string, page = 1, pageSize = 20, token?: string | null) =>
-  api.get<{ success: boolean; leads: Array<{ id:string; uniqueNumber:string; companyName:string; contactPerson?:string; mobile?:string; email?:string; customerId?: string | null; salesman?: { id:string; name:string; email?:string } | null }>; page:number; pageSize:number; total:number }>(
-    `/search?query=${encodeURIComponent(query)}&page=${page}&pageSize=${pageSize}`, token
-  ),
-   listPage: (page = 1, pageSize = 20, token?: string | null) =>
+    api.get<{ success: boolean; leads: Array<{ id:string; uniqueNumber:string; companyName:string; contactPerson?:string; mobile?:string; email?:string; customerId?: string | null; salesman?: { id:string; name:string; email?:string } | null }>; page:number; pageSize:number; total:number }>(
+      `/search?query=${encodeURIComponent(query)}&page=${page}&pageSize=${pageSize}`, token
+    ),
+
+  listPage: (page = 1, pageSize = 20, token?: string | null) =>
     api.get<{ success: boolean; leads: Array<{ id:string; uniqueNumber:string; companyName:string; contactPerson?:string; mobile?:string; email?:string; customerId?: string | null; salesman?: { id:string; name:string; email?:string } | null }>; page:number; pageSize:number; total:number }>(
       `/list?page=${page}&pageSize=${pageSize}`, token
     ),
 
-  // Followups (optionally moves stage if status is a stage)
   addFollowup: (id: string, body: { status?: string; description?: string }, token?: string | null) =>
     api.post<{ success: boolean }>(`/leads/${id}/followups`, body, token),
 };

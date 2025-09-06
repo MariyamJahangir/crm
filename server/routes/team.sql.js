@@ -25,7 +25,7 @@ router.post('/users', authenticateToken, [
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
     const created = await Member.create({ name, email, password: hash, designation: designation || '', parentAdmin: req.subjectId });
-    res.status(201).json({ success:true, user: { id: created.id, name: created.name, email: created.email, designation: created.designation, role: 'MEMBER', parent: created.parentAdmin, createdAt: created.createdAt } });
+    res.status(201).json({ success:true, user: { id: created.id, name: created.name, email: created.email, isBlocked: created.isBlocked, designation: created.designation, role: 'MEMBER', parent: created.parentAdmin, createdAt: created.createdAt } });
   } catch (e) {
     console.error('Create member error:', e);
     res.status(500).json({ success:false, message:'Server error' });
@@ -35,11 +35,11 @@ router.post('/users', authenticateToken, [
 router.get('/users', authenticateToken, async (req, res) => {
   try {
     if (isAdmin(req)) {
-      const users = await Member.findAll({ attributes: ['id','name','email','designation','parentAdmin','createdAt'], order: [['createdAt','DESC']] });
+      const users = await Member.findAll({ attributes: ['id','name','email','designation','parentAdmin','isBlocked','createdAt'], order: [['createdAt','DESC']] });
  
       return res.json({ success:true, users });
     } else {
-      const u = await Member.findByPk(req.subjectId, { attributes: ['id','name','email','designation','parentAdmin','createdAt'] });
+      const u = await Member.findByPk(req.subjectId, { attributes: ['id','name','email','designation','parentAdmin','isBlocked','createdAt'] });
       if (!u) return res.status(404).json({ success:false, message:'User not found' });
       return res.json({ success:true, users: [u] });
     }
@@ -51,7 +51,7 @@ router.get('/users', authenticateToken, async (req, res) => {
 
 router.get('/users/:id', authenticateToken, async (req, res) => {
   try {
-    const u = await Member.findByPk(req.params.id, { attributes: ['id','name','email','designation','parentAdmin','createdAt'] });
+    const u = await Member.findByPk(req.params.id, { attributes: ['id','name','email','designation','parentAdmin','createdAt','isBlocked'] });
     if (!u) return res.status(404).json({ success:false, message:'Not found' });
     if (!isAdmin(req) && String(u.id) !== String(req.subjectId)) return res.status(403).json({ success:false, message:'Forbidden' });
     res.json({ success:true, user: u });
@@ -103,6 +103,39 @@ router.delete('/users/:id', authenticateToken, async (req, res) => {
     res.status(204).send();
   } catch (e) {
     console.error('Delete user error:', e);
+    res.status(500).json({ success:false, message:'Server error' });
+  }
+});
+// routes/team.sql.js
+router.post('/users/:id/block', authenticateToken, async (req, res) => {
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ success:false, message:'Forbidden' });
+    const u = await Member.findByPk(req.params.id);
+    if (!u) return res.status(404).json({ success:false, message:'Not found' });
+    if (String(u.id) === String(req.subjectId)) {
+      return res.status(400).json({ success:false, message:'Cannot block yourself' });
+    }
+    if (!u.isBlocked) {
+      await u.update({ isBlocked: true });
+    }
+    return res.json({ success:true, user: { id:u.id, isBlocked:u.isBlocked } });
+  } catch (e) {
+    console.error('Block user error:', e);
+    res.status(500).json({ success:false, message:'Server error' });
+  }
+});
+
+router.post('/users/:id/unblock', authenticateToken, async (req, res) => {
+  try {
+    if (!isAdmin(req)) return res.status(403).json({ success:false, message:'Forbidden' });
+    const u = await Member.findByPk(req.params.id);
+    if (!u) return res.status(404).json({ success:false, message:'Not found' });
+    if (u.isBlocked) {
+      await u.update({ isBlocked: false });
+    }
+    return res.json({ success:true, user: { id:u.id, isBlocked:u.isBlocked } });
+  } catch (e) {
+    console.error('Unblock user error:', e);
     res.status(500).json({ success:false, message:'Server error' });
   }
 });

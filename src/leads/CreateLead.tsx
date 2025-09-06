@@ -26,10 +26,8 @@ const CreateLead: React.FC = () => {
   const [stage, setStage] = useState<typeof STAGES[number]>('Discover');
   const [forecastCategory, setForecastCategory] = useState<typeof FORECASTS[number]>('Pipeline');
 
-  // Start with empty selections so placeholders render
   const [customerId, setCustomerId] = useState('');
-  const [contactId, setContactId] = useState<string>(''); // empty string = placeholder
-
+  const [contactId, setContactId] = useState<string>('');
   const [source, setSource] = useState('Website');
   const [quoteNumber, setQuoteNumber] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
@@ -42,6 +40,7 @@ const CreateLead: React.FC = () => {
 
   const [salesmanId, setSalesmanId] = useState('');
   const [description, setDescription] = useState('');
+  const [nextFollowupAt, setNextFollowupAt] = useState<string>('');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,13 +48,12 @@ const CreateLead: React.FC = () => {
   const [openNewCustomer, setOpenNewCustomer] = useState(false);
   const [openNewContact, setOpenNewContact] = useState(false);
 
-  // Optional inline search for company list
   const [companySearch, setCompanySearch] = useState('');
   const filteredCustomers = customers.filter(c =>
     c.companyName.toLowerCase().includes(companySearch.toLowerCase())
   );
 
-  // Load team and customers (do not auto-select a company; keep placeholder visible)
+  // Load team and customers
   useEffect(() => {
     if (!token) return;
     (async () => {
@@ -63,19 +61,18 @@ const CreateLead: React.FC = () => {
         const team = await teamService.list(token);
         setSalesmen(team.users);
         const me = team.users.find((u) => u.id === String(user?.id));
-        setSalesmanId(me?.id || team.users?.id || '');
+        setSalesmanId(me?.id || team.users?.[0]?.id || ''); // fixed
 
         const res = await customerService.list(token);
         const lite = res.customers.map((c) => ({ id: c.id, companyName: c.companyName }));
         setCustomers(lite);
-        // leave customerId as '' for placeholder
       } catch {
         // ignore
       }
     })();
-  }, [token, user?.id]); // useEffect dependency [10]
+  }, [token, user?.id]); // [attached_file:1]
 
-  // When customer changes, fetch contacts; set first as primary IFF no contact selected yet
+  // When customer changes, fetch contacts; set first as primary if none selected yet
   useEffect(() => {
     (async () => {
       if (!customerId || !token) {
@@ -92,7 +89,7 @@ const CreateLead: React.FC = () => {
         setContacts(list);
 
         if (list.length > 0 && !contactId) {
-          const first = list; // correct indexing
+          const first = list[0]; // fixed
           setContactId(first.id);
           setContactPerson(first.name || '');
           setMobile(first.mobile || '');
@@ -109,7 +106,7 @@ const CreateLead: React.FC = () => {
         // ignore
       }
     })();
-  }, [customerId, token]); // [10]
+  }, [customerId, token]); // [attached_file:1]
 
   // If selected contact changes, copy into editable fields
   useEffect(() => {
@@ -120,7 +117,7 @@ const CreateLead: React.FC = () => {
       setMobile(found.mobile || '');
       setEmailField(found.email || '');
     }
-  }, [contactId, contacts]); // [10]
+  }, [contactId, contacts]); // [attached_file:1]
 
   const refreshCustomersAndSelect = async (newCustomerId?: string) => {
     if (!token) return;
@@ -136,7 +133,7 @@ const CreateLead: React.FC = () => {
     const list = res.contacts || [];
     setContacts(list);
     if (list.length > 0) {
-      const first = list;
+      const first = list[0]; // fixed
       setContactId(first.id);
       setContactPerson(first.name || '');
       setMobile(first.mobile || '');
@@ -172,10 +169,11 @@ const CreateLead: React.FC = () => {
         email: emailField || undefined,
         city: city || undefined,
         description: description || undefined,
+        nextFollowupAt: nextFollowupAt ? new Date(nextFollowupAt).toISOString() : undefined,
       };
-      if (contactId) payload.contactId = contactId; 
-      if (salesmanId) payload.salesmanId = salesmanId; 
-      
+      if (contactId) payload.contactId = contactId;
+      if (salesmanId) payload.salesmanId = salesmanId;
+
       const out = await leadsService.create(payload, token);
       navigate(`/leads/${out.id}`, { replace: true });
     } catch (e: any) {
@@ -232,7 +230,6 @@ const CreateLead: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Division (Company)</label>
-                {/* Optional search input */}
                 <input
                   type="text"
                   value={companySearch}
@@ -246,7 +243,7 @@ const CreateLead: React.FC = () => {
                     onChange={(e) => setCustomerId(e.target.value)}
                     className="flex-1 rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                   >
-                    <option value="" disabled hidden>Select company</option> {/* placeholder */}
+                    <option value="" disabled hidden>Select company</option>
                     {filteredCustomers.map((c) => (
                       <option key={c.id} value={c.id}>{c.companyName}</option>
                     ))}
@@ -275,7 +272,7 @@ const CreateLead: React.FC = () => {
               </div>
             </div>
 
-            {/* Contact + Salesman */}
+            {/* Contact + Salesman + Next Follow-up */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Select Contact</label>
@@ -285,7 +282,7 @@ const CreateLead: React.FC = () => {
                     onChange={(e) => setContactId(e.target.value || '')}
                     className="flex-1 rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                   >
-                    <option value="" disabled hidden>{contacts.length ? 'Select contact' : 'No contacts'}</option> {/* placeholder */}
+                    <option value="" disabled hidden>{contacts.length ? 'Select contact' : 'No contacts'}</option>
                     {contacts.map((c) => <option key={c.id} value={c.id}>{c.name} {c.mobile ? `(${c.mobile})` : ''}</option>)}
                   </select>
                   <Button type="button" variant="secondary" onClick={() => setOpenNewContact(true)}>+ New</Button>
@@ -293,21 +290,22 @@ const CreateLead: React.FC = () => {
                 <div className="text-xs text-gray-500 mt-1">Modify below fields to override selected contact details.</div>
               </div>
               <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">Salesman</label>
-  <select
-    value={salesmanId}
-    onChange={(e) => setSalesmanId(e.target.value)}
-    className="w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-  >
-    <option value="">-- Select Salesman --</option>
-    {salesmen.map((s) => (
-      <option key={s.id} value={s.id}>
-        {s.name}
-      </option>
-    ))}
-  </select>
-</div>
-
+                <label className="block text-sm font-medium text-gray-700 mb-1">Salesman</label>
+                <select
+                  value={salesmanId}
+                  onChange={(e) => setSalesmanId(e.target.value)}
+                  className="w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                  <option value="">-- Select Salesman --</option>
+                  {salesmen.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">Next Follow-up</label>
+                <input type="datetime-local" value={nextFollowupAt} onChange={(e) => setNextFollowupAt(e.target.value)} className="w-full border rounded px-3 py-2" />
+              </div>
             </div>
 
             {/* Contact fields */}
@@ -347,7 +345,6 @@ const CreateLead: React.FC = () => {
         </main>
       </div>
 
-      {/* Modals */}
       <NewCustomerModal
         open={openNewCustomer}
         onClose={() => setOpenNewCustomer(false)}

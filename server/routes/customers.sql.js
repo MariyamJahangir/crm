@@ -6,6 +6,7 @@ const Customer = require('../models/Customer');
 const Member = require('../models/Member');
 const CustomerContact = require('../models/CustomerContact');
 const { Op } = require('sequelize'); // import Op for LIKE [web:6][web:12][web:9]
+const { createNotification, notifyAdmins } = require('../utils/notify');
 
 const router = express.Router();
 
@@ -13,7 +14,19 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const search = String(req.query.search || '').trim();
-    const where = {};
+const where = {};
+if (search) {
+  where[Op.or] = [
+    { companyName: { [Op.like]: `%${search}%` } },
+    { email:       { [Op.like]: `%${search}%` } },
+    { vatNo:       { [Op.like]: `%${search}%` } },
+    { address:     { [Op.like]: `%${search}%` } },
+    { industry:    { [Op.like]: `%${search}%` } },
+    { website:     { [Op.like]: `%${search}%` } },
+    { category:    { [Op.like]: `%${search}%` } },
+  ];
+}
+
     if (search) where.companyName = { [Op.like]: `%${search}%` }; // use Op.like [web:6][web:12][web:9]
 
     const customers = await Customer.findAll({
@@ -67,7 +80,8 @@ router.post(
         return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
       }
 
-      const { companyName, contactNumber, email, vatNo, address } = req.body;
+      const { companyName, contactNumber, email, vatNo, address, industry, website, category } = req.body;
+
       // Resolve a valid salesmanId that exists in members
       let resolvedSalesmanId = null;
 
@@ -97,13 +111,36 @@ router.post(
 
       // Create customer after salesmanId is confirmed valid (prevents FK errors)
       const created = await Customer.create({
-        companyName,
-        contactNumber: contactNumber || '',
-        salesmanId: resolvedSalesmanId,
-        email: email || '',
-        vatNo: vatNo || '',
-        address: address || '',
-      });
+  companyName,
+  contactNumber: contactNumber || '',
+  salesmanId: resolvedSalesmanId,
+  email: email || '',
+  vatNo: vatNo || '',
+  address: address || '',
+  industry: industry || null,
+  website: website || null,
+  category: category || null,
+});
+notifyAdmins(req.app.get('io'), {
+  event: 'CUSTOMER_CREATED',
+  entityType: 'CUSTOMER',
+  entityId: String(created.id),
+  title: `Customer created`,
+  message: `${companyName} added`,
+}); // admin broadcast [1]
+
+// if admin created for member, notify member
+if (isAdmin(req) && resolvedSalesmanId) {
+  await createNotification({
+    toType: 'MEMBER',
+    toId: resolvedSalesmanId,
+    event: 'CUSTOMER_ASSIGNED',
+    entityType: 'CUSTOMER',
+    entityId: created.id,
+    title: `New customer assigned`,
+    message: `${companyName} assigned by admin`,
+  }, req.app.get('io'));
+}
 
       return res.status(201).json({ success: true, customerId: created.id });
     } catch (e) {
@@ -163,14 +200,17 @@ router.put('/:id',
         return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
       }
 
-      const { companyName, contactNumber, salesmanId, email, vatNo, address } = req.body;
+      const { companyName, contactNumber, salesmanId, email, vatNo, address, industry, website, category } = req.body;
+
 
       if (companyName !== undefined) c.companyName = companyName;
       if (contactNumber !== undefined) c.contactNumber = contactNumber;
       if (email !== undefined) c.email = email;
       if (vatNo !== undefined) c.vatNo = vatNo;
       if (address !== undefined) c.address = address;
-
+if (industry !== undefined) c.industry = industry;
+if (website !== undefined) c.website = website;
+if (category !== undefined) c.category = category;
       if (salesmanId !== undefined) {
         if (!isAdmin(req)) {
           return res.status(403).json({ success: false, message: 'Only admins can change salesman' });
@@ -183,7 +223,25 @@ router.put('/:id',
           c.salesmanId = null;
         }
       }
+notifyAdmins(req.app.get('io'), {
+  event: 'CUSTOMER_UPDATED',
+  entityType: 'CUSTOMER',
+  entityId: String(c.id),
+  title: `Customer updated`,
+  message: `${c.companyName} updated`,
+}); // admin broadcast [1]
 
+if (isAdmin(req) && salesmanId !== undefined && salesmanId) {
+  await createNotification({
+    toType: 'MEMBER',
+    toId: String(c.salesmanId),
+    event: 'CUSTOMER_ASSIGNED',
+    entityType: 'CUSTOMER',
+    entityId: String(c.id),
+    title: `Customer assigned`,
+    message: `${c.companyName} assigned by admin`,
+  }, req.app.get('io'));
+}
       await c.save();
       res.json({ success: true });
     } catch (e) {

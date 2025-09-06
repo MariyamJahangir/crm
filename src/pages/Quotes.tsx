@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { quotesService, Quote } from '../services/quotesService';
-
+import DataTable from '../components/DataTable';
 const PreviewModal: React.FC<{ open: boolean; onClose: () => void; html?: string }> = ({ open, onClose, html }) => {
   if (!open) return null;
 
@@ -139,31 +139,29 @@ const Quotes: React.FC = () => {
 
           {!loading && !filtered.length && <div className="text-gray-600">No quotes found.</div>}
 
-          {!!filtered.length && (
-            <div className="bg-white border rounded">
-              <div className="grid grid-cols-12 gap-2 px-4 py-2 border-b text-sm font-medium text-gray-700">
-                <div className="col-span-2">Quote #</div>
-                <div className="col-span-3">Company</div>
-                <div className="col-span-2">Lead ID</div>
-                <div className="col-span-2">Date</div>
-                <div className="col-span-1 text-right">Total</div>
-                <div className="col-span-2 text-right">Actions</div>
-              </div>
-              {filtered.map(q => (
-                <div key={q.id} className="grid grid-cols-12 gap-2 px-4 py-2 border-b text-sm items-center">
-                  <div className="col-span-2">{q.quoteNumber}</div>
-                  <div className="col-span-3">{q.customerName}</div>
-                  <div className="col-span-2">{q.leadId}</div>
-                  <div className="col-span-2">{new Date(q.quoteDate).toLocaleDateString()}</div>
-                  <div className="col-span-1 text-right">{Number(q.grandTotal || 0).toFixed(2)}</div>
-                  <div className="col-span-2 text-right flex gap-2 justify-end">
-                    <Button variant="secondary" onClick={() => openPreview(q)}>Preview</Button>
-                    <Button onClick={() => download(q)}>Download</Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <DataTable
+  rows={filtered}
+  columns={[
+    { key: 'quoteNumber', header: 'Quote #' },
+    { key: 'customerName', header: 'Company' },
+    { key: 'leadId', header: 'Lead ID' },
+    { key: 'quoteDate', header: 'Date', render: (r) => new Date(r.quoteDate).toLocaleDateString() },
+    { key: 'status', header: 'Status' },
+    { key: 'preparedBy', header: 'Prepared By' },
+    { key: 'approvedBy', header: 'Approved By' },
+    { key: 'grandTotal', header: 'Total', render: (r) => Number(r.grandTotal || 0).toFixed(2), width: '120px' },
+    { key: 'actions', header: 'Actions', sortable: false, render: (r) => (
+      <div className="flex gap-2 justify-end">
+        <Button variant="secondary" onClick={() => openPreview(r)}>Preview</Button>
+        <Button onClick={() => download(r)}>Download</Button>
+      </div>
+    ), width: '200px' },
+  ]}
+  filterKeys={['quoteNumber','customerName','leadId','status','preparedBy','approvedBy']}
+  initialSort={{ key: 'quoteDate', dir: 'DESC' }}
+  searchPlaceholder="Filter quotes..."
+/>
+
         </main>
       </div>
 

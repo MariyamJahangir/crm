@@ -36,6 +36,8 @@ const EditLead: React.FC = () => {
   const [salesmanId, setSalesmanId] = useState('');
   const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
   const [description, setDescription] = useState('');
+  const [nextFollowupAt, setNextFollowupAt] = useState<string>('');
+  const [lostReason, setLostReason] = useState<string>('');
 
   const load = async () => {
     if (!id || !token) return;
@@ -66,6 +68,8 @@ const EditLead: React.FC = () => {
       setCity(leadRes.lead.city || '');
       setSalesmanId(leadRes.lead.salesman?.id || '');
       setDescription(leadRes.lead.description || '');
+      setNextFollowupAt(leadRes.lead.nextFollowupAt ? new Date(leadRes.lead.nextFollowupAt).toISOString().slice(0,16) : '');
+      setLostReason(leadRes.lead.lostReason || '');
     } catch (e: any) {
       setError(e?.data?.message || 'Failed to load lead');
     } finally {
@@ -107,6 +111,8 @@ const EditLead: React.FC = () => {
         city,
         salesmanId: salesmanId || undefined,
         description,
+        nextFollowupAt: nextFollowupAt ? new Date(nextFollowupAt).toISOString() : null,
+        lostReason: stage === 'Deal Lost' ? (lostReason || '') : undefined,
       }, token);
       navigate(`/leads/${id}`, { replace: true });
     } catch (e: any) {
@@ -207,6 +213,12 @@ const EditLead: React.FC = () => {
                     {salesmen.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Next Follow-up</label>
+                  <input type="datetime-local" value={nextFollowupAt} onChange={(e) => setNextFollowupAt(e.target.value)} className="w-full border rounded px-3 py-2" />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mobile</label>
                   <input value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
@@ -229,6 +241,13 @@ const EditLead: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description / Notes</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
               </div>
+
+              {stage === 'Deal Lost' && (
+                <>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lost Reason</label>
+                  <input value={lostReason} onChange={(e) => setLostReason(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="Reason for losing the lead" />
+                </>
+              )}
 
               <div className="flex justify-end gap-3">
                 <Button type="button" className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={() => navigate(`/leads/${id}`)}>

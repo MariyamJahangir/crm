@@ -14,6 +14,7 @@ const LeadLog = require('../models/LeadLog');
 const fs = require('fs/promises');
 const path = require('path');
 const router = express.Router();
+const { createNotification, notifyAdmins } = require('../utils/notify');
 
 const BASE_DIR = path.resolve(process.cwd());
 const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
@@ -211,15 +212,28 @@ router.post('/:id/attachments', authenticateToken, upload.array('files', 10), as
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const where = isAdmin(req) ? {} : { [Op.or]: [{ salesmanId: req.subjectId }] };
-
-    const leads = await Lead.findAll({
-      where,
-      include: [
-        { model: Member, as: 'salesman', attributes: ['id','name','email'] },
-        { model: Customer, as: 'customer', attributes: ['id','companyName'] },
-      ],
-      order: [['createdAt','DESC']],
-    });
+const search = String(req.query.search || '').trim();
+if (search) {
+  where[Op.or] = [
+    ...(where[Op.or] || []),
+    { uniqueNumber: { [Op.like]: `%${search}%` } },
+    { companyName:  { [Op.like]: `%${search}%` } },
+    { contactPerson:{ [Op.like]: `%${search}%` } },
+    { email:        { [Op.like]: `%${search}%` } },
+    { mobile:       { [Op.like]: `%${search}%` } },
+    { city:         { [Op.like]: `%${search}%` } },
+  ];
+}
+const sortBy = String(req.query.sortBy || 'createdAt');
+const sortDir = String(req.query.sortDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+const leads = await Lead.findAll({
+  where,
+  include: [
+    { model: Member, as: 'salesman', attributes: ['id','name','email'] },
+    { model: Customer, as: 'customer', attributes: ['id','companyName'] },
+  ],
+  order: [[sortBy, sortDir]],
+});
 
     res.json({ success:true, leads: leads.map(l => ({
       id: l.id,
@@ -249,8 +263,7 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Get one lead with followups and logs
-// Get one lead with followups and logs
+
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const lead = await Lead.findByPk(req.params.id, {
@@ -416,21 +429,29 @@ router.post('/', authenticateToken, [
       description: req.body.description || '',
       creatorType: req.subjectType,
       creatorId: req.subjectId,
+      nextFollowupAt: req.body.nextFollowupAt ? new Date(req.body.nextFollowupAt) : null,
+
     });
 
-    if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
-      await Notification.create({
-        toType: 'MEMBER',
-        toId: resolvedSalesmanId,
-        event: 'LEAD_ASSIGNED',
-        entityType: 'LEAD',
-        entityId: lead.id,
-        title: `New lead #${lead.uniqueNumber}`,
-        message: `Assigned by admin`,
-        meta: {}
-      });
-      req.app.get('io')?.to(`user:MEMBER:${resolvedSalesmanId}`).emit('notification:new', { entityType: 'LEAD', entityId: String(lead.id) });
-    }
+    notifyAdmins(req.app.get('io'), {
+  event: 'LEAD_CREATED',
+  entityType: 'LEAD',
+  entityId: String(lead.id),
+  title: `Lead #${lead.uniqueNumber} created`,
+  message: `${actorLabel(req)} created a lead`,
+}); 
+
+if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
+  await createNotification({
+    toType: 'MEMBER',
+    toId: resolvedSalesmanId,
+    event: 'LEAD_ASSIGNED',
+    entityType: 'LEAD',
+    entityId: lead.id,
+    title: `New lead #${lead.uniqueNumber}`,
+    message: `Assigned by admin`,
+  }, req.app.get('io'));
+}
 
     await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`);
 
@@ -440,7 +461,26 @@ router.post('/', authenticateToken, [
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
+router.post('/:id/main-quote', authenticateToken, async (req, res) => {
+  try {
+    const lead = await Lead.findByPk(req.params.id);
+    if (!lead) return res.status(404).json({ success:false, message:'Not found' });
 
+    // Allow admins or the lead’s owner/salesman; reuse your policy
+    const memberCan =
+      (!isAdmin(req) &&
+        (String(lead.creatorId) === String(req.subjectId) ||
+         (lead.creatorType === 'MEMBER' && String(lead.salesmanId) === String(req.subjectId))));
+    if (!isAdmin(req) && !memberCan) return res.status(403).json({ success:false, message:'Forbidden' });
+
+    const { quoteNumber } = req.body; // pass null to clear
+    await lead.update({ quoteNumber: quoteNumber || null });
+    return res.json({ success:true });
+  } catch (e) {
+    console.error('Set main quote error:', e.message);
+    res.status(500).json({ success:false, message:'Server error' });
+  }
+});
 // Update lead
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
@@ -449,11 +489,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     const memberCan = (!isAdmin(req)) && ((String(lead.creatorId) === String(req.subjectId) && lead.creatorType === 'MEMBER') || String(lead.salesmanId) === String(req.subjectId));
     if (!isAdmin(req) && !memberCan) return res.status(403).json({ success:false, message:'Forbidden' });
-
-    const up = {};
-    ['stage','forecastCategory','source','quoteNumber','previewUrl','contactPerson','mobile','mobileAlt','email','city','description'].forEach(k => {
-      if (req.body[k] !== undefined) up[k] = req.body[k];
-    });
+if (req.body.stage === 'Deal Lost' && !req.body.lostReason && !lead.lostReason) {
+  return res.status(400).json({ success:false, message:'Lost reason is required when stage is Deal Lost' });
+}
+   const up = {};
+['stage','forecastCategory','source','quoteNumber','previewUrl','contactPerson','mobile','mobileAlt','email','city','description','lostReason']
+  .forEach(k => { if (req.body[k] !== undefined) up[k] = req.body[k]; });
+if (req.body.nextFollowupAt !== undefined) up.nextFollowupAt = req.body.nextFollow
 
     if (req.body.customerId) {
       const newCustomer = await Customer.findByPk(req.body.customerId);
@@ -476,7 +518,25 @@ router.put('/:id', authenticateToken, async (req, res) => {
     await lead.update(up);
 
     await writeLeadLog(req, lead.id, 'LEAD_UPDATED', `${actorLabel(req)} updated lead details`);
+notifyAdmins(req.app.get('io'), {
+  event: 'LEAD_UPDATED',
+  entityType: 'LEAD',
+  entityId: String(lead.id),
+  title: `Lead #${lead.uniqueNumber} updated`,
+  message: `${actorLabel(req)} updated a lead`,
+}); // admin broadcast [1]
 
+if (isAdmin(req) && req.body.salesmanId) {
+  await createNotification({
+    toType: 'MEMBER',
+    toId: up.salesmanId || req.body.salesmanId,
+    event: 'LEAD_ASSIGNED',
+    entityType: 'LEAD',
+    entityId: lead.id,
+    title: `Lead #${lead.uniqueNumber} assigned`,
+    message: `Assigned by admin`,
+  }, req.app.get('io'));
+}
     res.json({ success:true });
   } catch (e) {
     console.error('Update Lead Error:', e.message);

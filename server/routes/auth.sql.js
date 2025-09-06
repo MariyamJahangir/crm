@@ -13,10 +13,12 @@ const router = express.Router();
 const sign = (subjectType, subjectId) =>
   jwt.sign({ subjectType, subjectId }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '24h' });
 
+
 router.post('/login', [ body('email').isEmail(), body('password').isLength({ min: 1 }) ], async (req, res) => {
   try {
     const errors = validationResult(req); if (!errors.isEmpty())
       return res.status(400).json({ success:false, message:'Validation failed', errors: errors.array() });
+
     const { email, password } = req.body;
 
     let subjectType = 'ADMIN';
@@ -24,8 +26,18 @@ router.post('/login', [ body('email').isEmail(), body('password').isLength({ min
     if (!u) { subjectType = 'MEMBER'; u = await Member.findOne({ where: { email } }); }
     if (!u) return res.status(400).json({ success:false, message:'Invalid credentials' });
 
+    // Blocked check for members BEFORE password compare (optional to avoid timing info)
+    if (subjectType === 'MEMBER' && u.isBlocked) {
+      return res.status(403).json({ success:false, message:'Account is blocked. Contact the administrator.' });
+    }
+
     const ok = await bcrypt.compare(password, u.password);
     if (!ok) return res.status(400).json({ success:false, message:'Invalid credentials' });
+
+    // Double-check after compare as well (defense in depth if desired)
+    if (subjectType === 'MEMBER' && u.isBlocked) {
+      return res.status(403).json({ success:false, message:'Account is blocked. Contact the administrator.' });
+    }
 
     const token = sign(subjectType, u.id);
     res.json({ success:true, message:'Login successful', token, user: { id: u.id, name: u.name, email: u.email, type: subjectType } });
@@ -34,6 +46,7 @@ router.post('/login', [ body('email').isEmail(), body('password').isLength({ min
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
+
 
 router.post('/forgot-password', [ body('email').isEmail() ], async (req, res) => {
   try {

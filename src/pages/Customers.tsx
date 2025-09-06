@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { customerService, Customer } from '../services/customerService';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ConfirmDialog';
+import DataTable from '../components/DataTable';
 
 const Customers: React.FC = () => {
   const { token } = useAuth();
@@ -15,30 +16,27 @@ const Customers: React.FC = () => {
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // delete dialog
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [targetId, setTargetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-const load = async (q?: string) => {
-  if (!token) return;
-  setError(null);
-  setLoading(true);
-  try {
-    const res = await customerService.list(token, q as any);
-    setItems(res.customers);
-  } catch (e: any) {
-    setError(e?.data?.message || 'Failed to load customers');
-  } finally {
-    setLoading(false);
-  }
-};
-
+  const load = async (q?: string) => {
+    if (!token) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await customerService.list(token, q as any);
+      setItems(res.customers);
+    } catch (e: any) {
+      setError(e?.data?.message || 'Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token]); // [1]
 
   const onSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +70,6 @@ const load = async (q?: string) => {
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
 
-      {/* --- CHANGE: Added pl-64 to offset for the sidebar width --- */}
       <div className="pl-64">
         <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-6">
@@ -99,38 +96,30 @@ const load = async (q?: string) => {
           {loading && <div>Loading...</div>}
           {error && <div className="text-red-600">{error}</div>}
 
-          <div className="grid gap-4">
-            {items.map((c) => (
-              <div key={c.id} className="bg-white p-4 rounded border shadow-sm">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-lg font-medium">{c.companyName}</div>
-                    <div className="text-gray-600 text-sm">
-                      {c.email || '-'} • {c.contactNumber || '-'} • VAT: {c.vatNo || '-'}
-                    </div>
-                    <div className="text-gray-500 text-xs mt-1">
-                      Salesman: {c.salesman?.name || '-'}
-                    </div>
-                    {c.address && <div className="text-gray-600 text-sm mt-1">{c.address}</div>}
-                    <div className="mt-2 text-sm text-gray-700">
-                      Contacts: {c.contacts.length}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="secondary" className="px-3 py-1" onClick={() => navigate(`/customers/${c.id}/edit`)}>
-                      Edit
-                    </Button>
-                    <Button variant="danger" className="px-3 py-1" onClick={() => askDelete(c.id)}>
-                      Delete
-                    </Button>
-                  </div>
+          <DataTable
+            rows={items}
+            columns={[
+              { key: 'companyName', header: 'Company' },
+              { key: 'industry', header: 'Industry' },
+              { key: 'category', header: 'Category' },
+              { key: 'website', header: 'Website' },
+              { key: 'email', header: 'Email' },
+              { key: 'contactNumber', header: 'Contact' },
+              { key: 'vatNo', header: 'VAT' },
+              { key: 'salesman', header: 'Salesman', render: (r) => r.salesman?.name || '-' },
+              { key: 'address', header: 'Address' },
+              { key: 'contacts', header: 'Contacts', render: (r) => (r.contacts?.length || 0).toString(), width: '90px' },
+              { key: 'action', header: 'Actions', sortable: false, render: (r) => (
+                <div className="flex gap-2">
+                  <Button variant="secondary" className="px-3 py-1" onClick={() => navigate(`/customers/${r.id}/edit`)}>Edit</Button>
+                  <Button variant="danger" className="px-3 py-1" onClick={() => askDelete(r.id)}>Delete</Button>
                 </div>
-              </div>
-            ))}
-            {!loading && !error && items.length === 0 && (
-              <div className="text-gray-600">No customers found.</div>
-            )}
-          </div>
+              ), width: '160px' },
+            ]}
+            filterKeys={['companyName','industry','category','website','email','vatNo','address','salesman.name','contactNumber']}
+            initialSort={{ key: 'createdAt', dir: 'DESC' }}
+            searchPlaceholder="Filter customers..."
+          />
         </main>
       </div>
 

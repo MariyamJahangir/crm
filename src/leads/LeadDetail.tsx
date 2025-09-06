@@ -1,3 +1,4 @@
+// src/pages/LeadDetail.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
@@ -7,7 +8,9 @@ import { leadsService, Lead } from '../services/leadsService';
 import { useSocket } from '../hooks/useSocket';
 import { api } from '../services/api';
 import FollowupModal from '../components/FollowupModal';
-
+import { quotesService, Quote } from '../services/quotesService';
+import PreviewModal from '../components/PreviewModal';
+import ChatBox from '../components/ChatBox';
 type Followup = {
   id: string;
   status: 'Followup' | 'Meeting Scheduled' | 'No Requirement' | 'No Response';
@@ -15,10 +18,16 @@ type Followup = {
   scheduledAt?: string;
   createdAt?: string;
 };
-const LeadQuotes: React.FC<{ leadId: string }> = ({ leadId }) => {
+
+const QuotePicker: React.FC<{
+  leadId: string;
+  currentMain?: string | null;
+  onMainChange: (quoteNumber: string | null) => void;
+}> = ({ leadId, currentMain, onMainChange }) => {
   const { token } = useAuth();
-  const [rows, setRows] = useState<any[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
 
   useEffect(() => {
@@ -26,72 +35,113 @@ const LeadQuotes: React.FC<{ leadId: string }> = ({ leadId }) => {
     (async () => {
       try {
         const res = await quotesService.listByLead(leadId, token);
-        setRows(res.quotes);
+        setQuotes(res.quotes);
       } catch (e: any) {
         setErr(e?.data?.message || 'Failed to load quotes');
       }
     })();
-  }, [token, leadId]);
+  }, [leadId, token]);
 
-  const openPreview = async (q: any) => {
+const openPreview = async (q: Quote) => {
+  try {
+    const html = await quotesService.previewHtml(q.leadId, q.id, token);
+    setPreview({ open: true, html, quote: q, downloading: false });
+  } catch (e: any) {
+    setErr(e?.data?.message || 'Failed to build preview');
+  }
+};
+
+const downloadFromPreview = async () => {
+  if (!preview.quote) return;
+  try {
+    setPreview(prev => ({ ...prev, downloading: true }));
+    const blob = await quotesService.downloadPdf(preview.quote.leadId, preview.quote.id, token);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${preview.quote.quoteNumber}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => window.URL.revokeObjectURL(url), 1200);
+  } catch (e: any) {
+    setErr(e?.data?.message || 'Failed to download PDF');
+  } finally {
+    setPreview(prev => ({ ...prev, downloading: false }));
+  }
+};
+
+  const selectMain = async (q: Quote) => {
+    const target = currentMain === q.quoteNumber ? q.quoteNumber : q.quoteNumber;
+    // Optimistic update to parent first
+    onMainChange(target);
+    setBusy(q.id);
     try {
-      const html = await quotesService.previewHtml(q.leadId, q.id, token);
-      setPreview({ open: true, html });
+      await quotesService.setMainQuote(leadId, target, token);
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to build preview');
+      setErr(e?.data?.message || 'Failed to set main quote');
+      // Rollback on error
+      onMainChange(currentMain || null);
+    } finally {
+      setBusy(null);
     }
   };
-  const download = async (q: any) => {
-    try {
-      const blob = await quotesService.downloadPdf(q.leadId, q.id, token);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `${q.quoteNumber}.pdf`;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => window.URL.revokeObjectURL(url), 2000);
-    } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to download PDF');
-    }
-  };
+
+  if (err) return <div className="text-red-600">{err}</div>;
+  if (!quotes.length) return <div className="text-sm text-gray-600">No quotes yet.</div>;
 
   return (
     <>
-      {err && <div className="text-red-600 mb-2">{err}</div>}
-      {!rows.length ? (
-        <div className="text-sm text-gray-600">No quotes yet.</div>
-      ) : (
-        <div className="space-y-2 text-sm">
-          {rows.map((q) => (
-            <div key={q.id} className="flex items-center justify-between border rounded px-3 py-2">
-              <div className="flex flex-col">
-                <div className="text-gray-800">{q.quoteNumber} • {q.customerName}</div>
-                <div className="text-gray-500 text-xs">{new Date(q.quoteDate).toLocaleString()} • Total: {Number(q.grandTotal || 0).toFixed(2)}</div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => openPreview(q)}>Preview</Button>
-                <Button onClick={() => download(q)}>Download</Button>
-              </div>
+      <div className="flex flex-wrap gap-3">
+        {quotes.map((q) => {
+          const isMain = currentMain === q.quoteNumber;
+          return (
+            <div key={q.id} className="flex items-center gap-2 border rounded-full px-3 py-1 bg-white">
+              {/* Paper icon + quote number (click = preview) */}
+              <button
+                type="button"
+                onClick={() => openPreview(q)}
+                className="inline-flex items-center gap-2 text-sm text-gray-800 hover:text-gray-900"
+                title="Preview quote"
+              >
+                <span aria-hidden>📄</span>
+                <span className="font-medium">{q.quoteNumber}</span>
+              </button>
+
+              {/* Download */}
+              <button
+                type="button"
+                onClick={() => download(q)}
+                className="text-gray-600 hover:text-gray-800"
+                title="Download PDF"
+                aria-label="Download"
+              >
+                ⬇️
+              </button>
+
+              {/* Radio-like select for main quote */}
+              <label className="inline-flex items-center gap-1 text-xs text-gray-600 ml-2">
+                <input
+                  type="radio"
+                  name="main-quote"
+                  checked={isMain}
+                  onChange={() => selectMain(q)}
+                  disabled={busy === q.id}
+                  className="h-4 w-4 text-blue-600 border-gray-300"
+                  aria-label={isMain ? 'Selected as main quote' : 'Select as main quote'}
+                />
+                <span>{isMain ? 'Main' : 'Set main'}</span>
+              </label>
             </div>
-          ))}
-        </div>
-      )}
-      {/* modal */}
-      {preview.open && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-xl w-[900px] max-w-[95vw]">
-            <div className="px-4 py-2 border-b flex items-center justify-between">
-              <div className="font-semibold">Quote Preview</div>
-              <button onClick={() => setPreview({ open: false })} className="text-gray-500 hover:text-gray-700" aria-label="Close">×</button>
-            </div>
-            <div className="p-0 flex justify-center">
-              <iframe title="Quote Preview" style={{ width: 794, height: 1123, border: 'none', background: '#fff' }} srcDoc={preview.html || ''} />
-            </div>
-            <div className="px-4 py-2 border-t flex justify-end">
-              <Button variant="secondary" onClick={() => setPreview({ open: false })}>Close</Button>
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
+
+      <PreviewModal
+  open={preview.open}
+  onClose={() => setPreview({ open: false })}
+  html={preview.html}
+  onDownload={downloadFromPreview}
+  downloading={preview.downloading}
+  title={preview.quote ? `Quote ${preview.quote.quoteNumber}` : 'Quote Preview'}
+/>
     </>
   );
 };
@@ -114,11 +164,10 @@ const LeadDetail: React.FC = () => {
 
   const [openFollowup, setOpenFollowup] = useState(false);
 
-const API_BASE =
+  const API_BASE =
     import.meta.env.VITE_NODE_ENV == 'development'
-    ? import.meta.env.VITE_DEV_API_BASE
-    : import.meta.env.VITE_PROD_API_BASE;
-
+      ? import.meta.env.VITE_DEV_API_BASE
+      : import.meta.env.VITE_PROD_API_BASE;
   const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '');
   const toFileHref = (url: string) => (/^https?:\/\//i.test(url) ? url : `${API_ORIGIN}${url}`);
 
@@ -134,7 +183,6 @@ const API_BASE =
     }
   };
 
-  // Load lead (includes followups and logs)
   const loadLead = async () => {
     if (!id || !token) return;
     setLoading(true);
@@ -149,7 +197,6 @@ const API_BASE =
     }
   };
 
-  // Load followups only
   const loadFollowups = async () => {
     if (!id || !token) return;
     try {
@@ -163,9 +210,11 @@ const API_BASE =
   useEffect(() => {
     if (!id || !token) return;
     loadLead();
-  }, [id, token]); // [1]
+    // Ensure followups always present even if socket timing differs
+    loadFollowups();
+  }, [id, token]); // stable load [1]
 
-  // Join room and load chat history (optional)
+  // Join room + chat history
   useEffect(() => {
     if (!id || !token) return;
     socket?.emit('lead:join', id);
@@ -173,13 +222,11 @@ const API_BASE =
       try {
         const res = await api.get<{ success: boolean; messages: any[] }>(`/leads/${id}/chat`, token);
         setMessages(res.messages);
-      } catch {
-        // ignore chat errors
-      }
+      } catch { /* ignore */ }
     })();
   }, [id, token, socket]); // [1]
 
-  // Socket: followup:new (future-only) with dedupe
+  // Socket: future-only followup push with dedupe
   useEffect(() => {
     if (!socket) return;
     const onNew = (evt: any) => {
@@ -196,10 +243,10 @@ const API_BASE =
     return () => { socket.off('followup:new', onNew); };
   }, [socket, id]); // [1]
 
-  // Socket: attachments
+  // Socket: attachments and logs with dedupe
   useEffect(() => {
     if (!socket) return;
-    const onNew = (evt: any) => {
+    const onAttNew = (evt: any) => {
       if (evt.leadId !== id) return;
       setLead(prev => {
         if (!prev) return prev;
@@ -207,24 +254,13 @@ const API_BASE =
         return exists ? prev : { ...prev, attachments: [...(prev.attachments || []), evt.attachment] };
       });
     };
-    const onDel = (evt: any) => {
+    const onAttDel = (evt: any) => {
       if (evt.leadId !== id) return;
       setLead(prev => prev ? ({
         ...prev,
         attachments: (prev.attachments || []).filter(a => !(a.filename === evt.attachment.filename && a.url === evt.attachment.url))
       }) : prev);
     };
-    socket.on('attachment:new', onNew);
-    socket.on('attachment:deleted', onDel);
-    return () => {
-      socket.off('attachment:new', onNew);
-      socket.off('attachment:deleted', onDel);
-    };
-  }, [socket, id]); // [1]
-
-  // Socket: logs live
-  useEffect(() => {
-    if (!socket) return;
     const onLog = (evt: any) => {
       if (evt.leadId !== id) return;
       setLead(prev => {
@@ -234,11 +270,16 @@ const API_BASE =
         return { ...prev, logs: [evt.log, ...arr] };
       });
     };
+    socket.on('attachment:new', onAttNew);
+    socket.on('attachment:deleted', onAttDel);
     socket.on('log:new', onLog);
-    return () => { socket.off('log:new', onLog); };
+    return () => {
+      socket.off('attachment:new', onAttNew);
+      socket.off('attachment:deleted', onAttDel);
+      socket.off('log:new', onLog);
+    };
   }, [socket, id]); // [1]
 
-  // Only show followups scheduled in the future
   const visibleFollowups = useMemo(() => {
     const all = (lead?.followups as Followup[] | undefined) || [];
     const now = Date.now();
@@ -248,9 +289,8 @@ const API_BASE =
   }, [lead?.followups]); // [1]
 
   const upcoming: Followup | null = visibleFollowups.length ? visibleFollowups : null;
-  const others: Followup[] = upcoming ? visibleFollowups.slice(1) : visibleFollowups;
+  const others: Followup[] = visibleFollowups.length > 1 ? visibleFollowups.slice(1) : [];
 
-  // Attachments
   const onUpload = async (files: FileList | null) => {
     if (!files || !files.length || !id || !token) return;
     try {
@@ -313,7 +353,6 @@ const API_BASE =
     );
   };
 
-  // Chat send
   const sendChat = async () => {
     const t = text.trim(); if (!t || !id || !token) return;
     await api.post<{ success: boolean; message: any }>(`/leads/${id}/chat`, { text: t }, token);
@@ -349,38 +388,41 @@ const API_BASE =
                   <Button variant="secondary" onClick={() => navigate(`/leads/${lead.id}/edit`)}>Edit</Button>
                 </div>
               </div>
-{/* Details */}
-<div className="bg-white border rounded p-4 mb-6">
-  <div className="text-sm font-medium text-gray-700 mb-2">Lead Details</div>
-  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-    <div><span className="text-gray-500">Lead #:</span> {lead.uniqueNumber}</div>
-    <div><span className="text-gray-500">Stage:</span> {lead.stage}</div>
-    <div><span className="text-gray-500">Forecast:</span> {lead.forecastCategory}</div>
-    <div><span className="text-gray-500">Source:</span> {lead.source || '-'}</div>
 
-    <div><span className="text-gray-500">Company:</span> {lead.companyName || '-'}</div>
-    <div><span className="text-gray-500">Division:</span> {lead.division || '-'}</div>
+              {/* Details */}
+              <div className="bg-white border rounded p-4 mb-6">
+                <div className="text-sm font-medium text-gray-700 mb-2">Lead Details</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div><span className="text-gray-500">Lead #:</span> {lead.uniqueNumber}</div>
+                  <div><span className="text-gray-500">Stage:</span> {lead.stage}</div>
+                  <div><span className="text-gray-500">Forecast:</span> {lead.forecastCategory}</div>
+                  <div><span className="text-gray-500">Source:</span> {lead.source || '-'}</div>
 
-    <div><span className="text-gray-500">Quote #:</span> {lead.quoteNumber || '-'}</div>
-    <div><span className="text-gray-500">Preview URL:</span> {lead.previewUrl || '-'}</div>
+                  <div><span className="text-gray-500">Company:</span> {lead.companyName || '-'}</div>
+                  <div><span className="text-gray-500">Division:</span> {lead.division || '-'}</div>
 
-    <div><span className="text-gray-500">Actual Date:</span> {lead.actualDate ? new Date(lead.actualDate).toLocaleString() : '-'}</div>
-    <div><span className="text-gray-500">Created:</span> {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : '-'}</div>
-    <div><span className="text-gray-500">Updated:</span> {lead.updatedAt ? new Date(lead.updatedAt).toLocaleString() : '-'}</div>
+                  <div><span className="text-gray-500">Quote #:</span> {lead.quoteNumber || '-'}</div>
+                  <div><span className="text-gray-500">Preview URL:</span> {lead.previewUrl || '-'}</div>
+<div><span className="text-gray-500">Next Follow-up:</span> {lead.nextFollowupAt ? new Date(lead.nextFollowupAt).toLocaleString() : '-'}</div>
+<div><span className="text-gray-500">Lost Reason:</span> {lead.lostReason || '-'}</div>
 
-    <div><span className="text-gray-500">Salesman:</span> {lead.salesman?.name || '-'}</div>
-    <div><span className="text-gray-500">Customer ID:</span> {lead.customerId || '-'}</div>
+                  <div><span className="text-gray-500">Actual Date:</span> {lead.actualDate ? new Date(lead.actualDate).toLocaleString() : '-'}</div>
+                  <div><span className="text-gray-500">Created:</span> {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : '-'}</div>
+                  <div><span className="text-gray-500">Updated:</span> {lead.updatedAt ? new Date(lead.updatedAt).toLocaleString() : '-'}</div>
 
-    <div><span className="text-gray-500">Contact:</span> {lead.contactPerson || '-'}</div>
-    <div><span className="text-gray-500">Mobile:</span> {lead.mobile || '-'} {lead.mobileAlt ? `/ ${lead.mobileAlt}` : ''}</div>
-    <div><span className="text-gray-500">Email:</span> {lead.email || '-'}</div>
-    <div><span className="text-gray-500">City:</span> {lead.city || '-'}</div>
+                  <div><span className="text-gray-500">Salesman:</span> {lead.salesman?.name || '-'}</div>
+                  <div><span className="text-gray-500">Customer ID:</span> {lead.customerId || '-'}</div>
 
-    <div><span className="text-gray-500">Creator:</span> {lead.creatorType ? `${lead.creatorType} (${lead.creatorId})` : '-'}</div>
-  </div>
-  {lead.previewUrl && <img src={lead.previewUrl} alt="preview" className="mt-3 h-14 w-14 object-cover rounded border" />}
-  {lead.description && <div className="mt-3 text-sm text-gray-800">{lead.description}</div>}
-</div>
+                  <div><span className="text-gray-500">Contact:</span> {lead.contactPerson || '-'}</div>
+                  <div><span className="text-gray-500">Mobile:</span> {lead.mobile || '-'} {lead.mobileAlt ? `/ ${lead.mobileAlt}` : ''}</div>
+                  <div><span className="text-gray-500">Email:</span> {lead.email || '-'}</div>
+                  <div><span className="text-gray-500">City:</span> {lead.city || '-'}</div>
+
+                  <div><span className="text-gray-500">Creator:</span> {lead.creatorType ? `${lead.creatorType} (${lead.creatorId})` : '-'}</div>
+                </div>
+                {lead.previewUrl && <img src={lead.previewUrl} alt="preview" className="mt-3 h-14 w-14 object-cover rounded border" />}
+                {lead.description && <div className="mt-3 text-sm text-gray-800">{lead.description}</div>}
+              </div>
 
               {/* Followups */}
               <div className="bg-white border rounded p-4 mb-6">
@@ -442,11 +484,16 @@ const API_BASE =
                   <div className="text-sm text-gray-600">No attachments.</div>
                 )}
               </div>
-{/* Quotes */}
-<div className="bg-white border rounded p-4 mb-6">
-  <div className="text-sm font-medium text-gray-700 mb-2">Quotes</div>
-  <LeadQuotes leadId={lead.id} />
-</div>
+
+              {/* Quotes picker (icons + select one main) */}
+              <div className="bg-white border rounded p-4 mb-6">
+                <div className="text-sm font-medium text-gray-700 mb-2">Quotes</div>
+                <QuotePicker
+                  leadId={lead.id}
+                  currentMain={lead.quoteNumber || null}
+                  onMainChange={(qnum) => setLead(prev => prev ? ({ ...prev, quoteNumber: qnum || undefined }) : prev)}
+                />
+              </div>
 
               {/* Logs */}
               <div className="bg-white border rounded p-4 mb-6">
@@ -466,29 +513,11 @@ const API_BASE =
                 )}
               </div>
 
-              {/* Chat */}
-              <div className="bg-white border rounded p-4">
-                <div className="text-sm font-medium text-gray-700 mb-2">Live Chat</div>
-                <div className="max-h-64 overflow-auto mb-3 space-y-2">
-                  {messages.map((m, i) => (
-                    <div key={i} className="text-sm">
-                      <span className="text-gray-500">{new Date(m.createdAt).toLocaleString()} • {m.fromType}</span>
-                      <div>{m.text}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    className="flex-1 border rounded px-3 py-2"
-                    value={text}
-                    onChange={e => setText(e.target.value)}
-                    placeholder="Type a message..."
-                  />
-                  <button className="px-3 py-2 bg-blue-600 text-white rounded" onClick={sendChat}>Send</button>
-                </div>
-              </div>
+            {lead && (
+  <ChatBox leadId={lead.id} />
+)}
 
-              {/* Add Followup modal */}
+             
               <FollowupModal
                 open={openFollowup}
                 onClose={() => setOpenFollowup(false)}
@@ -501,7 +530,8 @@ const API_BASE =
                     scheduledAt: payload.scheduledAt ? new Date(payload.scheduledAt).toISOString() : undefined
                   };
                   await api.post<{ success: boolean; followup: Followup }>(`/followups/${id}`, body, token);
-                  await loadFollowups(); // rely on socket + refresh, avoids duplicate keys
+                  // refresh to ensure consistency
+                  await loadFollowups();
                 }}
               />
             </>
@@ -513,4 +543,3 @@ const API_BASE =
 };
 
 export default LeadDetail;
- 

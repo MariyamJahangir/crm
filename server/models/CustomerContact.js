@@ -15,6 +15,10 @@ CustomerContact.init({
   mobile: { type: DataTypes.STRING(50) },
   fax: { type: DataTypes.STRING(50) },
   email: { type: DataTypes.STRING(180) },
+  // models/CustomerContact.js (append attributes)
+department: { type: DataTypes.STRING(120), allowNull: true },      // Department
+social: { type: DataTypes.STRING(240), allowNull: true },          // LinkedIn / Social link/handle
+
   customerId: {
     type: DataTypes.UUID, // Changed from CHAR(36)
     allowNull: false

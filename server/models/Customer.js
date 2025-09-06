@@ -16,6 +16,14 @@ Customer.init({
   email: { type: DataTypes.STRING(180) },
   vatNo: { type: DataTypes.STRING(80) },
   address: { type: DataTypes.TEXT },
+  // models/Customer.js (append attributes)
+industry: { type: DataTypes.STRING(120), allowNull: true },        // Industry / Business Type
+website: { type: DataTypes.STRING(200), allowNull: true },         // Website
+category: {                                                        // Customer Category
+  type: DataTypes.ENUM('Enterprise','SMB','Individual'),
+  allowNull: true
+},
+
   // Also updated this for consistency
   salesmanId: { type: DataTypes.UUID, allowNull: true },
 }, { sequelize, tableName: 'customers', timestamps: true });

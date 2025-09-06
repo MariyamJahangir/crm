@@ -29,6 +29,9 @@ Quote.init({
   grossProfit: { type: DataTypes.DECIMAL(14, 2), allowNull: false, defaultValue: 0.00 },
   profitPercent: { type: DataTypes.DECIMAL(7, 3), allowNull: false, defaultValue: 0.000 },
   profitRate: { type: DataTypes.DECIMAL(14, 4), allowNull: false, defaultValue: 0.0000 },
+  status: { type: DataTypes.ENUM('Draft','Sent','Accepted','Rejected','Expired'), allowNull: false, defaultValue: 'Draft' },
+preparedBy: { type: DataTypes.STRING, allowNull: true },
+approvedBy: { type: DataTypes.STRING, allowNull: true },
 }, { sequelize, tableName: 'quotes' });
 
 // All association lines (hasMany, belongsTo) have been removed from this file.
