@@ -40,7 +40,6 @@ const CreateLead: React.FC = () => {
 
   const [salesmanId, setSalesmanId] = useState('');
   const [description, setDescription] = useState('');
-  const [nextFollowupAt, setNextFollowupAt] = useState<string>('');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +60,7 @@ const CreateLead: React.FC = () => {
         const team = await teamService.list(token);
         setSalesmen(team.users);
         const me = team.users.find((u) => u.id === String(user?.id));
-        setSalesmanId(me?.id || team.users?.[0]?.id || ''); // fixed
+        setSalesmanId(me?.id || team.users?.id || ''); // fixed
 
         const res = await customerService.list(token);
         const lite = res.customers.map((c) => ({ id: c.id, companyName: c.companyName }));
@@ -70,7 +69,7 @@ const CreateLead: React.FC = () => {
         // ignore
       }
     })();
-  }, [token, user?.id]); // [attached_file:1]
+  }, [token, user?.id]); // [1]
 
   // When customer changes, fetch contacts; set first as primary if none selected yet
   useEffect(() => {
@@ -89,7 +88,7 @@ const CreateLead: React.FC = () => {
         setContacts(list);
 
         if (list.length > 0 && !contactId) {
-          const first = list[0]; // fixed
+          const first = list; // fixed
           setContactId(first.id);
           setContactPerson(first.name || '');
           setMobile(first.mobile || '');
@@ -106,7 +105,7 @@ const CreateLead: React.FC = () => {
         // ignore
       }
     })();
-  }, [customerId, token]); // [attached_file:1]
+  }, [customerId, token]); // [1]
 
   // If selected contact changes, copy into editable fields
   useEffect(() => {
@@ -117,7 +116,7 @@ const CreateLead: React.FC = () => {
       setMobile(found.mobile || '');
       setEmailField(found.email || '');
     }
-  }, [contactId, contacts]); // [attached_file:1]
+  }, [contactId, contacts]); // [1]
 
   const refreshCustomersAndSelect = async (newCustomerId?: string) => {
     if (!token) return;
@@ -133,7 +132,7 @@ const CreateLead: React.FC = () => {
     const list = res.contacts || [];
     setContacts(list);
     if (list.length > 0) {
-      const first = list[0]; // fixed
+      const first = list; // fixed
       setContactId(first.id);
       setContactPerson(first.name || '');
       setMobile(first.mobile || '');
@@ -169,7 +168,6 @@ const CreateLead: React.FC = () => {
         email: emailField || undefined,
         city: city || undefined,
         description: description || undefined,
-        nextFollowupAt: nextFollowupAt ? new Date(nextFollowupAt).toISOString() : undefined,
       };
       if (contactId) payload.contactId = contactId;
       if (salesmanId) payload.salesmanId = salesmanId;
@@ -272,7 +270,7 @@ const CreateLead: React.FC = () => {
               </div>
             </div>
 
-            {/* Contact + Salesman + Next Follow-up */}
+            {/* Contact + Salesman */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Select Contact</label>
@@ -303,8 +301,6 @@ const CreateLead: React.FC = () => {
                     </option>
                   ))}
                 </select>
-                <label className="block text-sm font-medium text-gray-700 mb-1 mt-4">Next Follow-up</label>
-                <input type="datetime-local" value={nextFollowupAt} onChange={(e) => setNextFollowupAt(e.target.value)} className="w-full border rounded px-3 py-2" />
               </div>
             </div>
 

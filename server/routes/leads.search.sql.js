@@ -1,4 +1,3 @@
-// routes/leads.search.sql.js
 const express = require('express');
 const { authenticateToken } = require('../middleware/auth');
 const Lead = require('../models/Lead');
@@ -8,13 +7,17 @@ const { Op } = require('sequelize');
 
 const router = express.Router();
 
+/**
+ * GET /search
+ * Search leads by number or customer company name with pagination.
+ * Returns list of leads with key details.
+ */
 router.get('/search', authenticateToken, async (req, res) => {
   try {
     const q = String(req.query.query || '').trim();
     const page = Math.max(parseInt(req.query.page || '1', 10), 1);
     const pageSize = Math.min(Math.max(parseInt(req.query.pageSize || '20', 10), 1), 100);
 
-    // Show ALL leads to any authenticated user (intentionally no role filter)
     const where = {};
     if (q) {
       where[Op.or] = [
@@ -24,18 +27,19 @@ router.get('/search', authenticateToken, async (req, res) => {
     }
 
     const include = [
-      { model: Customer, as: 'customer', attributes: ['id','companyName'] },
-      { model: Member, as: 'salesman', attributes: ['id','name','email'] },
+      { model: Customer, as: 'customer', attributes: ['id', 'companyName'] },
+      { model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] },
     ];
 
+    // Use findAndCountAll for pagination & total count
     const { rows, count } = await Lead.findAndCountAll({
       where,
       include,
-      order: [['createdAt','DESC']],
+      order: [['createdAt', 'DESC']],
       offset: (page - 1) * pageSize,
       limit: pageSize,
-      distinct: true,
-      // subQuery: false, // Uncomment if your dialect paginates oddly with includes
+      distinct: true, // avoids count duplication with joins
+      // Uncomment 'subQuery: false' if pagination behaves incorrectly with your DB dialect
     });
 
     const leads = rows.map(l => ({
@@ -49,10 +53,16 @@ router.get('/search', authenticateToken, async (req, res) => {
       customerId: l.customer?.id || null,
     }));
 
-    res.json({ success: true, leads, page, pageSize, total: count });
-  } catch (e) {
-    console.error('Leads search error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
+    res.json({
+      success: true,
+      leads,
+      page,
+      pageSize,
+      total: count,
+    });
+  } catch (error) {
+    console.error('Leads search error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

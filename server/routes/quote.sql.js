@@ -1,4 +1,3 @@
-// routes/quotes.sql.js
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
@@ -12,13 +11,17 @@ const puppeteer = require('puppeteer');
 const os = require('os');
 const path = require('path');
 const fs = require('fs/promises');
-const { setTimeout: delay } = require('timers/promises');
-const { createNotification, notifyAdmins } = require('../utils/notify');
+const { Op } = require('sequelize');
 
 const router = express.Router();
 
-// Actor helpers
+// --- Constants ---
+const APPROVAL_LIMIT = 500; // Quotes with a grand total LESS than this require admin approval for non-admins
+const FINAL_STATES = new Set(['Accepted', 'Rejected', 'Expired']);
+
+// --- Actor & Logging Helpers ---
 function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
+
 async function resolveActorName(req) {
   if (req.subjectType === 'ADMIN') return 'Admin';
   if (req.subjectType === 'MEMBER') {
@@ -27,481 +30,391 @@ async function resolveActorName(req) {
   }
   return 'System';
 }
+
 async function writeLeadLog(req, leadId, action, message) {
-  const actorName = await resolveActorName(req);
-  const created = await LeadLog.create({
-    leadId,
-    action,
-    message,
-    actorType: req.subjectType,
-    actorId: req.subjectId,
-    actorName
-  });
-  req.app.get('io')?.to(`lead:${leadId}`).emit('log:new', {
-    leadId: String(leadId),
-    log: {
-      id: created.id,
-      action: created.action,
-      message: created.message,
-      actorType: created.actorType,
-      actorId: created.actorId,
-      actorName: created.actorName,
-      createdAt: created.createdAt
-    }
-  });
-  return created;
+  try {
+    const actorName = await resolveActorName(req);
+    const created = await LeadLog.create({
+      leadId, action, message,
+      actorType: req.subjectType, actorId: req.subjectId, actorName
+    });
+    req.app.get('io')?.to(`lead:${leadId}`).emit('log:new', {
+      leadId: String(leadId),
+      log: {
+        id: created.id,
+        action: created.action,
+        message: created.message,
+        actorType: created.actorType,
+        actorId: created.actorId,
+        actorName: created.actorName,
+        createdAt: created.createdAt
+      }
+    });
+    return created;
+  } catch (e) {
+    console.error("Failed to write lead log:", e.message);
+  }
 }
 
-// Utils
-function formatMoney(n) {
-  const num = Number(n || 0);
-  return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+// --- Puppeteer & PDF Generation ---
+function esc(v) { return (v ?? '').toString(); }
 
 function buildQuoteHTML({ quote, items, lead, customer }) {
-  const styles = `
-  <style>
-    body { font-family: Arial, sans-serif; color: #111; font-size: 12px; margin: 24px; }
-    h1 { font-size: 20px; margin: 0 0 8px 0; }
-    h2 { font-size: 14px; margin: 0 0 6px 0; }
-    .muted { color: #666; }
-    .row { display: flex; gap: 16px; }
-    .col { flex: 1; }
-    .box { border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin-bottom: 10px; }
-    .kv { display: grid; grid-template-columns: 160px 1fr; gap: 6px 10px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #e5e7eb; padding: 6px 8px; }
-    th { background: #f9fafb; text-align: left; }
-    .right { text-align: right; }
-    .small { font-size: 11px; }
-    @page { size: A4; margin: 16mm 12mm; }
-    html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  </style>`;
-  const head = `
-    <div class="row" style="justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-      <div>
-        <h1>Quotation</h1>
-        <div class="muted small">Quote #: ${quote.quoteNumber}</div>
-        <div class="muted small">Lead #: ${lead?.uniqueNumber || '-'}</div>
-      </div>
-      <div class="small muted" style="text-align:right">
-        <div>Date: ${new Date(quote.quoteDate).toLocaleDateString()}</div>
-        <div>Valid Until: ${quote.validityUntil ? new Date(quote.validityUntil).toLocaleDateString() : '-'}</div>
-        <div>Salesman: ${quote.salesmanName || '-'}</div>
-      </div>
-    </div>
-  `;
-  const party = `
-    <div class="row">
-      <div class="col box">
-        <h2>Party Details</h2>
-        <div class="kv small">
-          <div>Company</div><div>${quote.customerName || '-'}</div>
-          <div>Contact Person</div><div>${quote.contactPerson || '-'}</div>
-          <div>Phone</div><div>${quote.phone || '-'}</div>
-          <div>Email</div><div>${quote.email || '-'}</div>
-          <div>Address</div><div>${(quote.address || '').replace(/\n/g,'<br/>') || '-'}</div>
-        </div>
-      </div>
-      <div class="col box">
-        <h2>Notes</h2>
-        <div class="small">${(quote.description || '-').replace(/\n/g,'<br/>')}</div>
-      </div>
-    </div>
-  `;
-  const rows = (items || []).map(it => {
-    const qty = Number(it.quantity);
-    const cost = Number(it.itemCost);
-    const rate = Number(it.itemRate);
-    const lineTotal = Number(it.lineGross);
-    const discPct = Number(it.lineDiscountPercent || 0);
-    const discAmt = Number(it.lineDiscountAmount || 0);
-    const gp = Number(it.lineGP || (lineTotal - Number(it.lineCostTotal || qty * cost)));
-    const pp = Number(it.lineProfitPercent || (lineTotal > 0 ? (gp/lineTotal)*100 : 0));
+  const q = quote || {};
+  const it = Array.isArray(items) ? items : [];
+  const l = lead || {};
+  const c = customer || {};
+
+  const title = esc(q.quoteNumber) || 'Quote';
+  const customerName = esc(q.customerName || c.companyName);
+  const contact = esc(q.contactPerson || l.contactPerson);
+  const address = esc(q.address || c.address);
+  const phone = esc(q.phone || l.mobile);
+  const email = esc(q.email || l.email);
+  const salesman = esc(q.salesmanName || (l.salesman && l.salesman.name));
+  const dateStr = q.quoteDate ? new Date(q.quoteDate).toLocaleDateString() : '';
+
+  const rows = it.map((row, idx) => {
+    const qty = Number(row.quantity || 0);
+    const rate = Number(row.itemRate || 0);
+    const disc = Number(row.lineDiscountAmount || 0);
+    const lineTotal = Number(row.lineGross !== undefined ? row.lineGross : Math.max(0, qty * rate - disc));
     return `
       <tr>
-        <td class="right">${it.slNo}</td>
-        <td>${it.product}</td>
-        <td>${it.description || ''}</td>
-        <td class="right">${it.unit || ''}</td>
-        <td class="right">${qty}</td>
-        <td class="right">${formatMoney(cost)}</td>
-        <td class="right">${formatMoney(rate)}</td>
-        <td class="right">${discPct ? discPct.toFixed(2) + '%' : '-'}</td>
-        <td class="right">${discAmt ? formatMoney(discAmt) : '-'}</td>
-        <td class="right">${formatMoney(lineTotal)}</td>
-        <td class="right">${formatMoney(gp)}</td>
-        <td class="right">${pp.toFixed(2)}%</td>
-      </tr>
-    `;
+        <td>${esc(row.slNo ?? idx + 1)}</td>
+        <td>${esc(row.product)}</td>
+        <td>${esc(row.description || '')}</td>
+        <td>${esc(row.unit || '')}</td>
+        <td style="text-align:right">${qty.toFixed(3)}</td>
+        <td style="text-align:right">${rate.toFixed(2)}</td>
+        <td style="text-align:right">${disc.toFixed(2)}</td>
+        <td style="text-align:right">${lineTotal.toFixed(2)}</td>
+      </tr>`;
   }).join('');
-  const summary = `
-    <table class="small" style="margin-top:10px">
-      <tbody>
-        <tr><td class="right" style="width:85%">Subtotal</td><td class="right" style="width:15%">${formatMoney(quote.subtotal)}</td></tr>
-        <tr><td class="right">Total Cost</td><td class="right">${formatMoney(quote.totalCost)}</td></tr>
-        <tr><td class="right">Discount ${quote.discountMode === 'PERCENT' ? `(${Number(quote.discountValue).toFixed(2)}%)` : ''}</td><td class="right">-${formatMoney(quote.discountAmount)}</td></tr>
-        <tr><td class="right">VAT (${Number(quote.vatPercent).toFixed(2)}%)</td><td class="right">${formatMoney(quote.vatAmount)}</td></tr>
-        <tr><td class="right">Gross Profit (GP)</td><td class="right">${formatMoney(quote.grossProfit)}</td></tr>
-        <tr><td class="right">Profit %</td><td class="right">${Number(quote.profitPercent).toFixed(2)}%</td></tr>
-        <tr><td class="right">Grand Total</td><td class="right">${formatMoney(quote.grandTotal)}</td></tr>
-      </tbody>
-    </table>
-  `;
-  const table = `
+
+  const subtotal = Number(q.subtotal || 0).toFixed(2);
+  const discount = Number(q.discountAmount || 0).toFixed(2);
+  const vat = Number(q.vatAmount || 0).toFixed(2);
+  const grand = Number(q.grandTotal || 0).toFixed(2);
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${title}</title>
+  <style>
+    :root { color-scheme: light; }
+    html, body { margin:0; padding:16px; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    h2 { margin: 0 0 12px 0; }
+    .grid { display:flex; justify-content:space-between; gap:16px; font-size:12px; }
+    .grid > div > div { margin: 2px 0; }
+    .mt { margin-top:12px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border:1px solid #ddd; padding:6px; font-size:12px; }
+    th { background:#f5f5f5; text-align:left; }
+    .totals { display:flex; justify-content:flex-end; }
+    .totals table { width:auto; }
+    .right { text-align:right; }
+  </style>
+</head>
+<body>
+  <h2>Quote ${esc(q.quoteNumber) || ''}</h2>
+  <div class="grid">
+    <div>
+      <div><b>Customer:</b> ${customerName}</div>
+      <div><b>Contact:</b> ${contact}</div>
+      <div><b>Address:</b> ${address}</div>
+    </div>
+    <div>
+      <div><b>Date:</b> ${dateStr}</div>
+      <div><b>Salesman:</b> ${salesman}</div>
+      <div><b>Phone:</b> ${esc(phone)}</div>
+      <div><b>Email:</b> ${esc(email)}</div>
+    </div>
+  </div>
+  <div class="mt">
     <table>
       <thead>
         <tr>
-          <th>Sl</th><th>Product</th><th>Description</th><th>Unit</th><th>Qty</th><th>Cost</th><th>Rate</th><th>Disc %</th><th>Disc Amt</th><th>Line Total</th><th>GP</th><th>Profit %</th>
+          <th>Sl</th><th>Product</th><th>Description</th><th>Unit</th>
+          <th class="right">Qty</th><th class="right">Rate</th><th class="right">Disc Amt</th><th class="right">Line Total</th>
         </tr>
       </thead>
-      <tbody>${rows}</tbody>
+      <tbody>
+        ${rows}
+      </tbody>
     </table>
-  `;
-  return `
-    <!doctype html><html><head><meta charset="utf-8" />${styles}</head>
-    <body>
-      ${head}
-      ${party}
-      ${table}
-      ${summary}
-      <div class="small muted" style="margin-top:8px;">Generated on ${new Date().toLocaleString()}</div>
-    </body></html>
-  `;
+  </div>
+  <div class="mt totals">
+    <table>
+      <tbody>
+        <tr><td>Subtotal</td><td class="right">${subtotal}</td></tr>
+        <tr><td>Discount</td><td class="right">${discount}</td></tr>
+        <tr><td>VAT</td><td class="right">${vat}</td></tr>
+        <tr><td><b>Grand Total</b></td><td class="right"><b>${grand}</b></td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>`;
 }
 
-// Puppeteer helpers: reuse in dev; unique profile dir in prod to avoid locks
 const isProd = process.env.NODE_ENV === 'production';
 let sharedBrowser = null;
+let launching = null;
 
 async function launchBrowser() {
-  const userDataDir = path.join(os.tmpdir(), `pptr_profile_${Date.now()}_${Math.random().toString(16).slice(2)}`);
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    timeout: 0, // disable 30s launch timeout
-    userDataDir,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--disable-gpu'
-    ]
-  });
-  return browser;
+  const args = ['--no-sandbox', '--disable-setuid-sandbox'];
+  if (isProd) {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'crm-pdf-'));
+    args.push(`--user-data-dir=${tmp}`);
+  }
+  return puppeteer.launch({ headless: 'new', args });
 }
 
 async function getBrowser() {
-  if (!isProd) {
-    if (sharedBrowser) return sharedBrowser;
-    sharedBrowser = await launchBrowser();
-    return sharedBrowser;
-  }
-  return launchBrowser();
-}
-
-async function safeRemoveDir(dir) {
-  if (!dir) return;
-  for (let i = 0; i < 5; i++) {
-    try {
-      await fs.rm(dir, { recursive: true, force: true });
-      return;
-    } catch (err) {
-      if (process.platform === 'win32' && err && err.code === 'EBUSY') {
-        await delay(200 + i * 200);
-        continue;
-      }
-      throw err;
+  try {
+    if (sharedBrowser && sharedBrowser.isConnected()) {
+      return sharedBrowser;
     }
-  }
+  } catch { /* fallthrough */ }
+  if (launching) return launching;
+  launching = (async () => {
+    try {
+      sharedBrowser = await launchBrowser();
+      return sharedBrowser;
+    } finally { launching = null; }
+  })();
+  return launching;
 }
 
-// ROUTES
+async function withPage(fn) {
+  const browser = await getBrowser();
+  if (!browser) throw new Error('PDF renderer unavailable');
+  const page = await browser.newPage();
+  page.setDefaultNavigationTimeout(120000);
+  page.setDefaultTimeout(120000);
+  try { return await fn(page); }
+  finally { try { await page.close(); } catch { /* ignore */ } }
+}
 
-// List all quotes: GET /api/quotes
+async function canSeeLead(req, lead) {
+  if (isAdmin(req)) return true;
+  const self = String(req.subjectId);
+  return String(lead.creatorId) === self || String(lead.salesmanId) === self;
+}
+
+// --- Routes ---
+
+// List all quotes with role-based visibility
 router.get('/', authenticateToken, async (req, res) => {
-  const where = {};
-  if (req.query.leadId) where.leadId = String(req.query.leadId);
-  const quotes = await Quote.findAll({
-    where,
-    include: [{ model: QuoteItem, as: 'items' }],
-    order: [['createdAt', 'DESC']],
-  });
-  res.json({ success: true, quotes });
-});
-
-// List quotes for a lead: GET /api/quotes/leads/:leadId/quotes
-router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
-  const lead = await Lead.findByPk(req.params.leadId);
-  if (!lead) return res.status(404).json({ success:false, message:'Lead not found' });
-  const quotes = await Quote.findAll({
-    where: { leadId: lead.id },
-    include: [{ model: QuoteItem, as: 'items' }],
-    order: [['createdAt', 'DESC']],
-  });
-  res.json({ success:true, quotes });
-});
-
-// Get one quote: GET /api/quotes/leads/:leadId/quotes/:quoteId
-router.get('/leads/:leadId/quotes/:quoteId', authenticateToken, async (req, res) => {
-  const quote = await Quote.findByPk(req.params.quoteId, {
-    include: [{ model: QuoteItem, as: 'items' }]
-  });
-  if (!quote || String(quote.leadId) !== String(req.params.leadId)) {
-    return res.status(404).json({ success:false, message:'Quote not found' });
+  try {
+    const include = [{ model: Lead, as: 'lead' }];
+    let quotes = await Quote.findAll({ include, order: [['createdAt','DESC']] });
+    if (!isAdmin(req)) {
+      const self = String(req.subjectId);
+      quotes = quotes.filter(q => q.lead && (String(q.lead.creatorId) === self || String(q.lead.salesmanId) === self));
+    }
+    res.json({ success: true, quotes });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-  res.json({ success:true, quote });
 });
 
-// Create quote: POST /api/quotes/leads/:leadId/quotes
+// Create quote with approval logic
 router.post('/leads/:leadId/quotes', authenticateToken, [
   body('quoteDate').optional().isISO8601(),
   body('validityUntil').optional().isISO8601(),
   body('salesmanId').optional().isString(),
-  body('customerId').optional().isString(),
   body('customerName').trim().notEmpty(),
-  body('discountMode').isIn(['PERCENT','AMOUNT']),
+  body('discountMode').isIn(['PERCENT', 'AMOUNT']),
   body('discountValue').isFloat({ min: 0 }),
   body('vatPercent').isFloat({ min: 0 }),
   body('items').isArray({ min: 1 }),
-  body('items.*.slNo').isInt({ min: 1 }),
   body('items.*.product').trim().notEmpty(),
   body('items.*.quantity').isFloat({ gt: 0 }),
-  body('items.*.itemCost').isFloat({ min: 0 }),
-  body('items.*.itemRate').isFloat({ min: 0 }),
-  body('items.*.lineDiscountPercent').optional().isFloat({ min: 0 }),
-  body('items.*.lineDiscountAmount').optional().isFloat({ min: 0 }),
 ], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+  }
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty())
-      return res.status(400).json({ success:false, message:'Validation failed', errors: errors.array() });
-
-    const lead = await Lead.findByPk(req.params.leadId, { include: [{ model: Customer, as:'customer' }, { model: Member, as:'salesman' }] });
-    if (!lead) return res.status(404).json({ success:false, message:'Lead not found' });
-
-    // Resolve salesman
-    let salesmanId = String(req.subjectId);
-    let salesmanName = (lead.salesman && lead.salesman.name) || '';
-    if (isAdmin(req) && req.body.salesmanId) {
-      const sm = await Member.findByPk(req.body.salesmanId);
-      if (!sm) return res.status(400).json({ success:false, message:'Invalid salesman' });
-      salesmanId = sm.id;
-      salesmanName = sm.name || '';
+    const lead = await Lead.findByPk(req.params.leadId);
+    if (!lead) {
+      return res.status(404).json({ success: false, message: 'Lead not found' });
+    }
+    if (!(await canSeeLead(req, lead))) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
-    const {
-      quoteDate, validityUntil,
-      customerId, customerName, contactPerson, phone, email, address, description,
-      discountMode, discountValue, vatPercent, items,preparedBy, approvedBy, status
-    } = req.body;
-
-    // Per-line
-    let subtotal = 0, totalCost = 0;
+    const { items, discountMode, discountValue, vatPercent } = req.body;
+    let subtotal = 0;
     const computedItems = items.map(it => {
-      const qty = Number(it.quantity);
-      const rate = Number(it.itemRate);
-      const cost = Number(it.itemCost);
-      const ldPct = Number(it.lineDiscountPercent || 0);
-      let ldAmt = Number(it.lineDiscountAmount || 0);
-
-      const grossBeforeDiscount = qty * rate;
-      if (!ldAmt && ldPct > 0) ldAmt = (grossBeforeDiscount * ldPct) / 100;
-      if (ldAmt > grossBeforeDiscount) ldAmt = grossBeforeDiscount;
-
-      const lineGross = grossBeforeDiscount - ldAmt;
-      const lineCostTotal = qty * cost;
-      const lineGP = lineGross - lineCostTotal;
-      const lineProfitPercent = lineGross > 0 ? (lineGP / lineGross) * 100 : 0;
-
-      subtotal += lineGross;
-      totalCost += lineCostTotal;
-
-      return {
-        slNo: it.slNo,
-        product: it.product,
-        description: it.description || '',
-        unit: it.unit || '',
-        quantity: qty,
-        itemCost: cost,
-        itemRate: rate,
-        lineDiscountPercent: ldPct || (grossBeforeDiscount > 0 ? (ldAmt / grossBeforeDiscount) * 100 : 0),
-        lineDiscountAmount: ldAmt,
-        lineGross,
-        lineCostTotal,
-        lineGP,
-        lineProfitPercent,
-        
-      };
+      const qty = Number(it.quantity || 0);
+      const rate = Number(it.itemRate || 0);
+      const grossBefore = qty * rate;
+      let ldAmt = (it.lineDiscountMode || 'PERCENT') === 'AMOUNT'
+        ? Number(it.lineDiscountAmount || 0)
+        : (grossBefore * Number(it.lineDiscountPercent || 0)) / 100;
+      ldAmt = Math.min(ldAmt, grossBefore);
+      subtotal += grossBefore - ldAmt;
+      return { ...it, lineGross: grossBefore - ldAmt };
     });
-
-    // Overall
-    let discountAmount = 0;
-    if (discountMode === 'PERCENT') discountAmount = (subtotal * Number(discountValue)) / 100;
-    else discountAmount = Number(discountValue);
-    if (discountAmount > subtotal) discountAmount = subtotal;
-
-    const netAfterDiscount = subtotal - discountAmount;
-    const vatAmount = (netAfterDiscount * Number(vatPercent)) / 100;
+    const overallDiscAmt = discountMode === 'PERCENT'
+      ? (subtotal * Number(discountValue || 0)) / 100
+      : Math.min(Number(discountValue || 0), subtotal);
+    const netAfterDiscount = subtotal - overallDiscAmt;
+    const vatAmount = netAfterDiscount * (Number(vatPercent || 0) / 100);
     const grandTotal = netAfterDiscount + vatAmount;
 
-    const grossProfit = netAfterDiscount - totalCost;
-    const profitPercent = netAfterDiscount > 0 ? (grossProfit / netAfterDiscount) * 100 : 0;
-    const totalQty = items.reduce((s, it) => s + Number(it.quantity), 0);
-    const profitRate = totalQty > 0 ? grossProfit / totalQty : 0;
+    // Approval Logic: if user is not admin and total is less than the limit, require approval
+    let isApproved = true;
+    let initialStatus = 'Draft';
+    if (!isAdmin(req) && grandTotal < APPROVAL_LIMIT) {
+      isApproved = false;
+      initialStatus = 'PendingApproval';
+    }
 
-    const quoteNumber = await (async () => `Q-${new Date().getFullYear()}-${Date.now()}`)();
-
+    const quoteNumber = `Q-${new Date().getFullYear()}-${Date.now()}`;
     const created = await Quote.create({
+      ...req.body,
       quoteNumber,
       leadId: lead.id,
-      quoteDate: quoteDate ? new Date(quoteDate) : new Date(),
-      validityUntil: validityUntil ? new Date(validityUntil) : null,
-      salesmanId,
-      salesmanName,
-
-      customerId: customerId || (lead.customer && lead.customer.id) || null,
-      customerName,
-      contactPerson: contactPerson || '',
-      phone: phone || '',
-      email: email || '',
-      address: address || '',
-      description: description || '',
-
-      discountMode, discountValue, vatPercent,
-      subtotal: subtotal.toFixed(2),
-      totalCost: totalCost.toFixed(2),
-      discountAmount: discountAmount.toFixed(2),
-      vatAmount: vatAmount.toFixed(2),
+      isApproved,
+      status: initialStatus,
       grandTotal: grandTotal.toFixed(2),
-      grossProfit: grossProfit.toFixed(2),
-      profitPercent: profitPercent.toFixed(3),
-      profitRate: profitRate.toFixed(4),
-      preparedBy: preparedBy || null,
-approvedBy: approvedBy || null,
-status: status || 'Draft',
+      subtotal: subtotal.toFixed(2),
+      discountAmount: overallDiscAmt.toFixed(2),
+      vatAmount: vatAmount.toFixed(2),
+      rejectNote: null,
+      approvedBy: isApproved ? 'Auto-approved' : null,
     });
 
     await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: created.id })));
-
-    await writeLeadLog(req, lead.id, 'QUOTE_CREATED', `${actorLabel(req)} created quote #${created.quoteNumber}`);
-notifyAdmins(req.app.get('io'), {
-  event: 'QUOTE_CREATED',
-  entityType: 'QUOTE',
-  entityId: String(created.id),
-  title: `Quote #${created.quoteNumber} created`,
-  message: `${actorLabel(req)} created a quote for ${customerName}`,
-}); // admin broadcast [1]
-
-if (lead.salesmanId) {
-  await createNotification({
-    toType: 'MEMBER',
-    toId: String(lead.salesmanId),
-    event: 'QUOTE_CREATED',
-    entityType: 'QUOTE',
-    entityId: String(created.id),
-    title: `Quote #${created.quoteNumber}`,
-    message: `Quote created for Lead #${lead.uniqueNumber}`,
-  }, req.app.get('io'));
-}
-    res.status(201).json({ success:true, quoteId: created.id, quoteNumber: created.quoteNumber });
+    await writeLeadLog(req, lead.id, 'QUOTE_CREATED', `Created quote #${quoteNumber}. Status: ${initialStatus}`);
+    
+    res.status(201).json({
+      success: true,
+      quoteId: created.id,
+      quoteNumber: created.quoteNumber,
+      isApproved: created.isApproved,
+      status: created.status,
+    });
   } catch (e) {
-    console.error('Create Quote Error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
+    console.error('Create Quote Error:', e);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-// PUT /api/quotes/leads/:leadId/quotes/:quoteId
-router.put('/leads/:leadId/quotes/:quoteId', authenticateToken, [
-  body('status').optional().isIn(['Draft','Sent','Accepted','Rejected','Expired']),
-  body('preparedBy').optional().isString(),
-  body('approvedBy').optional().isString(),
-], async (req, res) => {
+
+// ADMIN APPROVE QUOTE
+router.post('/leads/:leadId/quotes/:quoteId/approve', authenticateToken, isAdmin, async (req, res) => {
   try {
     const quote = await Quote.findByPk(req.params.quoteId);
-    if (!quote || String(quote.leadId) !== String(req.params.leadId)) {
-      return res.status(404).json({ success:false, message:'Quote not found' });
+    if (!quote || String(quote.leadId) !== req.params.leadId) {
+      return res.status(404).json({ success: false, message: 'Quote not found.' });
     }
-    const up = {};
-    ['status','preparedBy','approvedBy','description','validityUntil','quoteDate'].forEach(k => {
-      if (req.body[k] !== undefined) up[k] = k.endsWith('Date') || k === 'validityUntil' ? new Date(req.body[k]) : req.body[k];
-    });
-    await quote.update(up);
+    if (FINAL_STATES.has(quote.status)) {
+      return res.status(409).json({ success: false, message: 'Decision is already final.' });
+    }
 
-    const lead = await Lead.findByPk(quote.leadId, { attributes: ['id','uniqueNumber','salesmanId'] });
-    notifyAdmins(req.app.get('io'), {
-      event: 'QUOTE_UPDATED',
-      entityType: 'QUOTE',
-      entityId: String(quote.id),
-      title: `Quote #${quote.quoteNumber} updated`,
-      message: `${actorLabel(req)} updated quote status/details`,
-    }); // admin broadcast [1]
-    if (lead?.salesmanId) {
-      await createNotification({
-        toType: 'MEMBER',
-        toId: String(lead.salesmanId),
-        event: 'QUOTE_UPDATED',
-        entityType: 'QUOTE',
-        entityId: String(quote.id),
-        title: `Quote #${quote.quoteNumber} updated`,
-        message: `Status: ${quote.status}`,
-      }, req.app.get('io'));
-    }
-    res.json({ success:true });
+    await quote.update({
+      isApproved: true,
+      status: 'Accepted', // Change status to reflect approval
+      approvedBy: await resolveActorName(req),
+      rejectNote: null,
+    });
+    
+    await writeLeadLog(req, quote.leadId, 'QUOTE_APPROVED', `Approved quote #${quote.quoteNumber}`);
+    res.json({ success: true, quote });
   } catch (e) {
-    console.error('Update Quote Error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// Preview: GET /api/quotes/leads/:leadId/quotes/:quoteId/preview
-router.get('/leads/:leadId/quotes/:quoteId/preview', authenticateToken, async (req, res) => {
+// ADMIN REJECT QUOTE
+router.post('/leads/:leadId/quotes/:quoteId/reject', authenticateToken, isAdmin, [
+  body('note').trim().notEmpty().withMessage('Rejection reason is required.')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, errors: errors.array() });
+  }
+  try {
+    const quote = await Quote.findByPk(req.params.quoteId);
+    if (!quote || String(quote.leadId) !== req.params.leadId) {
+      return res.status(404).json({ success: false, message: 'Quote not found.' });
+    }
+    if (FINAL_STATES.has(quote.status)) {
+      return res.status(409).json({ success: false, message: 'Decision is already final.' });
+    }
+
+    const note = req.body.note.slice(0, 500);
+    await quote.update({
+      isApproved: false,
+      status: 'Rejected',
+      approvedBy: null,
+      rejectNote: note,
+    });
+
+    await writeLeadLog(req, quote.leadId, 'QUOTE_REJECTED', `Rejected quote #${quote.quoteNumber} with reason: ${note}`);
+    res.json({ success: true, quote });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+
+// Update quote status
+router.put('/leads/:leadId/quotes/:quoteId', authenticateToken, [
+ body('status').optional().isIn(['Draft','Sent','Accepted','Rejected','Expired','PendingApproval']),
+], async (req, res) => {
+ try {
+   const quote = await Quote.findByPk(req.params.quoteId, { include: [{ model: Lead, as: 'lead' }] });
+   if (!quote || String(quote.leadId) !== String(req.params.leadId)) {
+     return res.status(404).json({ success: false, message: 'Quote not found' });
+   }
+   if (!(await canSeeLead(req, quote.lead))) return res.status(403).json({ success: false, message: 'Forbidden' });
+   if (FINAL_STATES.has(String(quote.status || ''))) return res.status(409).json({ success: false, message: 'Decision already final' });
+
+   const { status: newStatus } = req.body;
+   if (newStatus) {
+     const isMember = !isAdmin(req);
+     // Members cannot change status if it's pending, nor can they set a final status
+     const memberAllowed = new Set(['Draft', 'Sent']);
+     if (isMember && (quote.status === 'PendingApproval' || !memberAllowed.has(newStatus))) {
+       return res.status(403).json({ success: false, message: 'Not allowed to set this status' });
+     }
+     await quote.update({ status: newStatus });
+     await writeLeadLog(req, quote.leadId, 'QUOTE_UPDATED', `${actorLabel(req)} updated quote #${quote.quoteNumber} status to ${newStatus}`);
+   }
+   
+   res.json({ success: true, quote });
+ } catch (e) {
+   console.error('Update Quote Error:', e.message);
+   res.status(500).json({ success: false, message: 'Server error' });
+ }
+});
+
+
+// Download PDF with approval check
+router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, res) => {
   try {
     const quote = await Quote.findByPk(req.params.quoteId, { include: [{ model: QuoteItem, as: 'items' }] });
     if (!quote || String(quote.leadId) !== String(req.params.leadId)) {
-      return res.status(404).json({ success:false, message:'Quote not found' });
+      return res.status(404).json({ success: false, message: 'Quote not found' });
     }
+
+    // SECURITY: Enforce approval workflow
+    if (!quote.isApproved && !isAdmin(req)) {
+      return res.status(403).json({ success: false, message: 'Quote requires admin approval for download.' });
+    }
+
     const lead = await Lead.findByPk(quote.leadId, {
       include: [
         { model: Customer, as: 'customer', attributes: ['id','companyName','address'] },
         { model: Member, as: 'salesman', attributes: ['id','name','email'] },
       ]
     });
-    const html = buildQuoteHTML({
-      quote: quote.toJSON(),
-      items: (quote.items || []).map(i => i.toJSON()),
-      lead: lead ? lead.toJSON() : null,
-      customer: (lead && lead.customer) ? lead.customer.toJSON() : null
-    });
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
-  } catch (e) {
-    console.error('Quote Preview Error:', e.message);
-    res.status(500).json({ success:false, message:'Failed to build preview' });
-  }
-});
-
-// PDF: GET /api/quotes/leads/:leadId/quotes/:quoteId/pdf
-router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, res) => {
-  let browser = null;
-  try {
-    const quote = await Quote.findByPk(req.params.quoteId, {
-      include: [{ model: QuoteItem, as: 'items' }]
-    });
-    if (!quote || String(quote.leadId) !== String(req.params.leadId)) {
-      return res.status(404).json({ success:false, message:'Quote not found' });
-    }
-    const lead = await Lead.findByPk(quote.leadId, {
-      include: [
-        { model: Customer, as: 'customer', attributes: ['id','companyName','address'] },
-        { model: Member, as: 'salesman', attributes: ['id','name','email'] },
-      ]
-    });
-
-    browser = await getBrowser();
-    const page = await browser.newPage();
-    page.setDefaultNavigationTimeout(120000);
-    page.setDefaultTimeout(120000);
 
     const html = buildQuoteHTML({
       quote: quote.toJSON(),
@@ -510,61 +423,35 @@ router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, 
       customer: (lead && lead.customer) ? lead.customer.toJSON() : null
     });
 
-    // Deterministic render: avoid long waits on external resources
-    await page.setContent(html, { waitUntil: 'domcontentloaded' });
-    await page.addStyleTag({ content: 'html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}' });
-
-    // Wait for fonts to be ready if available
-    try {
-      await page.evaluate(() => {
-        return new Promise((resolve) => {
-          if (document.fonts && 'ready' in document.fonts) {
-            document.fonts.ready.then(() => setTimeout(resolve, 50));
-          } else {
-            setTimeout(resolve, 50);
-          }
-        });
-      });
-    } catch { /* ignore */ }
-
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      preferCSSPageSize: true,
-      margin: { top: '16mm', right: '12mm', bottom: '16mm', left: '12mm' }
+    const pdf = await withPage(async (page) => {
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
+      return await page.pdf({ format: 'A4', printBackground: true, margin: { top: '16mm', right: '12mm', bottom: '16mm', left: '12mm' } });
     });
 
-    await page.close();
-
-    // Non-blocking log
     writeLeadLog(req, quote.leadId, 'QUOTE_DOWNLOADED', `${actorLabel(req)} downloaded quote #${quote.quoteNumber} PDF`).catch(() => {});
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${quote.quoteNumber}.pdf"`);
     res.send(pdf);
-
-    // If prod, close and cleanup isolated profile to avoid EBUSY
-    if (isProd && browser) {
-      const spawnargs = browser.process && browser.process() && browser.process().spawnargs || [];
-      const udArg = (spawnargs || []).find(a => typeof a === 'string' && a.startsWith('--user-data-dir='));
-      const userDataDir = udArg ? udArg.split('=')[22] : null;
-      await browser.close().catch(() => {});
-      if (userDataDir) {
-        await safeRemoveDir(userDataDir).catch(() => {});
-      }
-    }
-
   } catch (e) {
     const msg = (e && e.message) ? e.message : String(e);
     console.error('Quote PDF Error:', msg);
     if (msg.includes('WS endpoint') || msg.includes('Timed out')) {
-      return res.status(500).json({ success:false, message:'PDF renderer timed out starting the browser. Please retry.' });
+      return res.status(500).json({ success: false, message: 'PDF renderer timed out. Please retry.' });
     }
-    if (msg.includes('EBUSY')) {
-      return res.status(500).json({ success:false, message:'PDF created but cleanup was blocked by the OS. Please retry if it persists.' });
-    }
-    res.status(500).json({ success:false, message:'Failed to generate PDF' });
+    res.status(500).json({ success: false, message: 'Failed to generate PDF.' });
   }
 });
-
+router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
+  const lead = await Lead.findByPk(req.params.leadId);
+  if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+  if (!(await canSeeLead(req, lead))) return res.status(403).json({ success: false, message: 'Forbidden' });
+  const quotes = await Quote.findAll({
+    where: { leadId: lead.id },
+    include: [{ model: QuoteItem, as: 'items' }],
+    order: [['createdAt', 'DESC']],
+  });
+  res.json({ success: true, quotes });
+});
 module.exports = router;
+

@@ -1,4 +1,3 @@
-// components/PreviewModal.tsx
 import React from 'react';
 import Button from './Button';
 
@@ -41,7 +40,7 @@ const PreviewModal: React.FC<Props> = ({ open, onClose, html, onDownload, downlo
         <div className="flex-1 overflow-auto p-3">
           <div
             className="w-full h-full flex items-center justify-center"
-            style={{ minHeight: 'calc(90vh - 100px)' }} // leave space for header/footer
+            style={{ minHeight: 'calc(90vh - 100px)' }}
           >
             <div
               className="relative"

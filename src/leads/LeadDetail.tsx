@@ -1,4 +1,3 @@
-// src/pages/LeadDetail.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
@@ -11,6 +10,7 @@ import FollowupModal from '../components/FollowupModal';
 import { quotesService, Quote } from '../services/quotesService';
 import PreviewModal from '../components/PreviewModal';
 import ChatBox from '../components/ChatBox';
+
 type Followup = {
   id: string;
   status: 'Followup' | 'Meeting Scheduled' | 'No Requirement' | 'No Response';
@@ -28,7 +28,7 @@ const QuotePicker: React.FC<{
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
+  const [preview, setPreview] = useState<{ open: boolean; html?: string; quote?: Quote; downloading?: boolean }>({ open: false });
 
   useEffect(() => {
     if (!token || !leadId) return;
@@ -42,42 +42,53 @@ const QuotePicker: React.FC<{
     })();
   }, [leadId, token]);
 
-const openPreview = async (q: Quote) => {
-  try {
-    const html = await quotesService.previewHtml(q.leadId, q.id, token);
-    setPreview({ open: true, html, quote: q, downloading: false });
-  } catch (e: any) {
-    setErr(e?.data?.message || 'Failed to build preview');
-  }
-};
+  const openPreview = async (q: Quote) => {
+    try {
+      const html = await quotesService.previewHtml(q.leadId, q.id, token);
+      setPreview({ open: true, html, quote: q, downloading: false });
+    } catch (e: any) {
+      setErr(e?.data?.message || 'Failed to build preview');
+    }
+  };
 
-const downloadFromPreview = async () => {
-  if (!preview.quote) return;
-  try {
-    setPreview(prev => ({ ...prev, downloading: true }));
-    const blob = await quotesService.downloadPdf(preview.quote.leadId, preview.quote.id, token);
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${preview.quote.quoteNumber}.pdf`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => window.URL.revokeObjectURL(url), 1200);
-  } catch (e: any) {
-    setErr(e?.data?.message || 'Failed to download PDF');
-  } finally {
-    setPreview(prev => ({ ...prev, downloading: false }));
-  }
-};
+  const download = async (q: Quote) => {
+    try {
+      const blob = await quotesService.downloadPdf(q.leadId, q.id, token);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${q.quoteNumber}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 1200);
+    } catch (e: any) {
+      setErr(e?.data?.message || 'Failed to download PDF');
+    }
+  };
+
+  const downloadFromPreview = async () => {
+    if (!preview.quote) return;
+    try {
+      setPreview(prev => ({ ...prev, downloading: true }));
+      const blob = await quotesService.downloadPdf(preview.quote.leadId, preview.quote.id, token);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${preview.quote.quoteNumber}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 1200);
+    } catch (e: any) {
+      setErr(e?.data?.message || 'Failed to download PDF');
+    } finally {
+      setPreview(prev => ({ ...prev, downloading: false }));
+    }
+  };
 
   const selectMain = async (q: Quote) => {
     const target = currentMain === q.quoteNumber ? q.quoteNumber : q.quoteNumber;
-    // Optimistic update to parent first
     onMainChange(target);
     setBusy(q.id);
     try {
       await quotesService.setMainQuote(leadId, target, token);
     } catch (e: any) {
       setErr(e?.data?.message || 'Failed to set main quote');
-      // Rollback on error
       onMainChange(currentMain || null);
     } finally {
       setBusy(null);
@@ -94,7 +105,6 @@ const downloadFromPreview = async () => {
           const isMain = currentMain === q.quoteNumber;
           return (
             <div key={q.id} className="flex items-center gap-2 border rounded-full px-3 py-1 bg-white">
-              {/* Paper icon + quote number (click = preview) */}
               <button
                 type="button"
                 onClick={() => openPreview(q)}
@@ -105,7 +115,6 @@ const downloadFromPreview = async () => {
                 <span className="font-medium">{q.quoteNumber}</span>
               </button>
 
-              {/* Download */}
               <button
                 type="button"
                 onClick={() => download(q)}
@@ -116,7 +125,6 @@ const downloadFromPreview = async () => {
                 ⬇️
               </button>
 
-              {/* Radio-like select for main quote */}
               <label className="inline-flex items-center gap-1 text-xs text-gray-600 ml-2">
                 <input
                   type="radio"
@@ -135,13 +143,13 @@ const downloadFromPreview = async () => {
       </div>
 
       <PreviewModal
-  open={preview.open}
-  onClose={() => setPreview({ open: false })}
-  html={preview.html}
-  onDownload={downloadFromPreview}
-  downloading={preview.downloading}
-  title={preview.quote ? `Quote ${preview.quote.quoteNumber}` : 'Quote Preview'}
-/>
+        open={preview.open}
+        onClose={() => setPreview({ open: false })}
+        html={preview.html}
+        onDownload={downloadFromPreview}
+        downloading={preview.downloading}
+        title={preview.quote ? `Quote ${preview.quote.quoteNumber}` : 'Quote Preview'}
+      />
     </>
   );
 };
@@ -210,11 +218,9 @@ const LeadDetail: React.FC = () => {
   useEffect(() => {
     if (!id || !token) return;
     loadLead();
-    // Ensure followups always present even if socket timing differs
     loadFollowups();
-  }, [id, token]); // stable load [1]
+  }, [id, token]);
 
-  // Join room + chat history
   useEffect(() => {
     if (!id || !token) return;
     socket?.emit('lead:join', id);
@@ -224,9 +230,8 @@ const LeadDetail: React.FC = () => {
         setMessages(res.messages);
       } catch { /* ignore */ }
     })();
-  }, [id, token, socket]); // [1]
+  }, [id, token, socket]);
 
-  // Socket: future-only followup push with dedupe
   useEffect(() => {
     if (!socket) return;
     const onNew = (evt: any) => {
@@ -241,9 +246,8 @@ const LeadDetail: React.FC = () => {
     };
     socket.on('followup:new', onNew);
     return () => { socket.off('followup:new', onNew); };
-  }, [socket, id]); // [1]
+  }, [socket, id]);
 
-  // Socket: attachments and logs with dedupe
   useEffect(() => {
     if (!socket) return;
     const onAttNew = (evt: any) => {
@@ -278,7 +282,7 @@ const LeadDetail: React.FC = () => {
       socket.off('attachment:deleted', onAttDel);
       socket.off('log:new', onLog);
     };
-  }, [socket, id]); // [1]
+  }, [socket, id]);
 
   const visibleFollowups = useMemo(() => {
     const all = (lead?.followups as Followup[] | undefined) || [];
@@ -286,7 +290,7 @@ const LeadDetail: React.FC = () => {
     return all
       .filter(f => f.scheduledAt && new Date(f.scheduledAt).getTime() > now)
       .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime());
-  }, [lead?.followups]); // [1]
+  }, [lead?.followups]);
 
   const upcoming: Followup | null = visibleFollowups.length ? visibleFollowups : null;
   const others: Followup[] = visibleFollowups.length > 1 ? visibleFollowups.slice(1) : [];
@@ -403,8 +407,14 @@ const LeadDetail: React.FC = () => {
 
                   <div><span className="text-gray-500">Quote #:</span> {lead.quoteNumber || '-'}</div>
                   <div><span className="text-gray-500">Preview URL:</span> {lead.previewUrl || '-'}</div>
-<div><span className="text-gray-500">Next Follow-up:</span> {lead.nextFollowupAt ? new Date(lead.nextFollowupAt).toLocaleString() : '-'}</div>
-<div><span className="text-gray-500">Lost Reason:</span> {lead.lostReason || '-'}</div>
+
+                  {lead?.nextFollowupAt && (
+                    <div className="text-sm">
+                      <span className="text-gray-500">Next Follow-up:</span> {new Date(lead.nextFollowupAt).toLocaleString()}
+                    </div>
+                  )}
+
+                  <div><span className="text-gray-500">Lost Reason:</span> {lead.lostReason || '-'}</div>
 
                   <div><span className="text-gray-500">Actual Date:</span> {lead.actualDate ? new Date(lead.actualDate).toLocaleString() : '-'}</div>
                   <div><span className="text-gray-500">Created:</span> {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : '-'}</div>
@@ -485,7 +495,7 @@ const LeadDetail: React.FC = () => {
                 )}
               </div>
 
-              {/* Quotes picker (icons + select one main) */}
+              {/* Quotes picker */}
               <div className="bg-white border rounded p-4 mb-6">
                 <div className="text-sm font-medium text-gray-700 mb-2">Quotes</div>
                 <QuotePicker
@@ -513,11 +523,10 @@ const LeadDetail: React.FC = () => {
                 )}
               </div>
 
-            {lead && (
-  <ChatBox leadId={lead.id} />
-)}
+              {lead && (
+                <ChatBox leadId={lead.id} />
+              )}
 
-             
               <FollowupModal
                 open={openFollowup}
                 onClose={() => setOpenFollowup(false)}
@@ -530,7 +539,6 @@ const LeadDetail: React.FC = () => {
                     scheduledAt: payload.scheduledAt ? new Date(payload.scheduledAt).toISOString() : undefined
                   };
                   await api.post<{ success: boolean; followup: Followup }>(`/followups/${id}`, body, token);
-                  // refresh to ensure consistency
                   await loadFollowups();
                 }}
               />

@@ -36,7 +36,6 @@ const EditLead: React.FC = () => {
   const [salesmanId, setSalesmanId] = useState('');
   const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
   const [description, setDescription] = useState('');
-  const [nextFollowupAt, setNextFollowupAt] = useState<string>('');
   const [lostReason, setLostReason] = useState<string>('');
 
   const load = async () => {
@@ -68,7 +67,6 @@ const EditLead: React.FC = () => {
       setCity(leadRes.lead.city || '');
       setSalesmanId(leadRes.lead.salesman?.id || '');
       setDescription(leadRes.lead.description || '');
-      setNextFollowupAt(leadRes.lead.nextFollowupAt ? new Date(leadRes.lead.nextFollowupAt).toISOString().slice(0,16) : '');
       setLostReason(leadRes.lead.lostReason || '');
     } catch (e: any) {
       setError(e?.data?.message || 'Failed to load lead');
@@ -111,7 +109,6 @@ const EditLead: React.FC = () => {
         city,
         salesmanId: salesmanId || undefined,
         description,
-        nextFollowupAt: nextFollowupAt ? new Date(nextFollowupAt).toISOString() : null,
         lostReason: stage === 'Deal Lost' ? (lostReason || '') : undefined,
       }, token);
       navigate(`/leads/${id}`, { replace: true });
@@ -212,11 +209,6 @@ const EditLead: React.FC = () => {
                     <option value="">-- Select --</option>
                     {salesmen.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Next Follow-up</label>
-                  <input type="datetime-local" value={nextFollowupAt} onChange={(e) => setNextFollowupAt(e.target.value)} className="w-full border rounded px-3 py-2" />
                 </div>
 
                 <div>

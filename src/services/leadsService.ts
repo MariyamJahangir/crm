@@ -23,12 +23,11 @@ export type Lead = {
   ownerId?: string;
   ownerName?: string;
   ownerEmail?: string;
-  nextFollowupAt?: string;
   lostReason?: string;
   createdAt?: string;
   updatedAt?: string;
   customerId?: string;
-
+nextFollowupAt?: string | null;
   attachments?: { filename: string; url: string; createdAt: string }[];
   followups?: { status: string; description?: string; createdAt: string }[];
   logs?: { action: string; message: string; createdAt: string }[];

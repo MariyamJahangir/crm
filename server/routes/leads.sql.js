@@ -1,4 +1,3 @@
-// routes/leads.sql.js
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
@@ -73,7 +72,17 @@ async function writeLeadLog(req, leadId, action, message) {
   return created;
 }
 
-// Delete attachment (DELETE variant)
+// Compute nearest future follow-up (returns Date or null)
+function nearestFutureFollowup(rows) {
+  const now = new Date();
+  const flat = rows.map(r => (typeof r.get === 'function' ? r.get({ plain: true }) : r));
+  const future = flat
+    .filter(r => r.scheduledAt && new Date(r.scheduledAt) > now)
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  return future?.scheduledAt || null;
+}
+
+// Delete attachment (DELETE)
 router.delete('/:id/attachments', authenticateToken, async (req, res) => {
   try {
     const { filename, url } = req.body || {};
@@ -91,7 +100,6 @@ router.delete('/:id/attachments', authenticateToken, async (req, res) => {
     lead.attachmentsJson = list;
     await lead.save();
 
-    // Safe unlink under /uploads
     if (/^\/uploads\//.test(url)) {
       const rel = url.replace(/^\/uploads\//, '');
       const filePath = path.join(UPLOADS_DIR, rel);
@@ -134,7 +142,6 @@ router.post('/:id/attachments/delete', authenticateToken, async (req, res) => {
     lead.attachmentsJson = list;
     await lead.save();
 
-    // Safe unlink
     if (/^\/uploads\//.test(url)) {
       const rel = url.replace(/^\/uploads\//, '');
       const filePath = path.join(UPLOADS_DIR, rel);
@@ -164,10 +171,7 @@ router.post('/:id/attachments', authenticateToken, upload.array('files', 10), as
   try {
     const lead = await Lead.findByPk(req.params.id);
     if (!lead) return res.status(404).json({ success: false, message: 'Not found' });
-
-    if (!canModifyLead(req, lead)) {
-      return res.status(403).json({ success: false, message: 'Forbidden' });
-    }
+    if (!canModifyLead(req, lead)) return res.status(403).json({ success: false, message: 'Forbidden' });
 
     const files = req.files || [];
     if (!files.length) return res.status(400).json({ success: false, message: 'No files uploaded' });
@@ -180,7 +184,6 @@ router.post('/:id/attachments', authenticateToken, upload.array('files', 10), as
       uploadedBy: req.subjectId,
     }));
 
-    // De-duplicate
     const current = Array.isArray(lead.attachmentsJson) ? lead.attachmentsJson : [];
     const added = [];
     for (const att of newAttachments) {
@@ -212,28 +215,47 @@ router.post('/:id/attachments', authenticateToken, upload.array('files', 10), as
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const where = isAdmin(req) ? {} : { [Op.or]: [{ salesmanId: req.subjectId }] };
-const search = String(req.query.search || '').trim();
-if (search) {
-  where[Op.or] = [
-    ...(where[Op.or] || []),
-    { uniqueNumber: { [Op.like]: `%${search}%` } },
-    { companyName:  { [Op.like]: `%${search}%` } },
-    { contactPerson:{ [Op.like]: `%${search}%` } },
-    { email:        { [Op.like]: `%${search}%` } },
-    { mobile:       { [Op.like]: `%${search}%` } },
-    { city:         { [Op.like]: `%${search}%` } },
-  ];
-}
-const sortBy = String(req.query.sortBy || 'createdAt');
-const sortDir = String(req.query.sortDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-const leads = await Lead.findAll({
-  where,
-  include: [
-    { model: Member, as: 'salesman', attributes: ['id','name','email'] },
-    { model: Customer, as: 'customer', attributes: ['id','companyName'] },
-  ],
-  order: [[sortBy, sortDir]],
-});
+    const search = String(req.query.search || '').trim();
+    if (search) {
+      where[Op.or] = [
+        ...(where[Op.or] || []),
+        { uniqueNumber: { [Op.like]: `%${search}%` } },
+        { companyName:  { [Op.like]: `%${search}%` } },
+        { contactPerson:{ [Op.like]: `%${search}%` } },
+        { email:        { [Op.like]: `%${search}%` } },
+        { mobile:       { [Op.like]: `%${search}%` } },
+        { city:         { [Op.like]: `%${search}%` } },
+      ];
+    }
+    const sortBy = String(req.query.sortBy || 'createdAt');
+    const sortDir = String(req.query.sortDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    const leads = await Lead.findAll({
+      where,
+      include: [
+        { model: Member, as: 'salesman', attributes: ['id','name','email'] },
+        { model: Customer, as: 'customer', attributes: ['id','companyName'] },
+      ],
+      order: [[sortBy, sortDir]],
+    });
+
+    // Compute next followup per lead
+    const leadIds = leads.map(l => l.id);
+    const nextByLead = new Map();
+    if (leadIds.length) {
+      const fus = await LeadFollowup.findAll({
+        where: { leadId: { [Op.in]: leadIds } },
+        attributes: ['leadId','scheduledAt','createdAt']
+      });
+      const grouped = new Map();
+      for (const f of fus) {
+        if (!grouped.has(f.leadId)) grouped.set(f.leadId, []);
+        grouped.get(f.leadId).push(f);
+      }
+      for (const [lid, rows] of grouped.entries()) {
+        nextByLead.set(lid, nearestFutureFollowup(rows));
+      }
+    }
 
     res.json({ success:true, leads: leads.map(l => ({
       id: l.id,
@@ -254,6 +276,7 @@ const leads = await Lead.findAll({
       salesman: l.salesman ? { id: l.salesman.id, name: l.salesman.name, email: l.salesman.email } : null,
       description: l.description,
       attachments: Array.isArray(l.attachmentsJson) ? l.attachmentsJson : [],
+      nextFollowupAt: nextByLead.get(l.id) || null,
       createdAt: l.createdAt,
       updatedAt: l.updatedAt
     }))});
@@ -263,7 +286,7 @@ const leads = await Lead.findAll({
   }
 });
 
-
+// Get one lead
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const lead = await Lead.findByPk(req.params.id, {
@@ -272,18 +295,20 @@ router.get('/:id', authenticateToken, async (req, res) => {
         { model: Customer, as:'customer', attributes:['id','companyName'] },
       ],
     });
-    if (!lead) return res.status(404).json({ success:false, message:'Not found' }); // [attached_file:1]
-    if (!canViewLead(req, lead)) return res.status(403).json({ success:false, message:'Forbidden' }); // [attached_file:1]
+    if (!lead) return res.status(404).json({ success:false, message:'Not found' });
+    if (!canViewLead(req, lead)) return res.status(403).json({ success:false, message:'Forbidden' });
 
     const followups = await LeadFollowup.findAll({
       where: { leadId: lead.id },
       order: [['createdAt','DESC']]
-    }); // [attached_file:1]
+    });
 
     const logs = await LeadLog.findAll({
       where: { leadId: lead.id },
       order: [['createdAt','DESC']]
-    }); // [attached_file:1]
+    });
+
+    const nextFollowupAt = nearestFutureFollowup(followups);
 
     res.json({ success:true, lead: {
       id: lead.id,
@@ -328,6 +353,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
       // description
       description: lead.description,
 
+      // computed next follow-up
+      nextFollowupAt,
+
       // followups and logs
       followups: followups.map(f => ({
         id: f.id,
@@ -345,14 +373,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
         actorName: l.actorName,
         createdAt: l.createdAt
       })),
-    }}); // [attached_file:1]
+    }});
   } catch (e) {
     console.error('Get Lead Error:', e.message);
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
-
-
 
 // Create lead
 router.post('/', authenticateToken, [
@@ -429,29 +455,34 @@ router.post('/', authenticateToken, [
       description: req.body.description || '',
       creatorType: req.subjectType,
       creatorId: req.subjectId,
-      nextFollowupAt: req.body.nextFollowupAt ? new Date(req.body.nextFollowupAt) : null,
-
+      // no direct nextFollowupAt persisted; derived from LeadFollowup
+    });
+ const marker = String(resolvedSalesmanId);
+ const arr = Array.isArray(customer.contactedBy) ? customer.contactedBy : [];
+  if (!arr.includes(marker)) {
+    arr.push(marker);
+    customer.contactedBy = arr;
+    await customer.save();
+  }
+    notifyAdmins(req.app.get('io'), {
+      event: 'LEAD_CREATED',
+      entityType: 'LEAD',
+      entityId: String(lead.id),
+      title: `Lead #${lead.uniqueNumber} created`,
+      message: `${actorLabel(req)} created a lead`,
     });
 
-    notifyAdmins(req.app.get('io'), {
-  event: 'LEAD_CREATED',
-  entityType: 'LEAD',
-  entityId: String(lead.id),
-  title: `Lead #${lead.uniqueNumber} created`,
-  message: `${actorLabel(req)} created a lead`,
-}); 
-
-if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
-  await createNotification({
-    toType: 'MEMBER',
-    toId: resolvedSalesmanId,
-    event: 'LEAD_ASSIGNED',
-    entityType: 'LEAD',
-    entityId: lead.id,
-    title: `New lead #${lead.uniqueNumber}`,
-    message: `Assigned by admin`,
-  }, req.app.get('io'));
-}
+    if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
+      await createNotification({
+        toType: 'MEMBER',
+        toId: resolvedSalesmanId,
+        event: 'LEAD_ASSIGNED',
+        entityType: 'LEAD',
+        entityId: lead.id,
+        title: `New lead #${lead.uniqueNumber}`,
+        message: `Assigned by admin`,
+      }, req.app.get('io'));
+    }
 
     await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`);
 
@@ -461,26 +492,7 @@ if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
-router.post('/:id/main-quote', authenticateToken, async (req, res) => {
-  try {
-    const lead = await Lead.findByPk(req.params.id);
-    if (!lead) return res.status(404).json({ success:false, message:'Not found' });
 
-    // Allow admins or the lead’s owner/salesman; reuse your policy
-    const memberCan =
-      (!isAdmin(req) &&
-        (String(lead.creatorId) === String(req.subjectId) ||
-         (lead.creatorType === 'MEMBER' && String(lead.salesmanId) === String(req.subjectId))));
-    if (!isAdmin(req) && !memberCan) return res.status(403).json({ success:false, message:'Forbidden' });
-
-    const { quoteNumber } = req.body; // pass null to clear
-    await lead.update({ quoteNumber: quoteNumber || null });
-    return res.json({ success:true });
-  } catch (e) {
-    console.error('Set main quote error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
-  }
-});
 // Update lead
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
@@ -489,13 +501,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     const memberCan = (!isAdmin(req)) && ((String(lead.creatorId) === String(req.subjectId) && lead.creatorType === 'MEMBER') || String(lead.salesmanId) === String(req.subjectId));
     if (!isAdmin(req) && !memberCan) return res.status(403).json({ success:false, message:'Forbidden' });
-if (req.body.stage === 'Deal Lost' && !req.body.lostReason && !lead.lostReason) {
-  return res.status(400).json({ success:false, message:'Lost reason is required when stage is Deal Lost' });
-}
-   const up = {};
-['stage','forecastCategory','source','quoteNumber','previewUrl','contactPerson','mobile','mobileAlt','email','city','description','lostReason']
-  .forEach(k => { if (req.body[k] !== undefined) up[k] = req.body[k]; });
-if (req.body.nextFollowupAt !== undefined) up.nextFollowupAt = req.body.nextFollow
+
+    if (req.body.stage === 'Deal Lost' && !req.body.lostReason && !lead.lostReason) {
+      return res.status(400).json({ success:false, message:'Lost reason is required when stage is Deal Lost' });
+    }
+
+    const up = {};
+    ['stage','forecastCategory','source','quoteNumber','previewUrl','contactPerson','mobile','mobileAlt','email','city','description','lostReason']
+      .forEach(k => { if (req.body[k] !== undefined) up[k] = req.body[k]; });
 
     if (req.body.customerId) {
       const newCustomer = await Customer.findByPk(req.body.customerId);
@@ -518,30 +531,40 @@ if (req.body.nextFollowupAt !== undefined) up.nextFollowupAt = req.body.nextFoll
     await lead.update(up);
 
     await writeLeadLog(req, lead.id, 'LEAD_UPDATED', `${actorLabel(req)} updated lead details`);
-notifyAdmins(req.app.get('io'), {
-  event: 'LEAD_UPDATED',
-  entityType: 'LEAD',
-  entityId: String(lead.id),
-  title: `Lead #${lead.uniqueNumber} updated`,
-  message: `${actorLabel(req)} updated a lead`,
-}); // admin broadcast [1]
+    notifyAdmins(req.app.get('io'), {
+      event: 'LEAD_UPDATED',
+      entityType: 'LEAD',
+      entityId: String(lead.id),
+      title: `Lead #${lead.uniqueNumber} updated`,
+      message: `${actorLabel(req)} updated a lead`,
+    });
 
-if (isAdmin(req) && req.body.salesmanId) {
-  await createNotification({
-    toType: 'MEMBER',
-    toId: up.salesmanId || req.body.salesmanId,
-    event: 'LEAD_ASSIGNED',
-    entityType: 'LEAD',
-    entityId: lead.id,
-    title: `Lead #${lead.uniqueNumber} assigned`,
-    message: `Assigned by admin`,
-  }, req.app.get('io'));
-}
+    if (isAdmin(req) && req.body.salesmanId) {
+      await createNotification({
+        toType: 'MEMBER',
+        toId: up.salesmanId || req.body.salesmanId,
+        event: 'LEAD_ASSIGNED',
+        entityType: 'LEAD',
+        entityId: lead.id,
+        title: `Lead #${lead.uniqueNumber} assigned`,
+        message: `Assigned by admin`,
+      }, req.app.get('io'));
+    }
     res.json({ success:true });
   } catch (e) {
     console.error('Update Lead Error:', e.message);
     res.status(500).json({ success:false, message:'Server error' });
   }
+});
+router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
+  const lead = await Lead.findByPk(req.params.leadId);
+  if (!lead) return res.status(404).json({ success:false, message:'Lead not found' });
+  const quotes = await Quote.findAll({
+    where: { leadId: lead.id },
+    include: [{ model: QuoteItem, as: 'items' }],
+    order: [['createdAt', 'DESC']],
+  });
+  res.json({ success:true, quotes });
 });
 
 module.exports = router;

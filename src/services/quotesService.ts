@@ -1,4 +1,3 @@
-// services/quotesService.ts
 import { api } from './api';
 
 export type QuoteItem = {
@@ -39,6 +38,11 @@ export type Quote = {
   grossProfit: string;
   profitPercent: string;
   profitRate: string;
+  status?: string;
+  preparedBy?: string | null;
+  approvedBy?: string | null;
+  rejectNote?: string | null;
+   isApproved?: boolean;
 };
 
 function withAuthHeaders(token?: string | null, extra?: Record<string, string>) {
@@ -49,35 +53,36 @@ function withAuthHeaders(token?: string | null, extra?: Record<string, string>) 
 
 function apiOrigin() {
   const baseUrl =
-     import.meta.env.VITE_NODE_ENV == 'development'
-    ? import.meta.env.VITE_DEV_API_BASE
-    : import.meta.env.VITE_PROD_API_BASE;
-
+    import.meta.env.VITE_NODE_ENV == 'development'
+      ? import.meta.env.VITE_DEV_API_BASE
+      : import.meta.env.VITE_PROD_API_BASE;
   return `${baseUrl}/quotes`;
 }
-
 
 export const quotesService = {
   // Admin-wide list at GET /api/quotes
   listAll: (token?: string | null) =>
     api.get<{ success: boolean; quotes: Quote[] }>('/quotes', token),
-   setMainQuote: (leadId: string, quoteNumber: string | null, token?: string | null) =>
+
+  setMainQuote: (leadId: string, quoteNumber: string | null, token?: string | null) =>
     api.post<{ success: boolean }>(`/leads/${leadId}/main-quote`, { quoteNumber }, token),
 
   // Per-lead list at GET /api/quotes/leads/:leadId/quotes
   listByLead: (leadId: string, token?: string | null) =>
     api.get<{ success: boolean; quotes: Quote[] }>(`/quotes/leads/${leadId}/quotes`, token),
-update(leadId: string, quoteId: string, body: { status?: string; preparedBy?: string; approvedBy?: string; description?: string; validityUntil?: string; quoteDate?: string }, token?: string | null) {
-  return api.put(`/quotes/leads/${leadId}/quotes/${quoteId}`, body, token);
-},
+
+  update(leadId: string, quoteId: string, body: { status?: string }, token?: string | null) {
+    return api.put(`/quotes/leads/${leadId}/quotes/${quoteId}`, body, token);
+  },
+
   // Get one at GET /api/quotes/leads/:leadId/quotes/:quoteId
   getOne: (leadId: string, quoteId: string, token?: string | null) =>
     api.get<{ success: boolean; quote: Quote & { items: QuoteItem[] } }>(
-      `/leads/${leadId}/quotes/${quoteId}`,
+      `/quotes/leads/${leadId}/quotes/${quoteId}`,
       token
     ),
 
-  // HTML preview for modal at GET /api/quotes/leads/:leadId/quotes/:quoteId/preview
+  // HTML preview
   previewHtml: async (leadId: string, quoteId: string, token?: string | null) => {
     const res = await fetch(`${apiOrigin()}/leads/${leadId}/quotes/${quoteId}/preview`, {
       method: 'GET',
@@ -91,8 +96,10 @@ update(leadId: string, quoteId: string, body: { status?: string; preparedBy?: st
     }
     return res.text();
   },
+  // listByLead: (leadId: string, token?: string | null) =>
+  //   api.get<{ success: boolean; quotes: Quote[] }>(`/quotes/leads/${leadId}/quotes`, token),
 
-  // PDF download at GET /api/quotes/leads/:leadId/quotes/:quoteId/pdf
+  // PDF download
   downloadPdf: async (leadId: string, quoteId: string, token?: string | null) => {
     const res = await fetch(`${apiOrigin()}/leads/${leadId}/quotes/${quoteId}/pdf`, {
       method: 'GET',
@@ -127,5 +134,17 @@ update(leadId: string, quoteId: string, body: { status?: string; preparedBy?: st
       items: QuoteItem[];
     },
     token?: string | null
-  ) => api.post<{ success: boolean; quoteId: string; quoteNumber: string }>(`/quotes/leads/${leadId}/quotes`, body, token),
+  ) =>
+    api.post<{ success: boolean; quoteId: string; quoteNumber: string }>(
+      `/quotes/leads/${leadId}/quotes`,
+      body,
+      token
+    ),
+
+  // Admin actions (optional if backend exposes them)
+  approve: (leadId: string, quoteId: string, token?: string | null) =>
+    api.post<{ success: boolean }>(`/quotes/leads/${leadId}/quotes/${quoteId}/approve`, {}, token),
+
+  reject: (leadId: string, quoteId: string, body: { note?: string }, token?: string | null) =>
+    api.post<{ success: boolean }>(`/quotes/leads/${leadId}/quotes/${quoteId}/reject`, body, token),
 };

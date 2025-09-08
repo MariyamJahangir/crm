@@ -16,6 +16,7 @@ import EditCustomer from './pages/EditCustomer';
 import EditLead from './leads/EditLead';
 import CreateQuote from './pages/CreateQuote';
 import Quote from './pages/Quotes';
+import Contact from './pages/Contacts'
 function App() {
   return (
     <AuthProvider>
@@ -42,6 +43,8 @@ function App() {
 <Route path="/customers/:id/edit" element={<EditCustomer />} />
 <Route path="/quote" element={<Quote />} />
 <Route path="/create-quote" element={<CreateQuote />} />
+<Route path="/contacts" element={<Contact />} />
+
           </Route>
 
 

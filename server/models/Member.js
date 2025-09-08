@@ -12,10 +12,8 @@ Member.init(
     },
 
     name: { type: DataTypes.STRING(120), allowNull: false },
-
-    // Remove inline unique to avoid Sequelize re-adding the key
     email: { type: DataTypes.STRING(180), allowNull: false },
-
+    
     password: { type: DataTypes.STRING(255), allowNull: false },
     designation: { type: DataTypes.STRING(120) },
     isBlocked: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },

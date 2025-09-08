@@ -7,7 +7,7 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 dotenv.config();
-
+const contactsRouter = require('./routes/contacts');
 const { connectDB, sequelize } = require('./config/database');
 const { applyAssociations } = require('./models/associations');
 const followupRoutes=require('./routes/followups.sql')
@@ -133,6 +133,7 @@ async function seedAdmins() {
     app.use('/api/customers', customersRoutes);
     app.use('/api/notifications', notificationsRoutes);
     app.use('/api', chatRoutes);
+    app.use('/api/contacts', contactsRouter);
     app.get('/api/health', (req, res) => res.json({ message: 'Server is up and running!' }));
 
     const PORT = process.env.PORT || 5000;

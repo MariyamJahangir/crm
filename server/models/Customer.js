@@ -22,7 +22,12 @@ website: { type: DataTypes.STRING(200), allowNull: true },         // Website
 category: {                                                        // Customer Category
   type: DataTypes.ENUM('Enterprise','SMB','Individual'),
   allowNull: true
-},
+},contactedBy: {
+    // Use JSON for portability; switch to JSONB if on Postgres
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: [], // array of strings (member IDs or names)
+  },
 
   // Also updated this for consistency
   salesmanId: { type: DataTypes.UUID, allowNull: true },

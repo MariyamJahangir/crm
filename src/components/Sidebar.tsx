@@ -82,11 +82,11 @@ const Sidebar: React.FC = () => {
         </NavLink>
 
         <NavLink
-          to="/profile"
+          to="/contacts"
           className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
         >
           <Bell size={18} className="mr-3" />
-          Profile
+          Contacts
         </NavLink>
 
         <NavLink

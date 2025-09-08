@@ -1,3 +1,4 @@
+// pages/Customers.tsx
 import React, { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
@@ -108,13 +109,36 @@ const Customers: React.FC = () => {
               { key: 'vatNo', header: 'VAT' },
               { key: 'salesman', header: 'Salesman', render: (r) => r.salesman?.name || '-' },
               { key: 'address', header: 'Address' },
-              { key: 'contacts', header: 'Contacts', render: (r) => (r.contacts?.length || 0).toString(), width: '90px' },
-              { key: 'action', header: 'Actions', sortable: false, render: (r) => (
-                <div className="flex gap-2">
-                  <Button variant="secondary" className="px-3 py-1" onClick={() => navigate(`/customers/${r.id}/edit`)}>Edit</Button>
-                  <Button variant="danger" className="px-3 py-1" onClick={() => askDelete(r.id)}>Delete</Button>
-                </div>
-              ), width: '160px' },
+              
+              {
+                key: 'contactedBy',
+                header: 'Contacted By',
+                width: '120px',
+                render: (r: any) => Array.isArray(r.contactedByNames) ? r.contactedByNames : '---',
+              },
+              // Show count and the first contact's department (if any)
+              {
+                key: 'contacts',
+                header: 'Contacts',
+                width: '180px',
+                render: (r) => {
+                  const count = r.contacts?.length || 0;
+                  const firstDept = r.contacts?.department || '';
+                  return firstDept ? `${count} · ${firstDept}` : String(count);
+                }
+              },
+              {
+                key: 'action',
+                header: 'Actions',
+                sortable: false,
+                render: (r) => (
+                  <div className="flex gap-2">
+                    <Button variant="secondary" className="px-3 py-1" onClick={() => navigate(`/customers/${r.id}/edit`)}>Edit</Button>
+                    <Button variant="danger" className="px-3 py-1" onClick={() => askDelete(r.id)}>Delete</Button>
+                  </div>
+                ),
+                width: '160px'
+              },
             ]}
             filterKeys={['companyName','industry','category','website','email','vatNo','address','salesman.name','contactNumber']}
             initialSort={{ key: 'createdAt', dir: 'DESC' }}

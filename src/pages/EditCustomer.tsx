@@ -36,7 +36,7 @@ const EditCustomer: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isCreate = !id;
-  const { token, user } = useAuth();
+  const { token } = useAuth();
 
   const [form, setForm] = useState<FormState>(initialForm);
   const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
@@ -45,7 +45,15 @@ const EditCustomer: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
 
-  const [contactForm, setContactForm] = useState({ name: '', designation: '', mobile: '', fax: '', email: '' });
+  // Inline add-contact form state (includes Department now)
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    designation: '',
+    department: '', // added
+    mobile: '',
+    fax: '',
+    email: '',
+  });
   const [contactError, setContactError] = useState<string | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<Record<string, boolean>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -53,21 +61,21 @@ const EditCustomer: React.FC = () => {
 
   // Load team users
   useEffect(() => {
-     if (!token) return;
-     (async () => {
-       try {
-         const res = await teamService.list(token);
-         setSalesmen(res.users);
-         if (isCreate && res.users.length > 0) {
-           setForm((p) => ({ ...p, salesmanId: res.users[0].id }));
-         }
-       } catch { /* ignore */ }
-     })();
-  }, [token, isCreate]); // [attached_file:1]
+    if (!token) return;
+    (async () => {
+      try {
+        const res = await teamService.list(token);
+        setSalesmen(res.users);
+        if (isCreate && res.users.length > 0) {
+          setForm((p) => ({ ...p, salesmanId: res.users.id }));
+        }
+      } catch { /* ignore */ }
+    })();
+  }, [token, isCreate]); // [2]
 
   // Load customer on edit
   useEffect(() => {
-    if (!id) return;
+    if (!id || !token) return;
     (async () => {
       setLoading(true);
       setError(null);
@@ -91,7 +99,7 @@ const EditCustomer: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, [id, token]); // [attached_file:1]
+  }, [id, token]); // [2]
 
   const onChange =
     (key: keyof FormState) =>
@@ -175,6 +183,7 @@ const EditCustomer: React.FC = () => {
         {
           name: contactForm.name,
           designation: contactForm.designation || undefined,
+          department: contactForm.department || undefined, // added
           mobile: contactForm.mobile || undefined,
           fax: contactForm.fax || undefined,
           email: contactForm.email || undefined,
@@ -183,7 +192,7 @@ const EditCustomer: React.FC = () => {
       );
       const res = await customerService.getOne(id, token);
       setCustomer(res.customer);
-      setContactForm({ name: '', designation: '', mobile: '', fax: '', email: '' });
+      setContactForm({ name: '', designation: '', department: '', mobile: '', fax: '', email: '' });
     } catch (e: any) {
       setContactError(e?.data?.message || 'Failed to add contact');
     }
@@ -361,7 +370,8 @@ const EditCustomer: React.FC = () => {
                     </div>
                   </div>
 
-                  <form onSubmit={addContact} className="grid grid-cols-1 sm:grid-cols-5 gap-3 mb-4">
+                  {/* Add-contact inline form with Department */}
+                  <form onSubmit={addContact} className="grid grid-cols-1 sm:grid-cols-6 gap-3 mb-4">
                     <input
                       className="border rounded px-3 py-2"
                       placeholder="Name*"
@@ -374,6 +384,12 @@ const EditCustomer: React.FC = () => {
                       placeholder="Designation"
                       value={contactForm.designation}
                       onChange={(e) => setContactForm((p) => ({ ...p, designation: e.target.value }))}
+                    />
+                    <input
+                      className="border rounded px-3 py-2"
+                      placeholder="Department"
+                      value={contactForm.department}
+                      onChange={(e) => setContactForm((p) => ({ ...p, department: e.target.value }))}
                     />
                     <input
                       className="border rounded px-3 py-2"
@@ -399,11 +415,13 @@ const EditCustomer: React.FC = () => {
                   </form>
                   {contactError && <div className="text-red-600 mb-3">{contactError}</div>}
 
-                  <div className="border rounded">
+                  {/* Contacts table with Department column */}
+                  <div className="border rounded overflow-hidden">
                     <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 border-b text-sm font-medium text-gray-700">
                       <div className="col-span-1" />
                       <div className="col-span-3">Name</div>
                       <div className="col-span-2">Designation</div>
+                      <div className="col-span-2">Department</div>
                       <div className="col-span-2">Mobile</div>
                       <div className="col-span-2">Fax</div>
                       <div className="col-span-2">Email</div>
@@ -420,6 +438,7 @@ const EditCustomer: React.FC = () => {
                         </div>
                         <div className="col-span-3">{ct.name}</div>
                         <div className="col-span-2">{ct.designation || '-'}</div>
+                        <div className="col-span-2">{(ct as any).department || '-'}</div>
                         <div className="col-span-2">{ct.mobile || '-'}</div>
                         <div className="col-span-2">{ct.fax || '-'}</div>
                         <div className="col-span-2">{ct.email || '-'}</div>
