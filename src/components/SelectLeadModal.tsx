@@ -56,7 +56,7 @@ const SelectLeadModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
     (async () => {
       setLoading(true);
       try {
-        const res = await leadsService.search(debouncedQuery, page, pageSize, token);
+        const res = await leadsService.myLeads(token);
         
         if (!abort) {
           setRows(res.leads);

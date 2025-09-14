@@ -40,7 +40,7 @@ export const leadsService = {
   list: (token?: string | null) => api.get<ListLeadsResponse>('/leads', token),
 
   getOne: (id: string, token?: string | null) => api.get<GetLeadResponse>(`/leads/${id}`, token),
-
+ myLeads: (token?: string | null) => api.get<ListLeadsResponse>('/leads/my-leads', token),
   create: (
     body: {
       stage?: Lead['stage'];

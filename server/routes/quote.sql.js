@@ -74,7 +74,8 @@ function buildQuoteHTML({ quote, items, lead, customer }) {
   const salesman = esc(q.salesmanName || (l.salesman && l.salesman.name));
   const dateStr = q.quoteDate ? new Date(q.quoteDate).toLocaleDateString() : '';
 
-  const rows = it.map((row, idx) => {
+
+   const rows = it.map((row, idx) => {
     const qty = Number(row.quantity || 0);
     const rate = Number(row.itemRate || 0);
     const disc = Number(row.lineDiscountAmount || 0);
@@ -306,10 +307,12 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
   }
 });
 
+
 // ADMIN APPROVE QUOTE
-router.post('/leads/:leadId/quotes/:quoteId/approve', authenticateToken, isAdmin, async (req, res) => {
+router.post('/:leadId/:quoteId/approve', authenticateToken,  async (req, res) => {
   try {
     const quote = await Quote.findByPk(req.params.quoteId);
+    
     if (!quote || String(quote.leadId) !== req.params.leadId) {
       return res.status(404).json({ success: false, message: 'Quote not found.' });
     }
@@ -319,7 +322,7 @@ router.post('/leads/:leadId/quotes/:quoteId/approve', authenticateToken, isAdmin
 
     await quote.update({
       isApproved: true,
-      status: 'Accepted', // Change status to reflect approval
+      status: 'Draft',
       approvedBy: await resolveActorName(req),
       rejectNote: null,
     });
@@ -331,8 +334,8 @@ router.post('/leads/:leadId/quotes/:quoteId/approve', authenticateToken, isAdmin
   }
 });
 
-// ADMIN REJECT QUOTE
-router.post('/leads/:leadId/quotes/:quoteId/reject', authenticateToken, isAdmin, [
+
+router.post('/:leadId/:quoteId/reject', authenticateToken,  [
   body('note').trim().notEmpty().withMessage('Rejection reason is required.')
 ], async (req, res) => {
   const errors = validationResult(req);
@@ -351,7 +354,7 @@ router.post('/leads/:leadId/quotes/:quoteId/reject', authenticateToken, isAdmin,
     const note = req.body.note.slice(0, 500);
     await quote.update({
       isApproved: false,
-      status: 'Rejected',
+      status: 'Rejected', // Correctly set status to 'Rejected'
       approvedBy: null,
       rejectNote: note,
     });
@@ -362,6 +365,36 @@ router.post('/leads/:leadId/quotes/:quoteId/reject', authenticateToken, isAdmin,
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
+// GET Quote as HTML for preview
+router.get('/leads/:leadId/quotes/:quoteId/preview', authenticateToken, async (req, res) => {
+  try {
+    const quote = await Quote.findByPk(req.params.quoteId, { include: [{ model: QuoteItem, as: 'items' }] });
+    if (!quote || String(quote.leadId) !== String(req.params.leadId)) {
+      return res.status(404).json({ success: false, message: 'Quote not found' });
+    }
+
+    const lead = await Lead.findByPk(quote.leadId, {
+      include: [
+        { model: Customer, as: 'customer', attributes: ['id','companyName','address'] },
+        { model: Member, as: 'salesman', attributes: ['id','name','email'] },
+      ]
+    });
+
+    const html = buildQuoteHTML({
+      quote: quote.toJSON(),
+      items: (quote.items || []).map(i => i.toJSON()),
+      lead: lead ? lead.toJSON() : null,
+      customer: (lead && lead.customer) ? lead.customer.toJSON() : null
+    });
+
+    res.json({ success: true, html });
+  } catch (e) {
+    console.error('Quote HTML Preview Error:', e.message);
+    res.status(500).json({ success: false, message: 'Failed to generate preview.' });
+  }
+});
+
 
 
 // Update quote status

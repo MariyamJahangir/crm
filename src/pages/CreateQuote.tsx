@@ -8,7 +8,7 @@ import { leadsService } from '../services/leadsService';
 import { quotesService, QuoteItem as QItem } from '../services/quotesService';
 import { teamService, TeamUser } from '../services/teamService';
 import { customerService } from '../services/customerService';
-
+import PreviewModal from '../components/PreviewModal';
 type SavedQuote = {
   id: string;
   number: string;
@@ -20,7 +20,8 @@ const CreateQuote: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
   const isAdmin = user?.type === 'ADMIN';
-
+    const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(routeLeadId || null);
   const [leadNumber, setLeadNumber] = useState('');
   const [openLeadModal, setOpenLeadModal] = useState(false);
@@ -87,6 +88,25 @@ const CreateQuote: React.FC = () => {
     ]);
   };
 
+   const showPreview = async () => {
+    if (!lastSavedQuote || !token || !selectedLeadId) return;
+    setPreviewLoading(true);
+    setPreview({ open: true, html: '<div>Loading preview...</div>' });
+    try {
+      const res = await quotesService.previewHtml(selectedLeadId, lastSavedQuote.id, token);
+      if (res.success) {
+        setPreview({ open: true, html: res.html });
+      } else {
+        throw new Error('Failed to load preview content.');
+      }
+    } catch (e: any) {
+      const errorMessage = e?.message || 'Failed to load preview.';
+      setPreview({ open: true, html: `<div style="color:red;padding:20px;">${errorMessage}</div>` });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
   const removeRow = (idx: number) => {
     setItems(prev => prev.filter((_, i) => i !== idx).map((it, idx2) => ({ ...it, slNo: idx2 + 1 })));
   };
@@ -111,6 +131,15 @@ const CreateQuote: React.FC = () => {
     if (routeLeadId) setSelectedLeadId(routeLeadId);
   }, [routeLeadId]);
 
+ const onSelectContact = (selectedContactId: string) => {
+    const contact = contacts.find(c => c.id === selectedContactId);
+    if (contact) {
+      setContactId(contact.id);
+      setContactPerson(contact.name);
+      setPhone(contact.mobile || '');
+      setEmail(contact.email || '');
+    }
+  };
   useEffect(() => {
     if (!token || !selectedLeadId) return;
     (async () => {
@@ -121,10 +150,7 @@ const CreateQuote: React.FC = () => {
         setLeadNumber(lead.uniqueNumber || '');
         setCustomerId(lead.customerId || null);
         setCustomerName(lead.division || '');
-        setContactPerson(lead.contactPerson || '');
-        setPhone(lead.mobile || '');
-        setEmail(lead.email || '');
-
+        
         if (lead.customerId) {
           const [contactsResp, custResp] = await Promise.all([
             customerService.getContacts(lead.customerId, token),
@@ -132,15 +158,14 @@ const CreateQuote: React.FC = () => {
           ]);
           setContacts(contactsResp.contacts || []);
           setAddress(custResp.customer.address || '');
-          const preferredContact = contactsResp.contacts.find(c => c.name === lead.contactPerson);
-          const contactToSet = preferredContact || contactsResp.contacts[0];
-          if (contactToSet) {
-            setContactId(contactToSet.id);
-            setContactPerson(contactToSet.name);
-            setPhone(contactToSet.mobile || '');
-            setEmail(contactToSet.email || '');
+          const preferredContact = contactsResp.contacts.find(c => c.name === lead.contactPerson) || contactsResp.contacts[0];
+          if (preferredContact) {
+            onSelectContact(preferredContact.id);
           } else {
             setContactId(undefined);
+            setContactPerson('');
+            setPhone('');
+            setEmail('');
           }
         } else {
           setContacts([]);
@@ -148,7 +173,7 @@ const CreateQuote: React.FC = () => {
           setAddress('');
         }
       } catch (e: any) {
-        setError(e?.data?.message || 'Failed to load lead');
+        setError(e?.data?.message || 'Failed to load lead details');
       }
     })();
   }, [token, selectedLeadId]);
@@ -281,40 +306,26 @@ const CreateQuote: React.FC = () => {
                     onChange={e => setCustomerName(e.target.value)}
                   />
                 </div>
-                <div>
+                 <div>
                   <label className="block text-sm font-medium mb-1">Contact Person</label>
                   <select
                     className="select select-bordered w-full"
                     value={contactId ?? ''}
                     onChange={e => onSelectContact(e.target.value)}
                   >
-                    <option value="" disabled>
-                      Select Contact
-                    </option>
+                    <option value="" disabled>Select Contact</option>
                     {contacts.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Phone</label>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                  />
+                  <input type="text" className="input input-bordered w-full" value={phone} onChange={e => setPhone(e.target.value)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Email</label>
-                  <input
-                    type="email"
-                    className="input input-bordered w-full"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                  />
+                  <input type="email" className="input input-bordered w-full" value={email} onChange={e => setEmail(e.target.value)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Address</label>
@@ -523,15 +534,28 @@ const CreateQuote: React.FC = () => {
               <Button type="submit" disabled={saving || !!lastSavedQuote}>
                 {saving ? 'Saving...' : 'Save Quote'}
               </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!lastSavedQuote || (!lastSavedQuote.isApproved && !isAdmin)}
-                onClick={downloadPdf}
-                title={!lastSavedQuote ? 'Save the quote first' : (!lastSavedQuote.isApproved && !isAdmin ? 'Waiting for admin approval' : 'Download as PDF')}
-              >
-                Download PDF
-              </Button>
+              {lastSavedQuote && (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={previewLoading}
+                    onClick={showPreview}
+                  >
+                    {previewLoading ? 'Loading Preview...' : 'Preview'}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={!lastSavedQuote.isApproved && !isAdmin}
+                    onClick={downloadPdf}
+                    title={!lastSavedQuote.isApproved && !isAdmin ? 'Waiting for admin approval' : 'Download as PDF'}
+                  >
+                    Download PDF
+                  </Button>
+                </>
+              )}
               <Button type="button" variant="secondary" onClick={() => navigate(selectedLeadId ? `/leads/${selectedLeadId}` : '/leads')} disabled={saving}>
                 Cancel
               </Button>
@@ -553,6 +577,12 @@ const CreateQuote: React.FC = () => {
               setLeadNumber(lead.uniqueNumber || '');
               setOpenLeadModal(false);
             }}
+          />
+          <PreviewModal
+            open={preview.open}
+            onClose={() => setPreview({ open: false, html: undefined })}
+            html={preview.html}
+            title="Quote Preview"
           />
         </main>
       </div>

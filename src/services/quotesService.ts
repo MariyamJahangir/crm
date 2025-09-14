@@ -82,11 +82,10 @@ export const quotesService = {
       token
     ),
 
-  // HTML preview
-  previewHtml: async (leadId: string, quoteId: string, token?: string | null) => {
+  previewHtml: async (leadId: string, quoteId: string, token?: string | null): Promise<{ success: boolean; html: string }> => {
     const res = await fetch(`${apiOrigin()}/leads/${leadId}/quotes/${quoteId}/preview`, {
       method: 'GET',
-      headers: withAuthHeaders(token, { Accept: 'text/html' }),
+      headers: withAuthHeaders(token, { 'Accept': 'application/json' }),
       credentials: 'include',
     });
     if (!res.ok) {
@@ -94,7 +93,7 @@ export const quotesService = {
       try { const j = await res.json(); msg = j?.message || msg; } catch {}
       throw { message: msg };
     }
-    return res.text();
+    return res.json(); // Correctly parse the JSON response
   },
   // listByLead: (leadId: string, token?: string | null) =>
   //   api.get<{ success: boolean; quotes: Quote[] }>(`/quotes/leads/${leadId}/quotes`, token),
@@ -143,8 +142,8 @@ export const quotesService = {
 
   // Admin actions (optional if backend exposes them)
   approve: (leadId: string, quoteId: string, token?: string | null) =>
-    api.post<{ success: boolean }>(`/quotes/leads/${leadId}/quotes/${quoteId}/approve`, {}, token),
+    api.post<{ success: boolean }>(`/quotes/${leadId}/${quoteId}/approve`, {}, token),
 
   reject: (leadId: string, quoteId: string, body: { note?: string }, token?: string | null) =>
-    api.post<{ success: boolean }>(`/quotes/leads/${leadId}/quotes/${quoteId}/reject`, body, token),
+    api.post<{ success: boolean }>(`/quotes/${leadId}/${quoteId}/reject`, body, token),
 };

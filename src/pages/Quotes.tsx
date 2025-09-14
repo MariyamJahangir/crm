@@ -4,9 +4,11 @@ import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { quotesService, Quote } from '../services/quotesService';
+import { invoiceService } from '../services/invoiceService'; // Ensure this service is correctly implemented
 import DataTable from '../components/DataTable';
 import PreviewModal from '../components/PreviewModal';
 
+// --- Rejection Dialog Sub-component ---
 const RejectDialog: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -14,13 +16,21 @@ const RejectDialog: React.FC<{
 }> = ({ open, onClose, onSubmit }) => {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+
   if (!open) return null;
+
   const submit = async () => {
     if (!note.trim()) return;
     setSaving(true);
-    try { await onSubmit(note.trim()); onClose(); setNote(''); }
-    finally { setSaving(false); }
+    try {
+      await onSubmit(note.trim());
+      onClose();
+      setNote('');
+    } finally {
+      setSaving(false);
+    }
   };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
@@ -44,10 +54,12 @@ const RejectDialog: React.FC<{
   );
 };
 
+// --- Constants ---
 const memberStatuses = ['Draft', 'Sent'] as const;
 const adminStatuses = ['Draft', 'Sent', 'Accepted', 'Rejected', 'Expired'] as const;
 const FINAL_STATES = ['Accepted', 'Rejected', 'Expired'];
 
+// --- Main Quotes Component ---
 const Quotes: React.FC = () => {
   const { token, user } = useAuth();
   const isAdmin = user?.type === 'ADMIN';
@@ -58,13 +70,15 @@ const Quotes: React.FC = () => {
   const [err, setErr] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
-  const [pendingAction, setPendingAction] = useState<string | null>(null); // For any async action on a quote row
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [rejectFor, setRejectFor] = useState<Quote | null>(null);
 
+  // --- Data Fetching ---
   useEffect(() => {
     if (!token) return;
     (async () => {
-      setLoading(true); setErr(null);
+      setLoading(true);
+      setErr(null);
       try {
         const res = await quotesService.listAll(token);
         setQuotes(res.quotes);
@@ -76,6 +90,7 @@ const Quotes: React.FC = () => {
     })();
   }, [token]);
 
+  // --- Memoized Search Filter ---
   const filteredQuotes = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return quotes;
@@ -85,12 +100,29 @@ const Quotes: React.FC = () => {
     );
   }, [quotes, search]);
 
+  // --- Action Handlers ---
+  const showPreview = async (quote: Quote) => {
+    if (!token) return;
+    setPreview({ open: true, html: '<div>Loading preview...</div>' });
+    try {
+      const res = await quotesService.previewHtml(quote.leadId, quote.id, token);
+      if (res.success) {
+        setPreview({ open: true, html: res.html });
+      } else {
+        throw new Error('Failed to load preview content.');
+      }
+    } catch (e: any) {
+      const errorMessage = e?.message || 'Failed to load preview.';
+      setPreview({ open: true, html: `<div style="color:red;padding:20px;">${errorMessage}</div>` });
+    }
+  };
+
   const approveQuote = async (q: Quote) => {
     if (!token) return;
     setPendingAction(q.id);
     try {
       await quotesService.approve(q.leadId, q.id, token);
-      setQuotes(prev => prev.map(p => p.id === q.id ? { ...p, status: 'Accepted', isApproved: true, rejectNote: null } : p));
+      setQuotes(prev => prev.map(p => p.id === q.id ? { ...p, status: 'Draft', isApproved: true, rejectNote: null } : p));
     } catch (e: any) {
       setErr(e?.data?.message || 'Failed to approve quote');
     } finally {
@@ -125,30 +157,51 @@ const Quotes: React.FC = () => {
     }
   };
 
+  const convertToInvoice = async (q: Quote) => {
+    if (!token) return;
+    setPendingAction(q.id);
+    setErr(null);
+    try {
+      const res = await invoiceService.create({ quoteId: q.id }, token);
+      if (res.success && res.invoice) {
+        navigate(`/invoices`);
+      } else {
+        throw new Error(res.message || 'Failed to convert quote.');
+      }
+    } catch (e: any) {
+      setErr(e?.data?.message || e.message || 'An error occurred during conversion.');
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  // --- Action Column Renderer ---
   const renderActions = (quote: Quote) => {
     const status = quote.status || 'Draft';
     const isFinal = FINAL_STATES.includes(status);
     const isPending = status === 'PendingApproval';
     const canDownload = quote.isApproved || isAdmin;
     const isBusy = pendingAction === quote.id;
+    const isAccepted = status === 'Accepted';
+    const hasInvoice = !!quote.invoiceId;
 
     return (
       <div className="flex items-center gap-1 justify-end flex-wrap">
-        {/* Status Dropdown */}
-        {!isPending && (
-            <select
-              value={status}
-              onChange={(e) => updateStatus(quote, e.target.value)}
-              disabled={isFinal || isBusy}
-              className="select select-bordered select-sm"
-            >
-              {(isAdmin ? adminStatuses : memberStatuses).map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+        {isAccepted && !hasInvoice && (
+          <Button size="sm" variant="success" onClick={() => convertToInvoice(quote)} disabled={isBusy}>
+            {isBusy ? 'Converting...' : 'Convert to Invoice'}
+          </Button>
+        )}
+        {isAccepted && hasInvoice && (
+          <span className="text-xs text-green-600 font-semibold px-2">Invoice Created</span>
         )}
 
-        {/* Admin Approval/Rejection Buttons */}
+        {!isPending && !isAccepted && (
+          <select value={status} onChange={(e) => updateStatus(quote, e.target.value)} disabled={isFinal || isBusy} className="select select-bordered select-sm">
+            {(isAdmin ? adminStatuses : memberStatuses).map(s => (<option key={s} value={s}>{s}</option>))}
+          </select>
+        )}
+
         {isAdmin && isPending && !isFinal && (
           <>
             <Button size="sm" variant="success" onClick={() => approveQuote(quote)} disabled={isBusy}>Approve</Button>
@@ -156,19 +209,13 @@ const Quotes: React.FC = () => {
           </>
         )}
 
-       
-        <Button
-          size="sm"
-          onClick={() => canDownload ? quotesService.downloadPdf(quote.leadId, quote.id, token) : undefined}
-          disabled={!canDownload || isBusy}
-          title={!canDownload ? "Waiting for admin approval" : "Download PDF"}
-        >
-          Download
-        </Button>
+        <Button size="sm" variant="secondary" onClick={() => showPreview(quote)} disabled={isBusy}>Preview</Button>
+        <Button size="sm" onClick={() => canDownload ? quotesService.downloadPdf(quote.leadId, quote.id, token) : undefined} disabled={!canDownload || isBusy} title={!canDownload ? "Waiting for admin approval" : "Download PDF"}>Download</Button>
       </div>
     );
   };
 
+  // --- Main Component Render ---
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
@@ -177,12 +224,7 @@ const Quotes: React.FC = () => {
           <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
             <h1 className="text-2xl font-semibold text-gray-900">Quotes</h1>
             <div className="flex items-center gap-3">
-              <input
-                className="input input-bordered w-64"
-                placeholder="Search by number or company"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+              <input className="input input-bordered w-64" placeholder="Search by number or company" value={search} onChange={e => setSearch(e.target.value)} />
               <Button onClick={() => navigate('/create-quote')}>Create Quote</Button>
             </div>
           </div>
@@ -211,11 +253,8 @@ const Quotes: React.FC = () => {
           />
         </main>
       </div>
-      <RejectDialog
-        open={!!rejectFor}
-        onClose={() => setRejectFor(null)}
-        onSubmit={(note) => rejectQuote(rejectFor!, note)}
-      />
+      <RejectDialog open={!!rejectFor} onClose={() => setRejectFor(null)} onSubmit={(note) => rejectQuote(rejectFor!, note)} />
+      <PreviewModal open={preview.open} onClose={() => setPreview({ open: false, html: undefined })} html={preview.html} title="Quote Preview" />
     </div>
   );
 };

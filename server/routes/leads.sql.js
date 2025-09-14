@@ -285,7 +285,32 @@ router.get('/', authenticateToken, async (req, res) => {
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
-
+router.get('/my-leads', authenticateToken, async (req, res) => {
+  if (isAdmin(req)) {
+    // Admins can see all leads, so we can redirect to the main list route
+    return res.redirect('/api/leads');
+  }
+  
+  try {
+    const leads = await Lead.findAll({
+      where: {
+        [Op.or]: [
+          { salesmanId: req.subjectId },
+          { creatorId: req.subjectId, creatorType: 'MEMBER' }
+        ]
+      },
+      include: [
+        { model: Customer, as: 'customer', attributes: ['id', 'companyName'] },
+        { model: Member, as: 'salesman', attributes: ['id', 'name'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+    res.json({ success: true, leads });
+  } catch (e) {
+    console.error('Fetch My Leads Error:', e);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 // Get one lead
 router.get('/:id', authenticateToken, async (req, res) => {
   try {

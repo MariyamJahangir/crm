@@ -17,6 +17,12 @@ import EditLead from './leads/EditLead';
 import CreateQuote from './pages/CreateQuote';
 import Quote from './pages/Quotes';
 import Contact from './pages/Contacts'
+import VendorsPage from './pages/Vendors';
+import VendorFormPage from './pages/VendorFormPage';
+import InvoicesList from './pages/InvoicesListPage';
+import CreateInvoice from './pages/CreateInvoicePage';
+import Deals from './pages/Deals';
+import DealDetails from './pages/DealsDetails';
 function App() {
   return (
     <AuthProvider>
@@ -44,7 +50,13 @@ function App() {
 <Route path="/quote" element={<Quote />} />
 <Route path="/create-quote" element={<CreateQuote />} />
 <Route path="/contacts" element={<Contact />} />
-
+<Route path="/vendors" element={<VendorsPage />} />
+<Route path="/vendors/new" element={<VendorFormPage />} />
+<Route path="/vendors/:id/edit" element={<VendorFormPage />} /> 
+<Route path="/invoices" element={<InvoicesList />} /> 
+<Route path="/invoices/create" element={<CreateInvoice />} /> 
+<Route path="/deals" element={<Deals />} /> 
+<Route path="/deals/:id" element={<DealDetails />} />
           </Route>
 
 

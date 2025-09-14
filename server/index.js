@@ -19,12 +19,13 @@ const notificationsRoutes = require('./routes/notifications.sql');
 const quoteRoutes = require('./routes/quote.sql');
 const quotePdf = require('./routes/quotes.pdf');
 const chatRoutes = require('./routes/chat.sql');
+const vendorsRoutes = require('./routes/vendors.sql');
 const Admin = require('./models/Admin');
 const leadsSearch = require('./routes/leads.search.sql');
-
+const invoiceRoutes= require('./routes/invoices.sql')
 const app = express();
 const server = http.createServer(app);
-
+const dealsRouter = require('./routes/deals.sql');
 // CORS for API
 const allowedOrigins = [
   process.env.FRONTEND_ORIGIN,      
@@ -129,10 +130,13 @@ async function seedAdmins() {
     app.use('/api/followups', followupRoutes);
     app.use('/api', leadsSearch);
     app.use('/api/quotes', quotePdf);
+    app.use('/api/invoices', invoiceRoutes)
     app.use('/api/team', teamRoutes);
+    app.use('/api/vendors', vendorsRoutes);
     app.use('/api/customers', customersRoutes);
     app.use('/api/notifications', notificationsRoutes);
     app.use('/api', chatRoutes);
+    app.use('/api/deals', dealsRouter);
     app.use('/api/contacts', contactsRouter);
     app.get('/api/health', (req, res) => res.json({ message: 'Server is up and running!' }));
 

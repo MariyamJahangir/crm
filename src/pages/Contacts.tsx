@@ -6,20 +6,23 @@ import { useAuth } from '../contexts/AuthContext';
 import { contactsService, ContactRow } from '../services/contactsService';
 import ConfirmDialog from '../components/ConfirmDialog';
 import DataTable from '../components/DataTable';
-
+import AddContactModal from '../components/AddContactModal'; 
 const Contacts: React.FC = () => {
   const { token } = useAuth();
   const [rows, setRows] = useState<ContactRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
-
+  const [isAddModalOpen, setAddModalOpen] = useState(false)
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const selectedIds = useMemo(() => Object.keys(selected).filter(k => selected[k]), [selected]);
-
+ const handleAddSuccess = () => {
+    setAddModalOpen(false); // Close modal on success
+    load(search);           // Reload the contact list to show the new entry
+  };
   const load = async (q?: string) => {
     if (!token) return;
     setError(null);
@@ -72,6 +75,9 @@ const Contacts: React.FC = () => {
                 onClick={() => setConfirmOpen(true)}
               >
                 Delete Selected ({selectedIds.length})
+              </Button>
+              <Button variant="primary" onClick={() => setAddModalOpen(true)}>
+                Add Contact
               </Button>
             </div>
           </div>
@@ -154,6 +160,12 @@ const Contacts: React.FC = () => {
         onConfirm={onBulkDelete}
         onCancel={() => setConfirmOpen(false)}
       />
+            <AddContactModal
+        open={isAddModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onSuccess={handleAddSuccess}
+      />
+
     </div>
   );
 };

@@ -1,5 +1,5 @@
 const { DataTypes, Model } = require('sequelize');
-const { sequelize } = require('../config/database'); // Corrected import
+const { sequelize } = require('../config/database');
 
 class QuoteItem extends Model {}
 
@@ -19,8 +19,10 @@ QuoteItem.init({
   lineCostTotal: { type: DataTypes.DECIMAL(14, 2), allowNull: false, defaultValue: 0.00 },
   lineGP: { type: DataTypes.DECIMAL(14, 2), allowNull: false, defaultValue: 0.00 },
   lineProfitPercent: { type: DataTypes.DECIMAL(7, 3), allowNull: false, defaultValue: 0.000 },
-}, { sequelize, tableName: 'quote_items' });
-
-// All association lines (hasMany, belongsTo) have been removed from this file.
+}, {
+  sequelize,
+  tableName: 'quote_items',
+  indexes: [] // ✅ no duplicate indexes
+});
 
 module.exports = QuoteItem;

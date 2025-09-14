@@ -166,7 +166,7 @@ router.post('/', authenticateToken, [
 
     notifyAdmins(req.app.get('io'), {
       event: 'CUSTOMER_CREATED',
-      entity: 'customer',
+      entityType: 'customer',
       entityId: created.id,
       title: 'New Customer Created',
       message: `Customer ${companyName} was created.`,
@@ -177,7 +177,7 @@ router.post('/', authenticateToken, [
         toType: 'MEMBER',
         toId: resolvedSalesmanId,
         event: 'CUSTOMER_ASSIGNED',
-        entity: 'customer',
+        entityType: 'customer',
         entityId: created.id,
         title: 'Customer Assigned',
         message: `Customer ${companyName} assigned to you.`,

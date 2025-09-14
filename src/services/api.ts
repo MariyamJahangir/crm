@@ -18,6 +18,7 @@ async function request<T>(
     method?: HttpMethod;
     body?: any;
     token?: string | null;
+    
     headers?: Record<string, string>;
     signal?: AbortSignal;
   } = {}

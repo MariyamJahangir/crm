@@ -62,6 +62,13 @@ const Sidebar: React.FC = () => {
           <Users size={18} className="mr-3" />
           Leads
         </NavLink>
+           <NavLink
+          to="/deals"
+          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
+        >
+          <Users size={18} className="mr-3" />
+          Deals
+        </NavLink>
 
         {/* --- CHANGE: Added Building2 icon for consistency --- */}
         <NavLink
@@ -88,13 +95,19 @@ const Sidebar: React.FC = () => {
           <Bell size={18} className="mr-3" />
           Contacts
         </NavLink>
-
+<NavLink
+          to="/invoices"
+          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
+        >
+          <Bell size={18} className="mr-3" />
+          invoice
+        </NavLink>
         <NavLink
-          to="/settings"
+          to="/vendors"
           className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
         >
           <Settings size={18} className="mr-3" />
-          Settings
+         vendors
         </NavLink>
       </nav>
 
