@@ -534,13 +534,13 @@ router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, 
       console.error('[PDF DEBUG] - ERROR: Quote not found.');
       return res.status(404).json({ success: false, message: 'Quote not found' });
     }
-    console.log('[PDF DEBUG] - 2. Quote data fetched successfully.');
+   
 
     if (!quote.isApproved && !isAdmin(req)) {
       console.error('[PDF DEBUG] - ERROR: Permission denied. Quote not approved.');
       return res.status(403).json({ success: false, message: 'Quote requires admin approval for download.' });
     }
-    console.log('[PDF DEBUG] - 3. Permissions checked successfully.');
+   
 
     const lead = await Lead.findByPk(quote.leadId, {
       include: [
@@ -548,7 +548,7 @@ router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, 
         { model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] },
       ]
     });
-    console.log('[PDF DEBUG] - 4. Associated lead and customer data fetched.');
+    
 
     const html = buildQuoteHTML({
       quote: quote.toJSON(),
@@ -556,15 +556,13 @@ router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, 
       lead: lead ? lead.toJSON() : null,
       customer: (lead && lead.customer) ? lead.customer.toJSON() : null
     });
-    console.log('[PDF DEBUG] - 5. HTML content generated successfully. Length:', html.length);
-    // For intense debugging, you could write the HTML to a file to inspect it:
-    // require('fs').writeFileSync('debug_quote.html', html);
+  
 
     const options = {
       format: 'A4',
       border: { top: '16mm', right: '12mm', bottom: '16mm', left: '12mm' }
     };
-    console.log('[PDF DEBUG] - 6. Calling pdf.create()... THIS IS LIKELY WHERE IT FAILS.');
+ 
 
     pdf.create(html, options).toBuffer(async (err, buffer) => {
       if (err) {
@@ -573,14 +571,14 @@ router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, 
         return res.status(500).json({ success: false, message: 'Failed to generate PDF inside callback.' });
       }
       
-      console.log('[PDF DEBUG] - 7. PDF buffer created successfully. Size:', buffer.length);
+     
       await writeLeadLog(req, quote.leadId, 'QUOTE_DOWNLOADED', `${actorLabel(req)} downloaded quote #${quote.quoteNumber} PDF`).catch(() => {});
-      console.log('[PDF DEBUG] - 8. Lead log written.');
+     
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${quote.quoteNumber}.pdf"`);
       res.send(buffer);
-      console.log('[PDF DEBUG] - 9. PDF sent to client.');
+     
     });
 
   } catch (e) {
