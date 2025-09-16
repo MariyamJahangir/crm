@@ -9,28 +9,34 @@ import { customerService } from '../services/customerService';
 import NewCustomerModal from '../components/NewCustomerModal';
 import NewContactModal from '../components/NewContactModal';
 
+
 type CustomerLite = { id: string; companyName: string };
+
 
 const STAGES = ['Discover', 'Solution Validation', 'Quote', 'Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'] as const;
 const FORECASTS = ['Pipeline', 'BestCase', 'Commit'] as const;
 const SOURCES = ['Website', 'Referral', 'Advertisement', 'Event', 'Cold Call', 'Other'] as const;
 
+
 const CreateLead: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  const isAdmin = user?.type === 'ADMIN';
+
 
   const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
   const [contacts, setContacts] = useState<{ id: string; name: string; mobile?: string; email?: string }[]>([]);
 
+
   const [stage, setStage] = useState<typeof STAGES[number]>('Discover');
   const [forecastCategory, setForecastCategory] = useState<typeof FORECASTS[number]>('Pipeline');
+
 
   const [customerId, setCustomerId] = useState('');
   const [contactId, setContactId] = useState<string>('');
   const [source, setSource] = useState('Website');
-  const [quoteNumber, setQuoteNumber] = useState('');
-  const [previewUrl, setPreviewUrl] = useState('');
+
 
   const [contactPerson, setContactPerson] = useState('');
   const [mobile, setMobile] = useState('');
@@ -38,93 +44,95 @@ const CreateLead: React.FC = () => {
   const [emailField, setEmailField] = useState('');
   const [city, setCity] = useState('');
 
+
   const [salesmanId, setSalesmanId] = useState('');
   const [description, setDescription] = useState('');
+
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+
   const [openNewCustomer, setOpenNewCustomer] = useState(false);
   const [openNewContact, setOpenNewContact] = useState(false);
 
-  const [companySearch, setCompanySearch] = useState('');
-  const filteredCustomers = customers.filter(c =>
-    c.companyName.toLowerCase().includes(companySearch.toLowerCase())
-  );
 
   // Load team and customers
   useEffect(() => {
     if (!token) return;
     (async () => {
       try {
-        const team = await teamService.list(token);
-        setSalesmen(team.users);
-        const me = team.users.find((u) => u.id === String(user?.id));
-        setSalesmanId(me?.id || team.users?.id || ''); // fixed
+        const [teamRes, customersRes] = await Promise.all([
+          teamService.list(token),
+          customerService.list(token),
+        ]);
+        
+        setSalesmen(teamRes.users);
+        if (!isAdmin) {
+          setSalesmanId(user?.id || '');
+        } else if (teamRes.users.length > 0) {
+          // Default to first salesman for admin if none selected
+          setSalesmanId(teamRes.users[0].id);
+        }
+        
+        const liteCustomers = customersRes.customers.map((c) => ({ id: c.id, companyName: c.companyName }));
+        setCustomers(liteCustomers);
 
-        const res = await customerService.list(token);
-        const lite = res.customers.map((c) => ({ id: c.id, companyName: c.companyName }));
-        setCustomers(lite);
       } catch {
-        // ignore
+        setError('Failed to load initial data.');
       }
     })();
-  }, [token, user?.id]); // [1]
+  }, [token, user?.id, isAdmin]);
 
-  // When customer changes, fetch contacts; set first as primary if none selected yet
+
+  // When customer changes, fetch its contacts
   useEffect(() => {
+    if (!customerId || !token) {
+      setContacts([]);
+      setContactId('');
+      return;
+    }
     (async () => {
-      if (!customerId || !token) {
-        setContacts([]);
-        setContactId('');
-        setContactPerson('');
-        setMobile('');
-        setEmailField('');
-        return;
-      }
       try {
         const res = await customerService.getContacts(customerId, token);
-        const list = res.contacts || [];
-        setContacts(list);
-
-        if (list.length > 0 && !contactId) {
-          const first = list; // fixed
-          setContactId(first.id);
-          setContactPerson(first.name || '');
-          setMobile(first.mobile || '');
-          setEmailField(first.email || '');
-        }
-
-        if (list.length === 0) {
+        const contactList = res.contacts || [];
+        setContacts(contactList);
+        if (contactList.length > 0) {
+          // Auto-select the first contact
+          setContactId(contactList[0].id);
+        } else {
           setContactId('');
-          setContactPerson('');
-          setMobile('');
-          setEmailField('');
         }
       } catch {
         // ignore
       }
     })();
-  }, [customerId, token]); // [1]
+  }, [customerId, token]);
 
-  // If selected contact changes, copy into editable fields
+
+  // If selected contact changes, copy details into editable fields
   useEffect(() => {
-    if (!contactId) return;
     const found = contacts.find((c) => c.id === contactId);
     if (found) {
       setContactPerson(found.name || '');
       setMobile(found.mobile || '');
       setEmailField(found.email || '');
+    } else {
+      // Clear fields if no contact is selected or found
+      setContactPerson('');
+      setMobile('');
+      setEmailField('');
     }
-  }, [contactId, contacts]); // [1]
+  }, [contactId, contacts]);
 
-  const refreshCustomersAndSelect = async (newCustomerId?: string) => {
+
+  const refreshCustomersAndSelect = async (newCustomerId: string) => {
     if (!token) return;
     const res = await customerService.list(token);
-    const lite = res.customers.map((c) => ({ id: c.id, companyName: c.companyName }));
-    setCustomers(lite);
-    if (newCustomerId) setCustomerId(newCustomerId);
+    setCustomers(res.customers.map((c) => ({ id: c.id, companyName: c.companyName })));
+    setCustomerId(newCustomerId);
   };
+
 
   const refreshContactsAndSelectFirst = async () => {
     if (!token || !customerId) return;
@@ -132,45 +140,42 @@ const CreateLead: React.FC = () => {
     const list = res.contacts || [];
     setContacts(list);
     if (list.length > 0) {
-      const first = list; // fixed
-      setContactId(first.id);
-      setContactPerson(first.name || '');
-      setMobile(first.mobile || '');
-      setEmailField(first.email || '');
+      setContactId(list[0].id);
     } else {
       setContactId('');
-      setContactPerson('');
-      setMobile('');
-      setEmailField('');
     }
   };
+
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!customerId) {
+      setError('Please select a customer.');
+      return;
+    }
+    if (isAdmin && !salesmanId) {
+      setError('Please select a salesman.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      if (!customerId) {
-        setError('Please select a company');
-        setSubmitting(false);
-        return;
-      }
       const payload: any = {
         stage,
         forecastCategory,
         customerId,
         source,
-        quoteNumber: quoteNumber || undefined,
-        previewUrl: previewUrl || undefined,
         contactPerson: contactPerson || undefined,
         mobile: mobile || undefined,
         mobileAlt: mobileAlt || undefined,
         email: emailField || undefined,
         city: city || undefined,
         description: description || undefined,
+        contactId: contactId || undefined,
+        salesmanId,
       };
-      if (contactId) payload.contactId = contactId;
-      if (salesmanId) payload.salesmanId = salesmanId;
+
 
       const out = await leadsService.create(payload, token);
       navigate(`/leads/${out.id}`, { replace: true });
@@ -188,11 +193,13 @@ const CreateLead: React.FC = () => {
         <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-gray-900">Create Lead</h1>
-            <p className="text-gray-600">Select division, salesman and contact. Create new customer/contact inline if needed.</p>
+            <p className="text-gray-600">Select company, salesman, and contact. Create new ones inline if needed.</p>
           </div>
+
 
           <form onSubmit={save} className="space-y-6 bg-white p-6 rounded-lg shadow-sm border">
             {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
+
 
             {/* Stage */}
             <div>
@@ -224,25 +231,19 @@ const CreateLead: React.FC = () => {
               </div>
             </div>
 
-            {/* Division + Source */}
+
+            {/* Customer + Source */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Division (Company)</label>
-                <input
-                  type="text"
-                  value={companySearch}
-                  onChange={(e) => setCompanySearch(e.target.value)}
-                  placeholder="Search company..."
-                  className="mb-2 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer (Company)</label>
                 <div className="flex gap-2">
                   <select
                     value={customerId}
                     onChange={(e) => setCustomerId(e.target.value)}
-                    className="flex-1 rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    className="flex-1 rounded-md border-gray-300 bg-white shadow-sm"
                   >
-                    <option value="" disabled hidden>Select company</option>
-                    {filteredCustomers.map((c) => (
+                    <option value="" disabled>Select a company</option>
+                    {customers.map((c) => (
                       <option key={c.id} value={c.id}>{c.companyName}</option>
                     ))}
                   </select>
@@ -251,24 +252,12 @@ const CreateLead: React.FC = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
-                <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full rounded-md border-gray-300 bg-white shadow-sm">
                   {SOURCES.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
             </div>
 
-            {/* Quote + Preview */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Quote Number</label>
-                <input value={quoteNumber} onChange={(e) => setQuoteNumber(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Q-2025-0001" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Preview URL</label>
-                <input value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="https://example.com/preview.png" />
-                {previewUrl && <img src={previewUrl} alt="preview" className="mt-2 h-14 w-14 object-cover rounded border" />}
-              </div>
-            </div>
 
             {/* Contact + Salesman */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -278,60 +267,71 @@ const CreateLead: React.FC = () => {
                   <select
                     value={contactId || ''}
                     onChange={(e) => setContactId(e.target.value || '')}
-                    className="flex-1 rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    className="flex-1 rounded-md border-gray-300 bg-white shadow-sm"
+                    disabled={!customerId}
                   >
-                    <option value="" disabled hidden>{contacts.length ? 'Select contact' : 'No contacts'}</option>
+                    <option value="" disabled>{contacts.length ? 'Select a contact' : 'No contacts available'}</option>
                     {contacts.map((c) => <option key={c.id} value={c.id}>{c.name} {c.mobile ? `(${c.mobile})` : ''}</option>)}
                   </select>
-                  <Button type="button" variant="secondary" onClick={() => setOpenNewContact(true)}>+ New</Button>
+                  <Button type="button" variant="secondary" onClick={() => setOpenNewContact(true)} disabled={!customerId}>+ New</Button>
                 </div>
-                <div className="text-xs text-gray-500 mt-1">Modify below fields to override selected contact details.</div>
+                <div className="text-xs text-gray-500 mt-1">Modify fields below to override selected contact details for this lead.</div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Salesman</label>
-                <select
-                  value={salesmanId}
-                  onChange={(e) => setSalesmanId(e.target.value)}
-                  className="w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                >
-                  <option value="">-- Select Salesman --</option>
-                  {salesmen.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                {isAdmin ? (
+                  <select
+                    value={salesmanId}
+                    onChange={(e) => setSalesmanId(e.target.value)}
+                    className="w-full rounded-md border-gray-300 bg-white shadow-sm"
+                    required
+                  >
+                    <option value="" disabled>-- Select Salesman --</option>
+                    {salesmen.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={user?.name || ''}
+                    disabled
+                    className="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
+                  />
+                )}
               </div>
             </div>
 
-            {/* Contact fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Contact Override Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
-                <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Name</label>
+                <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mobile</label>
-                <input value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                <input value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Alternative</label>
-                <input value={mobileAlt} onChange={(e) => setMobileAlt(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Alternative Mobile</label>
+                <input value={mobileAlt} onChange={(e) => setMobileAlt(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" value={emailField} onChange={(e) => setEmailField(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                <input type="email" value={emailField} onChange={(e) => setEmailField(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
               </div>
             </div>
 
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Description / Notes</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-md border-gray-300 shadow-sm" />
             </div>
+
 
             <div className="flex justify-end gap-3">
               <Button type="button" onClick={() => navigate('/leads')} className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</Button>
@@ -341,19 +341,17 @@ const CreateLead: React.FC = () => {
         </main>
       </div>
 
+
       <NewCustomerModal
         open={openNewCustomer}
         onClose={() => setOpenNewCustomer(false)}
-        onCreated={async (newCustomerId) => {
-          await refreshCustomersAndSelect(newCustomerId);
-          await refreshContactsAndSelectFirst();
-        }}
+        onCreated={refreshCustomersAndSelect}
       />
       <NewContactModal
         open={openNewContact}
         onClose={() => setOpenNewContact(false)}
         customerId={customerId}
-        onCreated={async () => { await refreshContactsAndSelectFirst(); }}
+        onCreated={refreshContactsAndSelectFirst}
       />
     </div>
   );

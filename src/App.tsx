@@ -23,7 +23,7 @@ import InvoicesList from './pages/InvoicesListPage';
 import CreateInvoice from './pages/CreateInvoicePage';
 import Deals from './pages/Deals';
 import DealDetails from './pages/DealsDetails';
-// import Signup from './pages/Signup'
+import SalesReport from './pages/SalesReport';
 function App() {
   return (
     <AuthProvider>
@@ -57,8 +57,8 @@ function App() {
 <Route path="/invoices" element={<InvoicesList />} /> 
 <Route path="/invoices/create" element={<CreateInvoice />} /> 
 <Route path="/deals" element={<Deals />} /> 
-<Route path="/deals/:id" element={<DealDetails />} />{/* <Route path="/signup" element={<Signup />} /> */}
-
+<Route path="/deals/:id" element={<DealDetails />} />
+  <Route path="/sales-report" element={<SalesReport/>} />
           </Route>
 
 

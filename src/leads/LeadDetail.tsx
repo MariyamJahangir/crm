@@ -35,6 +35,8 @@ const QuotePicker: React.FC<{
     (async () => {
       try {
         const res = await quotesService.listByLead(leadId, token);
+                console.log('--- Quotes Loaded from Server ---', res.quotes);
+
         setQuotes(res.quotes);
       } catch (e: any) {
         setErr(e?.data?.message || 'Failed to load quotes');
@@ -81,25 +83,32 @@ const QuotePicker: React.FC<{
     }
   };
 
-  const selectMain = async (q: Quote) => {
-    const target = currentMain === q.quoteNumber ? q.quoteNumber : q.quoteNumber;
-    onMainChange(target);
-    setBusy(q.id);
-    try {
-      await quotesService.setMainQuote(leadId, target, token);
-    } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to set main quote');
-      onMainChange(currentMain || null);
-    } finally {
-      setBusy(null);
-    }
-  };
+
+const selectMain = async (q: Quote) => {
+  const originalMainNumber = currentMain;
+  onMainChange(q.quoteNumber); // Optimistic UI update
+  setBusy(q.id);
+
+  try {
+    // This correctly sends the string "Q-2025-..." to the backend
+    await quotesService.setMainQuote(leadId, q.quoteNumber, token);
+    
+    // The backend will now find the quote and update the lead successfully.
+
+  } catch (e: any) {
+    setErr(e?.data?.message || 'Failed to set main quote');
+    onMainChange(originalMainNumber || null); // Revert on failure
+  } finally {
+    setBusy(null);
+  }
+};
 
   if (err) return <div className="text-red-600">{err}</div>;
   if (!quotes.length) return <div className="text-sm text-gray-600">No quotes yet.</div>;
 
+
   return (
-    <>
+     <>
       <div className="flex flex-wrap gap-3">
         {quotes.map((q) => {
           const isMain = currentMain === q.quoteNumber;
@@ -115,6 +124,8 @@ const QuotePicker: React.FC<{
                 <span className="font-medium">{q.quoteNumber}</span>
               </button>
 
+
+
               <button
                 type="button"
                 onClick={() => download(q)}
@@ -124,6 +135,8 @@ const QuotePicker: React.FC<{
               >
                 ⬇️
               </button>
+
+
 
               <label className="inline-flex items-center gap-1 text-xs text-gray-600 ml-2">
                 <input
@@ -141,6 +154,8 @@ const QuotePicker: React.FC<{
           );
         })}
       </div>
+
+
 
       <PreviewModal
         open={preview.open}
@@ -163,14 +178,18 @@ const LeadDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
+
   const socket = useSocket();
+
 
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+
   const [openFollowup, setOpenFollowup] = useState(false);
+
 
   const API_BASE =
     import.meta.env.VITE_NODE_ENV == 'development'
@@ -292,8 +311,11 @@ const LeadDetail: React.FC = () => {
       .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime());
   }, [lead?.followups]);
 
-  const upcoming: Followup | null = visibleFollowups.length ? visibleFollowups : null;
+
+  // CORRECTED LINES
+  const upcoming: Followup | null = visibleFollowups.length > 0 ? visibleFollowups[0] : null;
   const others: Followup[] = visibleFollowups.length > 1 ? visibleFollowups.slice(1) : [];
+
 
   const onUpload = async (files: FileList | null) => {
     if (!files || !files.length || !id || !token) return;
@@ -402,11 +424,14 @@ const LeadDetail: React.FC = () => {
                   <div><span className="text-gray-500">Forecast:</span> {lead.forecastCategory}</div>
                   <div><span className="text-gray-500">Source:</span> {lead.source || '-'}</div>
 
+
                   <div><span className="text-gray-500">Company:</span> {lead.companyName || '-'}</div>
                   <div><span className="text-gray-500">Division:</span> {lead.division || '-'}</div>
 
+
                   <div><span className="text-gray-500">Quote #:</span> {lead.quoteNumber || '-'}</div>
                   <div><span className="text-gray-500">Preview URL:</span> {lead.previewUrl || '-'}</div>
+
 
                   {lead?.nextFollowupAt && (
                     <div className="text-sm">
@@ -414,20 +439,18 @@ const LeadDetail: React.FC = () => {
                     </div>
                   )}
 
+
                   <div><span className="text-gray-500">Lost Reason:</span> {lead.lostReason || '-'}</div>
+
 
                   <div><span className="text-gray-500">Actual Date:</span> {lead.actualDate ? new Date(lead.actualDate).toLocaleString() : '-'}</div>
                   <div><span className="text-gray-500">Created:</span> {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : '-'}</div>
                   <div><span className="text-gray-500">Updated:</span> {lead.updatedAt ? new Date(lead.updatedAt).toLocaleString() : '-'}</div>
 
-                  <div><span className="text-gray-500">Salesman:</span> {lead.salesman?.name || '-'}</div>
-                  <div><span className="text-gray-500">Customer ID:</span> {lead.customerId || '-'}</div>
-
                   <div><span className="text-gray-500">Contact:</span> {lead.contactPerson || '-'}</div>
                   <div><span className="text-gray-500">Mobile:</span> {lead.mobile || '-'} {lead.mobileAlt ? `/ ${lead.mobileAlt}` : ''}</div>
                   <div><span className="text-gray-500">Email:</span> {lead.email || '-'}</div>
                   <div><span className="text-gray-500">City:</span> {lead.city || '-'}</div>
-
                   <div><span className="text-gray-500">Creator:</span> {lead.creatorType ? `${lead.creatorType} (${lead.creatorId})` : '-'}</div>
                 </div>
                 {lead.previewUrl && <img src={lead.previewUrl} alt="preview" className="mt-3 h-14 w-14 object-cover rounded border" />}
@@ -450,7 +473,8 @@ const LeadDetail: React.FC = () => {
                   </div>
                 )}
 
-                {others.length ? (
+
+                {others.length > 0 ? (
                   <ul className="space-y-2 text-sm">
                     {others.map((f) => (
                       <li key={f.id} className="border rounded px-3 py-2">

@@ -1,15 +1,15 @@
 const express = require('express');
 const { sequelize } = require('../config/database');
 const { body, validationResult } = require('express-validator');
-
+const pdf = require('html-pdf'); 
 // Model Imports
 const Invoice = require('../models/Invoices');
 const InvoiceItem = require('../models/InvoiceItem');
 const Quote = require('../models/Quote');
 const QuoteItem = require('../models/QuoteItem');
 const Lead = require('../models/Lead');
-const { authenticateToken } = require('../middleware/auth');
-
+const { authenticateToken,isAdmin } = require('../middleware/auth');
+const puppeteer = require('puppeteer');
 const router = express.Router();
 
 // --- Helper Functions ---
@@ -133,7 +133,20 @@ function buildInvoiceHTML({ invoice, items }) {
  */
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    // 1. Determine the user's role and ID from the authentication token.
+    const isUserAdmin = isAdmin(req);
+    const userId = req.subjectId; // Assuming your token middleware provides this ID
+
+    // 2. Create a dynamic 'where' clause for the database query.
+    const whereClause = {};
+    if (!isUserAdmin) {
+      // If the user is NOT an admin, restrict the query to their own invoices.
+      whereClause.createdById = userId;
+    }
+
+    // 3. Execute the query using the dynamic where clause.
     const invoices = await Invoice.findAll({
+      where: whereClause, // This applies the role-based filter.
       order: [['invoiceDate', 'DESC']],
       include: [
         { model: InvoiceItem, as: 'items' },
@@ -141,20 +154,73 @@ router.get('/', authenticateToken, async (req, res) => {
           model: Quote,
           as: 'quote',
           attributes: ['id', 'quoteNumber'],
-          required: false // This fixes the "not associated" error
+          required: false
         }
       ]
     });
+
     res.json({ success: true, invoices });
+
   } catch (error) {
+    console.error('List Invoices Error:', error); // Good practice to log the error
     res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
   }
 });
 
-/**
- * POST /api/invoices/from-quote/:quoteId
- * Creates a new invoice from an existing, accepted quote.
- */
+
+router.get('/:id/download', authenticateToken, async (req, res) => {
+  try {
+    const invoice = await Invoice.findByPk(req.params.id, {
+      include: [
+        { model: InvoiceItem, as: 'items' },
+        { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
+      ]
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+
+    // 1. Generate HTML content
+    const html = buildInvoiceHTML({ 
+      invoice: invoice.toJSON(), 
+      items: (invoice.items || []).map(i => i.toJSON()) 
+    });
+    
+    const invoiceNumber = invoice.invoiceNumber || 'invoice';
+
+    const options = {
+      format: 'A4',
+      border: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    };
+
+    // 2. Use pdf.create with a callback, just like your quote route
+    pdf.create(html, options).toBuffer((err, buffer) => {
+      if (err) {
+        // This is the source of the instability and timeout errors.
+        console.error('html-pdf generation error:', err);
+        return res.status(500).json({ success: false, message: 'Failed to generate PDF.' });
+      }
+      
+      // 3. Set headers and send the response if successful
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=${invoiceNumber}.pdf`);
+      res.send(buffer);
+    });
+
+  } catch (e) {
+    // This outer catch block may not be reached if PhantomJS crashes the entire process.
+    console.error('Outer PDF Download Error:', e);
+    res.status(500).json({ success: false, message: 'An unexpected server error occurred while generating the PDF.' });
+  }
+});
+
+
 router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
     const { quoteId } = req.params;
     const transaction = await sequelize.transaction();

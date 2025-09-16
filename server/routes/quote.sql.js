@@ -12,7 +12,7 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs/promises');
 const { Op } = require('sequelize');
-
+const pdf = require('html-pdf');
 const router = express.Router();
 
 // --- Constants ---
@@ -21,7 +21,20 @@ const FINAL_STATES = new Set(['Accepted', 'Rejected', 'Expired']);
 
 // --- Actor & Logging Helpers ---
 function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
+async function canModifyLead(req, lead) {
+  // An admin can always modify.
+  const isAdmin = req.subjectType === 'ADMIN';
+  if (isAdmin) {
+    return true;
+  }
 
+  // A non-admin can modify if they are the creator or the assigned salesman.
+  const selfId = String(req.subjectId);
+  const isCreator = String(lead.creatorId) === selfId && lead.creatorType === 'MEMBER';
+  const isSalesman = String(lead.salesmanId) === selfId;
+
+  return isCreator || isSalesman;
+}
 async function resolveActorName(req) {
   if (req.subjectType === 'ADMIN') return 'Admin';
   if (req.subjectType === 'MEMBER') {
@@ -190,13 +203,29 @@ async function getBrowser() {
 }
 
 async function withPage(fn) {
-  const browser = await getBrowser();
-  if (!browser) throw new Error('PDF renderer unavailable');
-  const page = await browser.newPage();
-  page.setDefaultNavigationTimeout(120000);
-  page.setDefaultTimeout(120000);
-  try { return await fn(page); }
-  finally { try { await page.close(); } catch { /* ignore */ } }
+  let browser;
+  try {
+    // Launch a new browser instance for every request. This is more stable.
+    browser = await puppeteer.launch({
+      headless: "new",
+      // These arguments are important for stability, especially in production
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      // Set a generous timeout for the browser to launch
+      timeout: 60000, 
+    });
+    
+    const page = await browser.newPage();
+    // It's better to set the timeout on the page itself
+    await page.setDefaultNavigationTimeout(60000); 
+    await page.setDefaultTimeout(60000);
+
+    return await fn(page);
+  } finally {
+    // Ensure the browser is always closed, even if an error occurs
+    if (browser) {
+      await browser.close();
+    }
+  }
 }
 
 async function canSeeLead(req, lead) {
@@ -210,17 +239,32 @@ async function canSeeLead(req, lead) {
 // List all quotes with role-based visibility
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const include = [{ model: Lead, as: 'lead' }];
-    let quotes = await Quote.findAll({ include, order: [['createdAt','DESC']] });
+    const leadWhereClause = {};
     if (!isAdmin(req)) {
       const self = String(req.subjectId);
-      quotes = quotes.filter(q => q.lead && (String(q.lead.creatorId) === self || String(q.lead.salesmanId) === self));
+      leadWhereClause[Op.or] = [
+        { creatorId: self },
+        { salesmanId: self }
+      ];
     }
+
+    const quotes = await Quote.findAll({
+      include: [{
+        model: Lead,
+        as: 'lead',
+        where: leadWhereClause,
+        required: true // Ensures that only quotes with a matching lead are returned
+      }],
+      order: [['createdAt', 'DESC']]
+    });
+
     res.json({ success: true, quotes });
   } catch (e) {
+    console.error('List Quotes Error:', e); // Added more specific error logging
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 // Create quote with approval logic
 router.post('/leads/:leadId/quotes', authenticateToken, [
@@ -292,6 +336,12 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
     });
 
     await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: created.id })));
+
+    // **EDIT: Update the lead's stage to 'Quote'**
+    if (lead.stage !== 'Quote') {
+        await lead.update({ stage: 'Quote' });
+    }
+
     await writeLeadLog(req, lead.id, 'QUOTE_CREATED', `Created quote #${quoteNumber}. Status: ${initialStatus}`);
     
     res.status(201).json({
@@ -306,6 +356,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 
 // ADMIN APPROVE QUOTE
@@ -395,7 +446,52 @@ router.get('/leads/:leadId/quotes/:quoteId/preview', authenticateToken, async (r
   }
 });
 
+router.post('/leads/:leadId/main-quote', authenticateToken, [
+  body('quoteNumber').isString().notEmpty().withMessage('A valid quoteNumber is required.'),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, errors: errors.array() });
+  }
 
+  const { leadId } = req.params;
+  const { quoteNumber } = req.body;
+
+
+  try {
+    const lead = await Lead.findByPk(leadId);
+    if (!lead) {
+      return res.status(404).json({ success: false, message: 'Lead not found' });
+    }
+
+    if (!(await canModifyLead(req, lead))) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+    
+    // This is the query that is failing
+    const quote = await Quote.findOne({ where: { quoteNumber: quoteNumber, leadId: leadId } });
+
+    // Check if the query failed
+    if (!quote) {
+      console.error('DATABASE LOOKUP FAILED: No quote found with the provided details.');
+      return res.status(404).json({ success: false, message: 'Quote not found or does not belong to this lead' });
+    }
+
+    // If successful, update and save
+    lead.quoteNumber = quote.quoteNumber;
+    await lead.save();
+
+    res.json({ 
+      success: true, 
+      message: `Quote ${quote.quoteNumber} is now the main quote.`,
+      lead: lead
+    });
+
+  } catch (e) {
+    console.error('Set main quote error:', e);
+    res.status(500).json({ success: false, message: e.message || 'Server error' });
+  }
+});
 
 // Update quote status
 router.put('/leads/:leadId/quotes/:quoteId', authenticateToken, [
@@ -428,26 +524,31 @@ router.put('/leads/:leadId/quotes/:quoteId', authenticateToken, [
  }
 });
 
+// THIS IS FOR DEBUGGING - THE FINAL CODE IS IN PART 2
 
-// Download PDF with approval check
 router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, res) => {
+  console.log(`[PDF DEBUG] - 1. Request received for quote ${req.params.quoteId}`);
   try {
     const quote = await Quote.findByPk(req.params.quoteId, { include: [{ model: QuoteItem, as: 'items' }] });
     if (!quote || String(quote.leadId) !== String(req.params.leadId)) {
+      console.error('[PDF DEBUG] - ERROR: Quote not found.');
       return res.status(404).json({ success: false, message: 'Quote not found' });
     }
+   
 
-    // SECURITY: Enforce approval workflow
     if (!quote.isApproved && !isAdmin(req)) {
+      console.error('[PDF DEBUG] - ERROR: Permission denied. Quote not approved.');
       return res.status(403).json({ success: false, message: 'Quote requires admin approval for download.' });
     }
+   
 
     const lead = await Lead.findByPk(quote.leadId, {
       include: [
-        { model: Customer, as: 'customer', attributes: ['id','companyName','address'] },
-        { model: Member, as: 'salesman', attributes: ['id','name','email'] },
+        { model: Customer, as: 'customer', attributes: ['id', 'companyName', 'address'] },
+        { model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] },
       ]
     });
+    
 
     const html = buildQuoteHTML({
       quote: quote.toJSON(),
@@ -455,26 +556,39 @@ router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, 
       lead: lead ? lead.toJSON() : null,
       customer: (lead && lead.customer) ? lead.customer.toJSON() : null
     });
+  
 
-    const pdf = await withPage(async (page) => {
-      await page.setContent(html, { waitUntil: 'domcontentloaded' });
-      return await page.pdf({ format: 'A4', printBackground: true, margin: { top: '16mm', right: '12mm', bottom: '16mm', left: '12mm' } });
+    const options = {
+      format: 'A4',
+      border: { top: '16mm', right: '12mm', bottom: '16mm', left: '12mm' }
+    };
+ 
+
+    pdf.create(html, options).toBuffer(async (err, buffer) => {
+      if (err) {
+        // This block might not even be reached if PhantomJS crashes hard.
+        console.error('[PDF DEBUG] - FATAL ERROR inside pdf.create callback:', err);
+        return res.status(500).json({ success: false, message: 'Failed to generate PDF inside callback.' });
+      }
+      
+     
+      await writeLeadLog(req, quote.leadId, 'QUOTE_DOWNLOADED', `${actorLabel(req)} downloaded quote #${quote.quoteNumber} PDF`).catch(() => {});
+     
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${quote.quoteNumber}.pdf"`);
+      res.send(buffer);
+     
     });
 
-    writeLeadLog(req, quote.leadId, 'QUOTE_DOWNLOADED', `${actorLabel(req)} downloaded quote #${quote.quoteNumber} PDF`).catch(() => {});
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${quote.quoteNumber}.pdf"`);
-    res.send(pdf);
   } catch (e) {
-    const msg = (e && e.message) ? e.message : String(e);
-    console.error('Quote PDF Error:', msg);
-    if (msg.includes('WS endpoint') || msg.includes('Timed out')) {
-      return res.status(500).json({ success: false, message: 'PDF renderer timed out. Please retry.' });
-    }
-    res.status(500).json({ success: false, message: 'Failed to generate PDF.' });
+    console.error('[PDF DEBUG] - FATAL ERROR in outer try/catch block:', e);
+    res.status(500).json({ success: false, message: 'An unexpected server error occurred.' });
   }
 });
+
+
+
 router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
   const lead = await Lead.findByPk(req.params.leadId);
   if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });

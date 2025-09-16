@@ -25,12 +25,7 @@ interface FormErrors {
 }
 
 const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => {
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const [formData, setFormData] = useState<FormData>({ name: '', email: '', password: '', confirmPassword: '' });
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -48,8 +43,7 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
     else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
 
     if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password';
-    else if (formData.password !== formData.confirmPassword)
-      newErrors.confirmPassword = 'Passwords do not match';
+    else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -78,111 +72,48 @@ const Signup: React.FC<SignupProps> = ({ onSwitchToLogin, onSignupSuccess }) => 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name as keyof FormErrors])
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name as keyof FormErrors]) setErrors(prev => ({ ...prev, [name]: undefined }));
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center relative p-4"
-      style={{ backgroundImage: "url('/public/unsplash_G5A5ZNjS2tE.png')" }}
-    >
-      {/* Overlay to darken background for readability */}
-      <div className="absolute inset-0 bg-midnight-900/20"></div>
-
-      <div className="relative bg-cloud-800/10 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-cloud-200/30">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w/full max-w-md">
         <div className="text-center mb-8">
-          <div className="bg-sky-500/30 p-3 rounded-full w-fit mx-auto mb-4 shadow-md">
-            <User className="h-8 w-8 text-sky-300" />
+          <div className="bg-blue-100 p-3 rounded-full w-fit mx-auto mb-4">
+            <User className="h-8 w-8 text-blue-600" />
           </div>
-          <h1 className="text-3xl font-bold text-ivory-100">Create Account</h1>
-          <p className="text-cloud-200 mt-2">Join us today and get started</p>
+          <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
+          <p className="text-gray-600 mt-2">Join us today and get started</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Input
-            label="Full Name"
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            error={errors.name}
-            placeholder="Enter your full name"
-          />
-
-          <Input
-            label="Email Address"
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            error={errors.email}
-            placeholder="Enter your email"
-          />
+          <Input label="Full Name" type="text" name="name" value={formData.name} onChange={handleChange} error={errors.name} placeholder="Enter your full name" />
+          <Input label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} error={errors.email} placeholder="Enter your email" />
 
           <div className="relative">
-            <Input
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              error={errors.password}
-              placeholder="Enter your password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((p) => !p)}
-              className="absolute right-3 top-9 text-cloud-300 hover:text-sky-400 transition"
-            >
+            <Input label="Password" type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} error={errors.password} placeholder="Enter your password" />
+            <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-9 text-gray-500 hover:text-gray-700">
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
 
           <div className="relative">
-            <Input
-              label="Confirm Password"
-              type={showConfirmPassword ? 'text' : 'password'}
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              error={errors.confirmPassword}
-              placeholder="Confirm your password"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword((p) => !p)}
-              className="absolute right-3 top-9 text-cloud-300 hover:text-sky-400 transition"
-            >
+            <Input label="Confirm Password" type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} error={errors.confirmPassword} placeholder="Confirm your password" />
+            <button type="button" onClick={() => setShowConfirmPassword(p => !p)} className="absolute right-3 top-9 text-gray-500 hover:text-gray-700">
               {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
 
-          {errors.general && (
-            <div className="bg-stone-700/40 border border-stone-500/40 text-stone-100 px-4 py-3 rounded-lg">
-              {errors.general}
-            </div>
-          )}
+          {errors.general && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">{errors.general}</div>}
 
-          <Button
-            type="submit"
-            loading={loading}
-            className="w-full bg-sky-500 hover:bg-sky-400 text-midnight-900 font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-md"
-          >
-            Create Account
-          </Button>
+          <Button type="submit" loading={loading} className="w-full">Create Account</Button>
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-cloud-200">
+          <p className="text-gray-600">
             Already have an account?{' '}
-            <button
-              onClick={onSwitchToLogin}
-              className="text-sky-300 hover:text-sky-200 font-medium transition"
-            >
-              Sign in
-            </button>
+            <button onClick={onSwitchToLogin} className="text-blue-600 hover:text-blue-700 font-medium">Sign in</button>
           </p>
         </div>
       </div>

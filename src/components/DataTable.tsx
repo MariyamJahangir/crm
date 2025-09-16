@@ -1,4 +1,3 @@
-// src/components/DataTable.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 
 type SortDir = 'ASC' | 'DESC';
@@ -19,14 +18,14 @@ type InitialSort = {
 type Props<Row extends Record<string, any>> = {
   rows: Row[];
   columns: Column<Row>[];
-  filterKeys?: string[]; // dot-notation allowed for nested props
+  filterKeys?: string[];
   initialSort?: InitialSort;
-  searchPlaceholder?: string;
   className?: string;
   pageSizeOptions?: number[];
   defaultPageSize?: number;
 };
 
+// Utility to get a nested value from an object using a dot-notation path
 function getValueByPath(obj: any, path: string): any {
   if (!obj || !path) return undefined;
   const parts = path.split('.');
@@ -38,30 +37,39 @@ function getValueByPath(obj: any, path: string): any {
   return cur;
 }
 
+// --- HIGHLIGHTED CHANGE: Corrected Sorting Logic ---
+// The function was updated to check for dates *before* checking for numbers.
+// This prevents ISO date strings (like "2025-...") from being incorrectly
+// treated as simple numbers, thus fixing chronological sorting.
 function compareVals(a: any, b: any) {
-  // Normalize for compare: strings case-insensitive, numbers as-is, dates
-  const pa = parseFloat(a);
-  const pb = parseFloat(b);
+  // First, attempt to parse values as dates.
   const da = Date.parse(a);
   const db = Date.parse(b);
 
-  if (!Number.isNaN(pa) && !Number.isNaN(pb)) {
-    return pa < pb ? -1 : pa > pb ? 1 : 0;
-  }
   if (!Number.isNaN(da) && !Number.isNaN(db)) {
-    return da < db ? -1 : da > db ? 1 : 0;
+    return da - db; // Compare as numerical timestamps
   }
+
+  // If they are not dates, attempt to parse them as numbers.
+  const pa = parseFloat(a);
+  const pb = parseFloat(b);
+
+  if (!Number.isNaN(pa) && !Number.isNaN(pb)) {
+    return pa - pb;
+  }
+
+  // As a fallback, perform a case-insensitive string comparison.
   const sa = (a ?? '').toString().toLowerCase();
   const sb = (b ?? '').toString().toLowerCase();
-  return sa < sb ? -1 : sa > sb ? 1 : 0;
+  return sa.localeCompare(sb);
 }
+// --- END HIGHLIGHT ---
 
 const DataTable = <Row extends Record<string, any>>({
   rows,
   columns,
   filterKeys = [],
   initialSort,
-  searchPlaceholder = 'Search...',
   className = '',
   pageSizeOptions = [10, 20, 50, 100],
   defaultPageSize = 20,
@@ -73,7 +81,6 @@ const DataTable = <Row extends Record<string, any>>({
   const [page, setPage] = useState<number>(1);
 
   useEffect(() => {
-    // Reset to page 1 whenever filters or search change
     setPage(1);
   }, [q, pageSize, rows]);
 
@@ -102,8 +109,6 @@ const DataTable = <Row extends Record<string, any>>({
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
-    const col = columns.find((c) => c.key === sortKey);
-    if (!col) return filtered;
     const arr = [...filtered];
     arr.sort((a, b) => {
       const va = getValueByPath(a, sortKey);
@@ -120,34 +125,24 @@ const DataTable = <Row extends Record<string, any>>({
   const startIdx = (pageSafe - 1) * pageSize;
   const view = sorted.slice(startIdx, startIdx + pageSize);
 
+  // --- HIGHLIGHTED CHANGE: Updated Truncation Logic ---
+  // The character limit for truncation was changed from 25 to 20
+  // as per your request.
+  const renderCellContent = (value: any) => {
+    const text = String(value);
+    if (text.length > 20) {
+      return (
+        <span title={text}>
+          {text.substring(0, 20)}...
+        </span>
+      );
+    }
+    return text;
+  };
+  // --- END HIGHLIGHT ---
+
   return (
     <div className={`w-full ${className}`}>
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <input
-            className="border rounded px-3 py-2 w-64"
-            placeholder={searchPlaceholder}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          <div className="text-sm text-gray-600">{total} record(s)</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-700">Rows per page</label>
-          <select
-            className="border rounded px-2 py-1 bg-white"
-            value={pageSize}
-            onChange={(e) => setPageSize(Number(e.target.value))}
-          >
-            {pageSizeOptions.map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Table */}
       <div className="w-full overflow-x-auto border rounded">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 border-b">
@@ -189,7 +184,10 @@ const DataTable = <Row extends Record<string, any>>({
                     <td key={c.key} className="px-3 py-2 align-top">
                       {c.render ? c.render(r) : (() => {
                         const v = getValueByPath(r, c.key);
-                        return v != null && v !== '' ? String(v) : '-';
+                        if (v != null && v !== '') {
+                          return renderCellContent(v);
+                        }
+                        return '-';
                       })()}
                     </td>
                   ))}
@@ -200,7 +198,6 @@ const DataTable = <Row extends Record<string, any>>({
         </table>
       </div>
 
-      {/* Pagination */}
       <div className="flex items-center justify-between mt-3">
         <div className="text-sm text-gray-600">
           Page {pageSafe} of {pageCount}
@@ -234,6 +231,18 @@ const DataTable = <Row extends Record<string, any>>({
           >
             Last »
           </button>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-700">Rows per page</label>
+            <select
+              className="border rounded px-2 py-1 bg-white"
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+            >
+              {pageSizeOptions.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
     </div>
@@ -241,3 +250,4 @@ const DataTable = <Row extends Record<string, any>>({
 };
 
 export default DataTable;
+

@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Eye, Edit, Trash2 } from 'lucide-react';
+// NEW: Import the Download icon from lucide-react
+import { Eye, Download } from 'lucide-react';
 
 // Component Imports
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
 import DataTable from '../components/DataTable';
 import StatusDropdown from '../components/StatusDropdown';
-import PreviewModal from '../components/PreviewModal'; // Using the generic PreviewModal
+import PreviewModal from '../components/PreviewModal';
 
 // Service and Type Imports
 import { invoiceService, Invoice } from '../services/invoiceService';
-
-
 
 const customerTypeStyles: Record<string, string> = {
   Customer: 'bg-blue-100 text-blue-800',
@@ -28,8 +27,11 @@ const InvoicesListPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // State for the preview modal, similar to the quotes page
+  // State for the preview modal
   const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
+  
+  // NEW: State to track which invoice is currently being downloaded
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -68,8 +70,30 @@ const InvoicesListPage: React.FC = () => {
     );
   };
   
- 
+  /**
+   * NEW: Handler for the download PDF action.
+   */
+ const handleDownload = async (invoice: Invoice) => {
+    if (!token) return;
+    setDownloadingId(invoice.id);
+    setError(null);
 
+    try {
+      const pdfBlob = await invoiceService.downloadPdf(invoice.id, token);
+      const url = window.URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${invoice.invoiceNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to download invoice.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
@@ -97,6 +121,7 @@ const InvoicesListPage: React.FC = () => {
                   render: (r) => (
                     <div>
                       <div>{r.customerName}</div>
+                      {/* Note: 'customerType' is not on the Invoice model, this will only render if added */}
                       {r.customerType && (
                         <span className={`mt-1 inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${customerTypeStyles[r.customerType] || 'bg-gray-100'}`}>
                           {r.customerType}
@@ -129,11 +154,26 @@ const InvoicesListPage: React.FC = () => {
                       <Button variant="icon" title="Preview" onClick={() => showPreview(r)}>
                         <Eye size={18} />
                       </Button>
+                      
+                      {/* NEW: Download Button */}
+                      <Button
+                        variant="icon"
+                        title="Download PDF"
+                        onClick={() => handleDownload(r)}
+                        disabled={downloadingId === r.id} // Disable button while downloading this item
+                      >
+                        {/* Show a spinner or the icon */}
+                        {downloadingId === r.id ? (
+                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                        ) : (
+                           <Download size={18} />
+                        )}
+                      </Button>
                     </div>
                   )
                 }
               ]}
-              filterKeys={['invoiceNumber', 'customerName', 'status', 'customerType']}
+              filterKeys={['invoiceNumber', 'customerName', 'status']}
               searchPlaceholder="Filter invoices..."
             />
           )}

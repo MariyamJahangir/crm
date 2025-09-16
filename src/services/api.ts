@@ -3,7 +3,7 @@ export interface ApiError extends Error {
   data?: any;
 }
 
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env.VITE_NODE_ENV == 'development'
     ? import.meta.env.VITE_DEV_API_BASE
     : import.meta.env.VITE_PROD_API_BASE;

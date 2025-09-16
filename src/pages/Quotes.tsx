@@ -4,9 +4,10 @@ import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { quotesService, Quote } from '../services/quotesService';
-import { invoiceService } from '../services/invoiceService'; // Ensure this service is correctly implemented
+import { invoiceService } from '../services/invoiceService';
 import DataTable from '../components/DataTable';
 import PreviewModal from '../components/PreviewModal';
+
 
 // --- Rejection Dialog Sub-component ---
 const RejectDialog: React.FC<{
@@ -54,10 +55,12 @@ const RejectDialog: React.FC<{
   );
 };
 
+
 // --- Constants ---
 const memberStatuses = ['Draft', 'Sent'] as const;
 const adminStatuses = ['Draft', 'Sent', 'Accepted', 'Rejected', 'Expired'] as const;
 const FINAL_STATES = ['Accepted', 'Rejected', 'Expired'];
+
 
 // --- Main Quotes Component ---
 const Quotes: React.FC = () => {
@@ -99,6 +102,38 @@ const Quotes: React.FC = () => {
       (x.customerName || '').toLowerCase().includes(q)
     );
   }, [quotes, search]);
+  
+  // --- [NEW] PDF Download Handler ---
+  const handleDownload = async (quote: Quote) => {
+    if (!token) return;
+    setPendingAction(quote.id); // Set busy state for this specific quote
+    setErr(null);
+    try {
+      // 1. Fetch the PDF data as a blob from the service
+      const blob = await quotesService.downloadPdf(quote.leadId, quote.id, token);
+
+      // 2. Create a temporary URL for the blob
+      const url = window.URL.createObjectURL(blob);
+
+      // 3. Create an anchor element to trigger the download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${quote.quoteNumber}.pdf`; // Use the actual quote number for the filename
+      document.body.appendChild(a);
+      
+      // 4. Programmatically click the anchor
+      a.click();
+      
+      // 5. Clean up the URL and anchor element to prevent memory leaks
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+    } catch (e: any) {
+      setErr(e.message || 'Failed to download PDF.');
+    } finally {
+      setPendingAction(null); // Clear busy state
+    }
+  };
 
   // --- Action Handlers ---
   const showPreview = async (quote: Quote) => {
@@ -210,14 +245,23 @@ const Quotes: React.FC = () => {
         )}
 
         <Button size="sm" variant="secondary" onClick={() => showPreview(quote)} disabled={isBusy}>Preview</Button>
-        <Button size="sm" onClick={() => canDownload ? quotesService.downloadPdf(quote.leadId, quote.id, token) : undefined} disabled={!canDownload || isBusy} title={!canDownload ? "Waiting for admin approval" : "Download PDF"}>Download</Button>
+        
+        {/* --- [UPDATED] This button now calls handleDownload --- */}
+        <Button 
+          size="sm" 
+          onClick={() => handleDownload(quote)} 
+          disabled={!canDownload || isBusy} 
+          title={!canDownload ? "Waiting for admin approval" : "Download PDF"}
+        >
+          {isBusy && pendingAction === quote.id ? 'Downloading...' : 'Download'}
+        </Button>
       </div>
     );
   };
 
   // --- Main Component Render ---
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar />
       <div className="pl-64">
         <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

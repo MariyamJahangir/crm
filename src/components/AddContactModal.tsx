@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import { useAuth } from '../contexts/AuthContext';
-// Use customerService instead of contactsService
 import { customerService, Customer } from '../services/customerService'; 
 
 interface Props {
@@ -18,13 +17,29 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
     designation: '',
-    department: '', // Assuming department is a field you want to add
+    department: '',
     email: '',
     mobile: '',
     fax: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ✅ Reset form every time modal opens
+  useEffect(() => {
+    if (open) {
+      setSelectedCustomerId('');
+      setFormData({
+        name: '',
+        designation: '',
+        department: '',
+        email: '',
+        mobile: '',
+        fax: '',
+      });
+      setError(null);
+    }
+  }, [open]);
 
   // Fetch customers when the modal is opened
   useEffect(() => {
@@ -54,10 +69,9 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
     setError(null);
 
     try {
-      // Use the specific addContact method from customerService
       await customerService.addContact(selectedCustomerId, formData, token);
-      onSuccess(); // Notify parent to reload data
-      onClose();   // Close the modal
+      onSuccess(); // reload data in parent
+      onClose();   // close modal
     } catch (err: any) {
       setError(err?.data?.message || 'Failed to add contact.');
     } finally {
@@ -95,7 +109,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
             <label className="block text-sm font-medium text-gray-700">Designation</label>
             <input type="text" name="designation" value={formData.designation} onChange={handleChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
           </div>
-           <div>
+          <div>
             <label className="block text-sm font-medium text-gray-700">Department</label>
             <input type="text" name="department" value={formData.department} onChange={handleChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
           </div>
@@ -107,7 +121,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
             <label className="block text-sm font-medium text-gray-700">Mobile</label>
             <input type="text" name="mobile" value={formData.mobile} onChange={handleChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
           </div>
-           <div>
+          <div>
             <label className="block text-sm font-medium text-gray-700">Fax</label>
             <input type="text" name="fax" value={formData.fax} onChange={handleChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
           </div>

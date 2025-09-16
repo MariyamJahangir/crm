@@ -191,7 +191,7 @@ router.post('/', authenticateToken, [
     res.status(500).json({ success: false, message: 'server error' });
   }
 });
-
+  
 // GET /customers/:id - get detail customer info
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
@@ -266,14 +266,23 @@ router.put('/:id', authenticateToken, [
       industry, website, category, salesmanId
     } = req.body;
 
+    // --- SOLUTION ---
+    // Update fields, converting empty strings for ENUMs to null
     if (companyName !== undefined) c.companyName = companyName;
     if (contactNumber !== undefined) c.contactNumber = contactNumber;
     if (email !== undefined) c.email = email;
     if (vatNo !== undefined) c.vatNo = vatNo;
     if (address !== undefined) c.address = address;
-    if (industry !== undefined) c.industry = industry;
     if (website !== undefined) c.website = website;
-    if (category !== undefined) c.category = category;
+    
+    // Convert empty strings to null for ENUM columns
+    if (industry !== undefined) {
+      c.industry = industry === '' ? null : industry;
+    }
+    if (category !== undefined) {
+      c.category = category === '' ? null : category;
+    }
+    // --- END SOLUTION ---
 
     if (salesmanId !== undefined) {
       if (!isAdmin(req))
