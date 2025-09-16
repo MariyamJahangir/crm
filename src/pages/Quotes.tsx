@@ -217,7 +217,7 @@ const Quotes: React.FC = () => {
 
   // --- Main Component Render ---
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen ">
       <Sidebar />
       <div className="pl-64">
         <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

@@ -85,12 +85,14 @@ const Sidebar: React.FC = () => {
             Leads
           </span>
         </NavLink>
-           <NavLink
+        <NavLink
           to="/deals"
           className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
         >
-          <Users size={18} className="mr-3" />
+          <Users size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           Deals
+          </span>
         </NavLink>
 
         {/* --- CHANGE: Added Building2 icon for consistency --- */}
@@ -127,19 +129,23 @@ const Sidebar: React.FC = () => {
             Contacts
           </span>
         </NavLink>
-<NavLink
+        <NavLink
           to="/invoices"
           className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
         >
-          <Bell size={18} className="mr-3" />
+          <Bell size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           invoice
+          </span>
         </NavLink>
         <NavLink
           to="/vendors"
           className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
         >
-          <Settings size={18} className="mr-3" />
-         vendors
+          <Settings size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          vendors
+          </span>
         </NavLink>
       </nav>
 
