@@ -1,126 +1,89 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
-  User as UserIcon,
-  Settings,
-  Bell,
+  Users as UsersIcon,
+  Briefcase,
+  Building2,
+  FileText,
+  Contact,
+  Receipt,
+  ShoppingCart,
   LogOut,
-  Users,
-  Building2, // Icon for Customers/Companies
+  User as UserIconLucide // Renamed to avoid conflict
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import Button from './Button';
 import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const [hovered, setHovered] = useState<string | null>(null);
 
   const handleLogout = () => {
     logout();
     navigate('/auth', { replace: true });
   };
 
-  // Tailwind classes for link styles
-  const linkBase = 'flex items-center px-3 py-2 rounded-lg text-sm transition-colors';
-  const linkInactive = 'text-gray-600 hover:bg-gray-100 hover:text-gray-900';
-  const linkActive = 'bg-gray-100 text-gray-900 font-medium';
+  // Navigation items based on the routes in your original code
+  const navItems = [
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
+    { to: '/users', icon: UserIconLucide, label: 'Users' },
+    { to: '/leads', icon: UsersIcon, label: 'Leads' },
+    { to: '/deals', icon: Briefcase, label: 'Deals' },
+    { to: '/customers', icon: Building2, label: 'Customers' },
+    { to: '/quote', icon: FileText, label: 'Quote' },
+    { to: '/contacts', icon: Contact, label: 'Contacts' },
+    { to: '/invoices', icon: Receipt, label: 'Invoices' },
+    { to: '/vendors', icon: ShoppingCart, label: 'Vendors' },
+  ];
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col">
-      {/* Brand */}
-      <div className="h-16 px-4 border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <LayoutDashboard className="h-6 w-6 text-blue-600" />
+    <aside
+      className="fixed left-4 top-1/2 -translate-y-1/2 h-auto w-16 bg-[#1e293b] rounded-full flex flex-col items-center py-5 shadow-2xl z-50"
+      style={{
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
+        height: 'calc(100vh - 60px)',
+        maxHeight: '800px' // Increased maxHeight to fit all items
+      }}
+    >
+      <nav className="flex flex-col items-center justify-center flex-1 space-y-3">
+        {navItems.map(({ to, icon: Icon, label }) => (
+          <div
+            key={to}
+            className="relative"
+            onMouseEnter={() => setHovered(label)}
+            onMouseLeave={() => setHovered(null)}
+          >
+            <NavLink
+              to={to}
+              className={({ isActive }) =>
+                `w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out ${
+                  isActive
+                    ? 'bg-white text-gray-900 scale-110 shadow-md'
+                    : 'bg-transparent text-gray-400 hover:bg-gray-700 hover:text-white'
+                }`
+              }
+              title={label}
+            >
+              <Icon size={18} strokeWidth={1.5} />
+            </NavLink>
+            {hovered === label && (
+              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 whitespace-nowrap rounded-md bg-gray-800 px-3 py-1.5 text-sm font-semibold text-white shadow-lg z-50">
+                {label}
+              </div>
+            )}
           </div>
-          <span className="ml-3 text-lg font-semibold text-gray-900">Dashboard</span>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <NavLink
-          to="/dashboard"
-          end
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-        >
-          <LayoutDashboard size={18} className="mr-3" />
-          Overview
-        </NavLink>
-        <NavLink
-          to="/users"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-        >
-          <UserIcon size={18} className="mr-3" />
-          Users
-        </NavLink>
-        <NavLink
-          to="/leads"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-        >
-          <Users size={18} className="mr-3" />
-          Leads
-        </NavLink>
-           <NavLink
-          to="/deals"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-        >
-          <Users size={18} className="mr-3" />
-          Deals
-        </NavLink>
-
-        {/* --- CHANGE: Added Building2 icon for consistency --- */}
-        <NavLink
-          to="/customers"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-        >
-          <Building2 size={18} className="mr-3" />
-          Customers
-        </NavLink>
-
-        {/* --- CHANGE: Changed icon from UserIcon to Building2 for better semantics --- */}
-        <NavLink
-          to="/quote"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-        >
-          <Building2 size={18} className="mr-3" />
-          Quote
-        </NavLink>
-
-        <NavLink
-          to="/contacts"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-        >
-          <Bell size={18} className="mr-3" />
-          Contacts
-        </NavLink>
-<NavLink
-          to="/invoices"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-        >
-          <Bell size={18} className="mr-3" />
-          invoice
-        </NavLink>
-        <NavLink
-          to="/vendors"
-          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-        >
-          <Settings size={18} className="mr-3" />
-         vendors
-        </NavLink>
+        ))}
       </nav>
 
-      {/* Footer actions */}
-      <div className="p-3 border-t border-gray-200">
-        <Button
-          variant="secondary"
-          className="w-full flex items-center justify-center"
+      <div className="mt-auto pt-4">
+        <button
           onClick={handleLogout}
+          className="w-10 h-10 rounded-full bg-transparent text-gray-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors duration-300"
+          title="Logout"
         >
-          <LogOut size={16} className="mr-2" />
-          Logout
-        </Button>
+          <LogOut size={20} strokeWidth={1.5} />
+        </button>
       </div>
     </aside>
   );

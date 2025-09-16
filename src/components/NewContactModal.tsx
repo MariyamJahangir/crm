@@ -4,12 +4,14 @@ import Button from './Button';
 import { customerService } from '../services/customerService';
 import { useAuth } from '../contexts/AuthContext';
 
+
 type Props = {
   open: boolean;
   onClose: () => void;
-  customerId: string;          // UUID per model change
+  customerId: string;        // UUID per model change
   onCreated: () => void;       // callback to refresh and reselect
 };
+
 
 const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated }) => {
   const { token } = useAuth();
@@ -22,8 +24,10 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
   const [department, setDepartment] = useState('');
   const [social, setSocial] = useState('');
 
+
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (!open) return;
@@ -38,18 +42,30 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
     setSocial('');
   }, [open]);
 
+
   const save = async () => {
     if (!token || !customerId) return;
     setErr(null);
 
+
     if (!name.trim()) {
       setErr('Name is required');
+      return;
+    }
+    // UPDATED: Make designation and mobile mandatory
+    if (!designation.trim()) {
+      setErr('Designation is required');
+      return;
+    }
+    if (!mobile.trim()) {
+      setErr('Mobile number is required');
       return;
     }
     if (email && !/^\S+@\S+\.\S+$/.test(email)) {
       setErr('Please provide a valid email');
       return;
     }
+
 
     setSaving(true);
     try {
@@ -75,6 +91,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
     }
   };
 
+
   return (
     <Modal
       open={open}
@@ -83,13 +100,15 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} disabled={saving || !name.trim()}>
+          {/* UPDATED: Disable button if mandatory fields are missing */}
+          <Button onClick={save} disabled={saving || !name.trim() || !designation.trim() || !mobile.trim()}>
             {saving ? 'Saving...' : 'Create'}
           </Button>
         </>
       }
     >
       {err && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3">{err}</div>}
+
 
       <div className="max-h-[70vh] overflow-y-auto pr-1">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -99,7 +118,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
               className="w-full border rounded px-3 py-2"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="e.g., Priya Menon"
+              placeholder="e.g., Priya Menon*"
               required
             />
           </div>
@@ -109,7 +128,8 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
               className="w-full border rounded px-3 py-2"
               value={designation}
               onChange={e => setDesignation(e.target.value)}
-              placeholder="Procurement Head"
+              placeholder="Procurement Head*"
+              required
             />
           </div>
           <div>
@@ -127,7 +147,8 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
               className="w-full border rounded px-3 py-2"
               value={mobile}
               onChange={e => setMobile(e.target.value)}
-              placeholder="+91 98xxxxxxx"
+              placeholder="+91 98xxxxxxx*"
+              required
             />
           </div>
           <div>
@@ -162,5 +183,6 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
     </Modal>
   );
 };
+
 
 export default NewContactModal;

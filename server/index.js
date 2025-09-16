@@ -26,6 +26,9 @@ const invoiceRoutes= require('./routes/invoices.sql')
 const app = express();
 const server = http.createServer(app);
 const dealsRouter = require('./routes/deals.sql');
+const reportRouter = require('./routes/reports')
+
+
 // CORS for API
 const allowedOrigins = [
   process.env.FRONTEND_ORIGIN,      
@@ -132,6 +135,7 @@ async function seedAdmins() {
     app.use('/api/quotes', quotePdf);
     app.use('/api/invoices', invoiceRoutes)
     app.use('/api/team', teamRoutes);
+    app.use('/api/reports', reportRouter)
     app.use('/api/vendors', vendorsRoutes);
     app.use('/api/customers', customersRoutes);
     app.use('/api/notifications', notificationsRoutes);

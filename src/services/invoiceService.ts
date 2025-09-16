@@ -1,4 +1,4 @@
-import { api } from './api'; // Your central API instance
+import { api, API_BASE_URL } from './api'; // Your central API instance
 
 // --- TYPE DEFINITIONS (assuming they are in the same file) ---
 export interface InvoiceItem {
@@ -78,4 +78,33 @@ export const invoiceService = {
   previewHtml: (id: string, token: string): Promise<{ success: boolean; html: string }> => {
     return api.get(`/invoices/${id}/preview`, token);
   },
+  
+ downloadPdf: async (id: string, token: string | null): Promise<Blob> => {
+    const headers: HeadersInit = {
+      Accept: 'application/pdf',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Use the imported API_BASE_URL to build the correct, absolute path
+    const res = await fetch(`${API_BASE_URL}/invoices/${id}/download`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!res.ok) {
+      let msg = 'Download failed';
+      try {
+        const errorData = await res.json();
+        msg = errorData?.message || msg;
+      } catch {
+        // Ignore if the response isn't JSON
+      }
+      throw new Error(msg);
+    }
+    
+    return res.blob();
+  },
+  
 };

@@ -1,5 +1,5 @@
 import { api } from './api';
-
+import type { Lead } from './leadsService';
 export type QuoteItem = {
   slNo: number;
   product: string;
@@ -24,6 +24,7 @@ export type Quote = {
   customerName: string;
   contactPerson?: string;
   phone?: string;
+   isMain: boolean; 
   email?: string;
   address?: string;
   description?: string;
@@ -64,8 +65,14 @@ export const quotesService = {
   listAll: (token?: string | null) =>
     api.get<{ success: boolean; quotes: Quote[] }>('/quotes', token),
 
-  setMainQuote: (leadId: string, quoteNumber: string | null, token?: string | null) =>
-    api.post<{ success: boolean }>(`/leads/${leadId}/main-quote`, { quoteNumber }, token),
+setMainQuote: async (leadId: string, quoteNumber: string, token: string | null) => {
+   
+    return api.post(
+      `/quotes/leads/${leadId}/main-quote`, 
+      { quoteNumber: quoteNumber },
+      token
+    );
+  },
 
   // Per-lead list at GET /api/quotes/leads/:leadId/quotes
   listByLead: (leadId: string, token?: string | null) =>
@@ -99,20 +106,26 @@ export const quotesService = {
   //   api.get<{ success: boolean; quotes: Quote[] }>(`/quotes/leads/${leadId}/quotes`, token),
 
   // PDF download
-  downloadPdf: async (leadId: string, quoteId: string, token?: string | null) => {
+ downloadPdf: async (leadId: string, quoteId: string, token?: string | null): Promise<Blob> => {
     const res = await fetch(`${apiOrigin()}/leads/${leadId}/quotes/${quoteId}/pdf`, {
       method: 'GET',
       headers: withAuthHeaders(token, { Accept: 'application/pdf' }),
       credentials: 'include',
     });
+
     if (!res.ok) {
       let msg = 'Download failed';
-      try { const j = await res.json(); msg = j?.message || msg; } catch {}
-      throw { message: msg };
+      try {
+        const j = await res.json();
+        msg = j?.message || msg;
+      } catch {
+        // The response might not be JSON, so we ignore the parsing error
+      }
+      throw new Error(msg);
     }
+    
     return res.blob();
   },
-
   // Create at POST /api/quotes/leads/:leadId/quotes
   create: (
     leadId: string,

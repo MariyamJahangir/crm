@@ -1,3 +1,4 @@
+// pages/EditLead.tsx
 import React, { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
@@ -13,7 +14,8 @@ const SOURCES = ['Website', 'Referral', 'Advertisement', 'Event', 'Cold Call', '
 
 const EditLead: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { token, isLoading } = useAuth();
+  const { token, user, isLoading } = useAuth();
+  const isAdmin = user?.type === 'ADMIN';
   const navigate = useNavigate();
 
   const [lead, setLead] = useState<Lead | null>(null);
@@ -26,8 +28,7 @@ const EditLead: React.FC = () => {
   const [customerId, setCustomerId] = useState<string>('');
   const [customers, setCustomers] = useState<{ id: string; companyName: string }[]>([]);
   const [source, setSource] = useState('Website');
-  const [quoteNumber, setQuoteNumber] = useState('');
-  const [previewUrl, setPreviewUrl] = useState('');
+  
   const [contactPerson, setContactPerson] = useState('');
   const [mobile, setMobile] = useState('');
   const [mobileAlt, setMobileAlt] = useState('');
@@ -38,79 +39,73 @@ const EditLead: React.FC = () => {
   const [description, setDescription] = useState('');
   const [lostReason, setLostReason] = useState<string>('');
 
-  const load = async () => {
-    if (!id || !token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const [leadRes, custs, team] = await Promise.all([
-        leadsService.getOne(id, token),
-        customerService.list(token),
-        teamService.list(token),
-      ]);
-
-      setLead(leadRes.lead);
-      const lite = custs.customers.map(c => ({ id: c.id, companyName: c.companyName }));
-      setCustomers(lite);
-      setSalesmen(team.users);
-
-      setStage(leadRes.lead.stage);
-      setForecastCategory(leadRes.lead.forecastCategory);
-      setCustomerId(leadRes.lead.customerId || '');
-      setSource(leadRes.lead.source || 'Website');
-      setQuoteNumber(leadRes.lead.quoteNumber || '');
-      setPreviewUrl(leadRes.lead.previewUrl || '');
-      setContactPerson(leadRes.lead.contactPerson || '');
-      setMobile(leadRes.lead.mobile || '');
-      setMobileAlt(leadRes.lead.mobileAlt || '');
-      setEmailField(leadRes.lead.email || '');
-      setCity(leadRes.lead.city || '');
-      setSalesmanId(leadRes.lead.salesman?.id || '');
-      setDescription(leadRes.lead.description || '');
-      setLostReason(leadRes.lead.lostReason || '');
-    } catch (e: any) {
-      setError(e?.data?.message || 'Failed to load lead');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (!id || !token) return;
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [leadRes, custs, team] = await Promise.all([
+          leadsService.getOne(id, token),
+          customerService.list(token),
+          teamService.list(token),
+        ]);
+
+        const currentLead = leadRes.lead;
+        setLead(currentLead);
+        setCustomers(custs.customers.map(c => ({ id: c.id, companyName: c.companyName })));
+        setSalesmen(team.users);
+
+        setStage(currentLead.stage);
+        setForecastCategory(currentLead.forecastCategory);
+        setCustomerId(currentLead.customerId || '');
+        setSource(currentLead.source || 'Website');
+        setContactPerson(currentLead.contactPerson || '');
+        setMobile(currentLead.mobile || '');
+        setMobileAlt(currentLead.mobileAlt || '');
+        setEmailField(currentLead.email || '');
+        setCity(currentLead.city || '');
+        setSalesmanId(currentLead.salesman?.id || '');
+        setDescription(currentLead.description || '');
+        setLostReason(currentLead.lostReason || '');
+      } catch (e: any) {
+        setError(e?.data?.message || 'Failed to load lead');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
     load();
   }, [id, token]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-  if (!token) return null;
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
     setSaving(true);
     setError(null);
+
     try {
-      await leadsService.update(id, {
+      const payload: any = {
         stage,
         forecastCategory,
-        customerId: customerId || undefined,
         source,
-        quoteNumber,
-        previewUrl,
         contactPerson,
         mobile,
         mobileAlt,
         email: emailField,
         city,
-        salesmanId: salesmanId || undefined,
         description,
-        lostReason: stage === 'Deal Lost' ? (lostReason || '') : undefined,
-      }, token);
+        lostReason: stage === 'Deal Lost' ? lostReason : undefined,
+      };
+
+      // Only allow admins to change customer and salesman
+      if (isAdmin) {
+        payload.customerId = customerId || undefined;
+        payload.salesmanId = salesmanId || undefined;
+      }
+
+      await leadsService.update(id, payload, token);
       navigate(`/leads/${id}`, { replace: true });
     } catch (e: any) {
       setError(e?.data?.message || 'Failed to update lead');
@@ -119,13 +114,18 @@ const EditLead: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-600">Loading...</div></div>;
+  }
+  if (!token) return null;
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 overflow-y-auto">
         <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900">Edit Lead</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Edit Lead #{lead?.uniqueNumber}</h1>
             <p className="text-gray-600">Update lead details.</p>
           </div>
 
@@ -164,11 +164,12 @@ const EditLead: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Division (Company)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer (Company)</label>
                   <select
                     value={customerId}
                     onChange={(e) => setCustomerId(e.target.value)}
-                    className="w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    className="w-full rounded-md border-gray-300 bg-white shadow-sm"
+                    disabled={!isAdmin}
                   >
                     <option value="">-- Select --</option>
                     {customers.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}
@@ -176,11 +177,7 @@ const EditLead: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
-                  <select
-                    value={source}
-                    onChange={(e) => setSource(e.target.value)}
-                    className="w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  >
+                  <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full rounded-md border-gray-300 bg-white shadow-sm">
                     {SOURCES.map((s) => <option key={s}>{s}</option>)}
                   </select>
                 </div>
@@ -188,57 +185,49 @@ const EditLead: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quote Number</label>
-                  <input value={quoteNumber} onChange={(e) => setQuoteNumber(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Preview URL</label>
-                  <input value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                  {previewUrl && <img src={previewUrl} alt="preview" className="mt-2 h-14 w-14 object-cover rounded border" />}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
-                  <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                  <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Salesman</label>
-                  <select value={salesmanId} onChange={(e) => setSalesmanId(e.target.value)} className="w-full rounded-md border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    <option value="">-- Select --</option>
-                    {salesmen.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
+                  {isAdmin ? (
+                    <select value={salesmanId} onChange={(e) => setSalesmanId(e.target.value)} className="w-full rounded-md border-gray-300 bg-white shadow-sm">
+                      <option value="">-- Select --</option>
+                      {salesmen.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  ) : (
+                    <input value={lead.salesman?.name || ''} disabled className="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm" />
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mobile</label>
-                  <input value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                  <input value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Alternative</label>
-                  <input value={mobileAlt} onChange={(e) => setMobileAlt(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Alternative Mobile</label>
+                  <input value={mobileAlt} onChange={(e) => setMobileAlt(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input type="email" value={emailField} onChange={(e) => setEmailField(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                  <input type="email" value={emailField} onChange={(e) => setEmailField(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                  <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                  <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description / Notes</label>
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-md border-gray-300 shadow-sm" />
               </div>
 
               {stage === 'Deal Lost' && (
-                <>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Lost Reason</label>
-                  <input value={lostReason} onChange={(e) => setLostReason(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="Reason for losing the lead" />
-                </>
+                  <input value={lostReason} onChange={(e) => setLostReason(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="Reason for losing the deal" />
+                </div>
               )}
 
               <div className="flex justify-end gap-3">

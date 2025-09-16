@@ -2,15 +2,14 @@ import React from 'react';
 import { User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../components/Sidebar';
-
+import NotificationBell from '../components/NotificationBell';
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
 <Sidebar/>
-
-      <div className="ml-64">
+      <div className="ml-64"  >
         <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 text-white mb-8">
             <div className="flex items-center">

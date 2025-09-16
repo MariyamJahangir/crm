@@ -38,4 +38,26 @@ router.patch('/:id/read', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/mark-all-read', authenticateToken, async (req, res) => {
+  try {
+    // This action is only available for non-admin members for their own notifications.
+    if (isAdmin(req)) {
+      return res.status(403).json({ success: false, message: 'Admins cannot use this feature directly.' });
+    }
+
+    const whereClause = {
+      toType: 'MEMBER',
+      toId: String(req.subjectId),
+      read: false // Only update unread notifications
+    };
+
+    await Notification.update({ read: true }, { where: whereClause });
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Mark all read error:', e);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;

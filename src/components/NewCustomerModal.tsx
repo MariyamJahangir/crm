@@ -45,9 +45,9 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
         const team = await teamService.list(token);
         const users = team.users || [];
         setSalesmen(users);
-        // BUGFIX: team.users.id was incorrect; pick current or first
+        // Set the current user as the default salesman
         const me = users.find(u => String(u.id) === String(user?.id));
-        setSalesmanId(me?.id ? String(me.id) : (users.length ? String(users.id) : ''));
+        setSalesmanId(me?.id ? String(me.id) : (users.length ? String(users[0].id) : ''));
       } catch {
         // ignore
       } finally {
@@ -68,8 +68,9 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
       setErr('Please provide a valid email');
       return;
     }
-    if (website && !/^https?:\/\/.+/i.test(website)) {
-      setErr('Website must start with http:// or https://');
+    // UPDATED: Relax website validation to allow 'www.'
+    if (website && !/^(https?:\/\/|www\.).+/i.test(website)) {
+      setErr('Website must start with http://, https://, or www.');
       return;
     }
     if (isAdmin && !salesmanId) {
@@ -212,21 +213,37 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
             </select>
           </div>
 
+          {/* UPDATED: Conditional salesman field */}
           <div className="sm:col-span-2">
             <label className="text-sm font-medium text-gray-700">Salesman</label>
-            <select
-              className="w-full border rounded px-3 py-2 bg-white"
-              value={salesmanId}
-              onChange={e => setSalesmanId(e.target.value)}
-              required={isAdmin}
-              disabled={loadingTeam}
-            >
-              <option value="" disabled>Select salesman</option>
-              {salesmen.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <div className="text-xs text-gray-500 mt-1">
-              Admins must choose a salesman; members are auto-assigned on the server.
-            </div>
+            {isAdmin ? (
+              <>
+                <select
+                  className="w-full border rounded px-3 py-2 bg-white"
+                  value={salesmanId}
+                  onChange={e => setSalesmanId(e.target.value)}
+                  required={isAdmin}
+                  disabled={loadingTeam}
+                >
+                  <option value="" disabled>Select salesman</option>
+                  {salesmen.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <div className="text-xs text-gray-500 mt-1">
+                  Admins must choose a salesman.
+                </div>
+              </>
+            ) : (
+              <>
+                <input
+                  className="w-full border rounded px-3 py-2 bg-gray-100"
+                  value={user?.name || ''}
+                  disabled
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  You are assigned as the salesman for this customer.
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
