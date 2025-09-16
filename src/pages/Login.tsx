@@ -76,9 +76,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
   return (
     <div
       className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
-      style={{
-        backgroundImage: "url('/public/unsplash_G5A5ZNjS2tE.png')", // <-- replace with your image path
-      }}
+      
     >
 
       <div className="absolute inset-0 bg-midnight-900/20"></div>
