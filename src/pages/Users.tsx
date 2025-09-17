@@ -234,32 +234,25 @@ const Users: React.FC = () => {
   );
 
   return (
-    <div className="relative min-h-screen bg-cloud-300 dark:bg-midnight-900 transition-colors duration-300">
-      {/* Blurred background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center blur-sm"
-        style={{ backgroundImage: "url('/unsplash_G5A5ZNjS2tE.png')" }}
-      ></div>
-
-      {/* Overlay (optional, if you want to dim it) */}
-      <div className="absolute inset-0 bg-black/30"></div>
-
-
-      <div className="relative z-10 pl-16">
+    <div className="relative min-h-screen bg-midnight-800/50 transition-colors duration-300">
+    
+      <div className="flex z-10 min-h-screen">
         <Sidebar />
-        <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 transition-all duration-300 
+               ml-2 group-hover:ml-56 max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-extrabold text-midnight-900 dark:text-ivory-100 drop-shadow-lg">
                 Users
               </h1>
-              <p className="text-sky-600 dark:text-sky-300 mt-1 select-none">
+              <p className="text-sky-600 mt-1 select-none">
                 {isAdmin ? 'Manage users under your account.' : 'Your profile'}
               </p>
             </div>
             <div className="flex items-center gap-3">
               {isAdmin && (
-                <Button className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl">
+                <Button className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl"
+                onClick={() => navigate('/users/create')}>
                   Create User
                 </Button>
               )}

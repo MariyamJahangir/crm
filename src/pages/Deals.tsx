@@ -51,10 +51,12 @@ const Deals: React.FC = () => {
   }, [isAdmin, navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="pl-64">
-        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-midnight-800/50">
+      
+      <div className="flex overflow-y-auto  min-h-screen">
+        <Sidebar />
+        <main className="flex-1 transition-all duration-300 
+               ml-2 group-hover:ml-56  max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <h1 className="text-2xl font-semibold text-gray-900">Closed Deals</h1>
           {loading && <div className="mt-4">Loading deals...</div>}
           {err && <div className="text-red-600 p-3 bg-red-50 rounded mt-4">{err}</div>}

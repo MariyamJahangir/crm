@@ -7,7 +7,7 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-midnight-800/50">
 <Sidebar/>
       <div className="ml-64"  >
         <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

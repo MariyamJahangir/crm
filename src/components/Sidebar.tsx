@@ -30,7 +30,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className="group fixed inset-y-0 left-0 z-40 
+      className="group inset-y-0 left-0 z-40 
                  w-16 hover:w-56 
                  bg-midnight-900/80 backdrop-blur-xl 
                  border-r border-midnight-700/40 
