@@ -14,10 +14,9 @@ const fs = require('fs/promises');
 const path = require('path');
 const router = express.Router();
 const { createNotification, notifyAdmins } = require('../utils/notify');
-
+const {  notifyAssignment ,notifyLeadUpdate  } = require('../utils/emailService')
 const BASE_DIR = path.resolve(process.cwd());
 const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
-
 const STAGES = Lead.STAGES;
 const FORECASTS = Lead.FORECASTS;
 
@@ -168,47 +167,58 @@ router.post('/:id/attachments/delete', authenticateToken, async (req, res) => {
 
 // Upload attachments
 router.post('/:id/attachments', authenticateToken, upload.array('files', 10), async (req, res) => {
-  try {
-    const lead = await Lead.findByPk(req.params.id);
-    if (!lead) return res.status(404).json({ success: false, message: 'Not found' });
-    if (!canModifyLead(req, lead)) return res.status(403).json({ success: false, message: 'Forbidden' });
+    try {
+        // Include the salesman details in the initial query
+        const lead = await Lead.findByPk(req.params.id, {
+            include: { model: Member, as: 'salesman' }
+        });
+        if (!lead) return res.status(404).json({ success: false, message: 'Not found' });
+        
+        // Assuming canModifyLead is a valid function in your scope
+        // if (!canModifyLead(req, lead)) return res.status(403).json({ success: false, message: 'Forbidden' });
 
-    const files = req.files || [];
-    if (!files.length) return res.status(400).json({ success: false, message: 'No files uploaded' });
+        const files = req.files || [];
+        if (!files.length) return res.status(400).json({ success: false, message: 'No files uploaded' });
 
-    const now = new Date();
-    const newAttachments = files.map(f => ({
-      filename: f.originalname,
-      url: toPublicUrl(f.path),
-      createdAt: now.toISOString(),
-      uploadedBy: req.subjectId,
-    }));
+        const now = new Date();
+        const newAttachments = files.map(f => ({
+            filename: f.originalname,
+            url: toPublicUrl(f.path),
+            createdAt: now.toISOString(),
+            uploadedBy: req.subjectId,
+        }));
 
-    const current = Array.isArray(lead.attachmentsJson) ? lead.attachmentsJson : [];
-    const added = [];
-    for (const att of newAttachments) {
-      if (!current.some(x => x.url === att.url && x.filename === att.filename)) {
-        current.push(att);
-        added.push(att);
-      }
+        const current = Array.isArray(lead.attachmentsJson) ? lead.attachmentsJson : [];
+        const added = [];
+        for (const att of newAttachments) {
+            if (!current.some(x => x.url === att.url && x.filename === att.filename)) {
+                current.push(att);
+                added.push(att);
+            }
+        }
+        lead.attachmentsJson = current;
+        await lead.save();
+
+        const io = req.app.get('io');
+        added.forEach(att => {
+            io?.to(`lead:${lead.id}`).emit('attachment:new', { leadId: String(lead.id), attachment: att });
+        });
+
+        if (added.length) {
+            await writeLeadLog(req, lead.id, 'ATTACHMENT_ADDED', `${actorLabel(req)} added ${added.length} attachment(s)`);
+        }
+
+        // --- EMAIL NOTIFICATION LOGIC ---
+        if (isAdmin(req) && lead.salesman && lead.salesman.id !== req.subjectId) {
+            await notifyLeadUpdate(lead.salesman, lead, 'new attachment');
+        }
+
+        res.json({ success: true, attachments: added });
+
+    } catch (e) {
+        console.error('Upload attachments error:', e);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-    lead.attachmentsJson = current;
-    await lead.save();
-
-    const io = req.app.get('io');
-    added.forEach(att => {
-      io?.to(`lead:${lead.id}`).emit('attachment:new', { leadId: String(lead.id), attachment: att });
-    });
-
-    if (added.length) {
-      await writeLeadLog(req, lead.id, 'ATTACHMENT_ADDED', `${actorLabel(req)} added ${added.length} attachment(s)`);
-    }
-
-    res.json({ success: true, attachments: added });
-  } catch (e) {
-    console.error('Upload attachments error:', e);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
 });
 
 // List leads
@@ -407,117 +417,129 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // Create lead
 router.post('/', authenticateToken, [
-  body('customerId').trim().notEmpty(),
-  body('stage').optional().isIn(STAGES),
-  body('forecastCategory').optional().isIn(FORECASTS),
+    body('customerId').trim().notEmpty(),
+    body('stage').optional().isIn(STAGES),
+    body('forecastCategory').optional().isIn(FORECASTS),
 ], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty())
-      return res.status(400).json({ success:false, message:'Validation failed', errors: errors.array() });
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+        }
 
-    let resolvedSalesmanId = null;
+        let resolvedSalesmanId = null;
+        let assignedSalesman = null;
 
-    if (isAdmin(req)) {
-      const requested = String(req.body.salesmanId || '').trim();
-      if (!requested) {
-        return res.status(400).json({ success:false, message:'Salesman is required for admin-created leads' });
-      }
-      const sm = await Member.findByPk(requested, { attributes: ['id'] });
-      if (!sm) {
-        return res.status(400).json({ success:false, message:'Invalid salesman (not found in members)' });
-      }
-      resolvedSalesmanId = sm.id;
-    } else {
-      const self = await Member.findByPk(String(req.subjectId), { attributes: ['id'] });
-      if (!self) {
-        return res.status(400).json({ success:false, message:'Current member not found in system' });
-      }
-      if (req.body.salesmanId && String(req.body.salesmanId) !== String(self.id)) {
-        return res.status(403).json({ success:false, message:'Members can only assign themselves as salesman' });
-      }
-      resolvedSalesmanId = self.id;
+        if (isAdmin(req)) {
+            const requested = String(req.body.salesmanId || '').trim();
+            if (!requested) {
+                return res.status(400).json({ success: false, message: 'Salesman is required for admin-created leads' });
+            }
+            // FIX: Fetch id, name, and email for the notification
+            assignedSalesman = await Member.findByPk(requested, {
+                attributes: ['id', 'name', 'email']
+            });
+            if (!assignedSalesman) {
+                return res.status(400).json({ success: false, message: 'Invalid salesman (not found in members)' });
+            }
+            resolvedSalesmanId = assignedSalesman.id;
+        } else {
+            const self = await Member.findByPk(String(req.subjectId));
+            if (!self) {
+                return res.status(400).json({ success: false, message: 'Current member not found in system' });
+            }
+            if (req.body.salesmanId && String(req.body.salesmanId) !== String(self.id)) {
+                return res.status(403).json({ success: false, message: 'Members can only assign themselves as salesman' });
+            }
+            resolvedSalesmanId = self.id;
+        }
+
+        const customer = await Customer.findByPk(req.body.customerId);
+        if (!customer) {
+            return res.status(400).json({ success: false, message: 'Invalid customer' });
+        }
+
+        const snap = {
+            contactPerson: req.body.contactPerson || '',
+            mobile: req.body.mobile || '',
+            mobileAlt: req.body.mobileAlt || '',
+            email: req.body.email || '',
+            city: req.body.city || '',
+        };
+
+        if (!req.body.contactPerson) {
+            let selected = null;
+            if (req.body.contactId) {
+                selected = await CustomerContact.findOne({ where: { id: req.body.contactId, customerId: customer.id } });
+            } else {
+                selected = await CustomerContact.findOne({ where: { customerId: customer.id }, order: [['createdAt', 'ASC']] });
+            }
+            if (selected) {
+                if (!snap.contactPerson) snap.contactPerson = selected.name || '';
+                if (!snap.mobile) snap.mobile = selected.mobile || '';
+                if (!snap.email) snap.email = selected.email || '';
+            }
+        }
+
+        const uniqueNumber = await generateUniqueLeadNumber();
+        const lead = await Lead.create({
+            stage: req.body.stage || 'Discover',
+            forecastCategory: req.body.forecastCategory || 'Pipeline',
+            customerId: customer.id,
+            companyName: customer.companyName,
+            source: req.body.source || 'Website',
+            uniqueNumber,
+            quoteNumber: req.body.quoteNumber || '',
+            previewUrl: req.body.previewUrl || '',
+            actualDate: new Date(),
+            ...snap,
+            salesmanId: resolvedSalesmanId,
+            description: req.body.description || '',
+            creatorType: req.subjectType,
+            creatorId: req.subjectId,
+        });
+
+        const marker = String(resolvedSalesmanId);
+        const arr = Array.isArray(customer.contactedBy) ? customer.contactedBy : [];
+        if (!arr.includes(marker)) {
+            arr.push(marker);
+            customer.contactedBy = arr;
+            await customer.save();
+        }
+
+        notifyAdmins(req.app.get('io'), {
+            event: 'LEAD_CREATED',
+            entityType: 'LEAD',
+            entityId: String(lead.id),
+            title: `Lead #${lead.uniqueNumber} created`,
+            message: `${actorLabel(req)} created a lead`,
+        });
+
+        if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
+            await createNotification({
+                toType: 'MEMBER',
+                toId: resolvedSalesmanId,
+                event: 'LEAD_ASSIGNED',
+                entityType: 'LEAD',
+                entityId: lead.id,
+                title: `New lead #${lead.uniqueNumber}`,
+                message: `Assigned by admin`,
+            }, req.app.get('io'));
+
+            // FIX: Use the 'assignedSalesman' object that contains the email
+            if (assignedSalesman) {
+                await notifyAssignment(assignedSalesman, 'Lead', lead);
+            }
+        }
+
+        await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`);
+        res.status(201).json({ success: true, id: lead.id, uniqueNumber: lead.uniqueNumber });
+
+    } catch (e) {
+        console.error('Create Lead Error:', e.message);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    const customer = await Customer.findByPk(req.body.customerId);
-    if (!customer) return res.status(400).json({ success:false, message:'Invalid customer' });
-
-    const snap = {
-      contactPerson: req.body.contactPerson || '',
-      mobile: req.body.mobile || '',
-      mobileAlt: req.body.mobileAlt || '',
-      email: req.body.email || '',
-      city: req.body.city || '',
-    };
-
-    if (!req.body.contactPerson) {
-      let selected = null;
-      if (req.body.contactId) {
-        selected = await CustomerContact.findOne({ where: { id: req.body.contactId, customerId: customer.id } });
-      } else {
-        selected = await CustomerContact.findOne({ where: { customerId: customer.id }, order: [['createdAt','ASC']] });
-      }
-      if (selected) {
-        if (!snap.contactPerson) snap.contactPerson = selected.name || '';
-        if (!snap.mobile) snap.mobile = selected.mobile || '';
-        if (!snap.email) snap.email = selected.email || '';
-      }
-    }
-
-    const uniqueNumber = await generateUniqueLeadNumber();
-    const lead = await Lead.create({
-      stage: req.body.stage || 'Discover',
-      forecastCategory: req.body.forecastCategory || 'Pipeline',
-      customerId: customer.id,
-      companyName: customer.companyName,
-      source: req.body.source || 'Website',
-      uniqueNumber,
-      quoteNumber: req.body.quoteNumber || '',
-      previewUrl: req.body.previewUrl || '',
-      actualDate: new Date(),
-      ...snap,
-      salesmanId: resolvedSalesmanId,
-      description: req.body.description || '',
-      creatorType: req.subjectType,
-      creatorId: req.subjectId,
-      // no direct nextFollowupAt persisted; derived from LeadFollowup
-    });
- const marker = String(resolvedSalesmanId);
- const arr = Array.isArray(customer.contactedBy) ? customer.contactedBy : [];
-  if (!arr.includes(marker)) {
-    arr.push(marker);
-    customer.contactedBy = arr;
-    await customer.save();
-  }
-    notifyAdmins(req.app.get('io'), {
-      event: 'LEAD_CREATED',
-      entityType: 'LEAD',
-      entityId: String(lead.id),
-      title: `Lead #${lead.uniqueNumber} created`,
-      message: `${actorLabel(req)} created a lead`,
-    });
-
-    if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
-      await createNotification({
-        toType: 'MEMBER',
-        toId: resolvedSalesmanId,
-        event: 'LEAD_ASSIGNED',
-        entityType: 'LEAD',
-        entityId: lead.id,
-        title: `New lead #${lead.uniqueNumber}`,
-        message: `Assigned by admin`,
-      }, req.app.get('io'));
-    }
-
-    await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`);
-
-    res.status(201).json({ success:true, id: lead.id, uniqueNumber: lead.uniqueNumber });
-  } catch (e) {
-    console.error('Create Lead Error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
-  }
 });
-
 // Update lead
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
@@ -581,6 +603,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
+
 router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
   const lead = await Lead.findByPk(req.params.leadId);
   if (!lead) return res.status(404).json({ success:false, message:'Lead not found' });

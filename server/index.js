@@ -27,7 +27,7 @@ const app = express();
 const server = http.createServer(app);
 const dealsRouter = require('./routes/deals.sql');
 const reportRouter = require('./routes/reports')
-
+const dashboardRouter= require('./routes/dashboard.sql')
 
 // CORS for API
 const allowedOrigins = [
@@ -138,6 +138,7 @@ async function seedAdmins() {
     app.use('/api/reports', reportRouter)
     app.use('/api/vendors', vendorsRoutes);
     app.use('/api/customers', customersRoutes);
+    app.use('/api/dashboard', dashboardRouter);
     app.use('/api/notifications', notificationsRoutes);
     app.use('/api', chatRoutes);
     app.use('/api/deals', dealsRouter);

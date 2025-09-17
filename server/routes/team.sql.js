@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
 const Member = require('../models/Member');
-
+const { notifyUserCreated} = require('../utils/emailService')
 const router = express.Router();
 
 // Create new user (members) - admin only
@@ -38,7 +38,7 @@ router.post(
         designation: designation || '',
         parentAdmin: req.subjectId,
       });
-
+await notifyUserCreated(created, password); 
       res.status(201).json({
         success: true,
         user: {
@@ -80,6 +80,7 @@ router.get('/users', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 // Get single user by ID
 router.get('/users/:id', authenticateToken, async (req, res) => {

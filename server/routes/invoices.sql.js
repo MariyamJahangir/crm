@@ -11,7 +11,8 @@ const Lead = require('../models/Lead');
 const { authenticateToken,isAdmin } = require('../middleware/auth');
 const puppeteer = require('puppeteer');
 const router = express.Router();
-
+const  {  notifyAdminsOfSuccess  }= require('../utils/emailService')
+const Member = require('../models/Member')
 // --- Helper Functions ---
 
 /**
@@ -43,87 +44,139 @@ function esc(v) { return (v ?? '').toString(); }
  * @param {object} data - The invoice and its items.
  * @returns {string} The full HTML document for the invoice.
  */
-function buildInvoiceHTML({ invoice, items }) {
-  const inv = invoice || {};
-  const it = Array.isArray(items) ? items : [];
+function buildInvoiceHTML({ invoice, items, creator }) {
+    const inv = invoice || {};
+    const it = Array.isArray(items) ? items : [];
+    const salesPerson = creator?.name || 'N/A'; // Use the creator's name
 
-  const title = `Invoice ${esc(inv.invoiceNumber)}`;
-  const dateStr = inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString() : '';
-  const dueDateStr = inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '';
-  const quoteRefHtml = inv.quote ? `<div><b>From Quote:</b> ${esc(inv.quote.quoteNumber)}</div>` : '';
+    const dateStr = inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString('en-GB') : '';
 
-  const rows = it.map((row, idx) => {
-    const qty = Number(row.quantity || 0);
-    const rate = Number(row.itemRate || 0);
-    const tax = Number(row.taxAmount || 0);
-    const lineTotal = Number(row.lineTotal || 0);
-    return `
-      <tr>
-        <td>${esc(row.slNo ?? idx + 1)}</td>
-        <td>${esc(row.product)}</td>
-        <td>${esc(row.description || '')}</td>
-        <td style="text-align:right">${qty.toFixed(2)}</td>
-        <td style="text-align:right">${rate.toFixed(2)}</td>
-        <td style="text-align:right">${tax.toFixed(2)}</td>
-        <td style="text-align:right">${lineTotal.toFixed(2)}</td>
-      </tr>`;
-  }).join('');
+    const rows = it.map((row, idx) => {
+        const qty = Number(row.quantity || 0).toFixed(2);
+        const rate = Number(row.itemRate || 0).toFixed(2);
+        const taxableAmount = (Number(qty) * Number(rate)).toFixed(2);
+        const taxAmount = Number(row.taxAmount || 0).toFixed(2);
+        const lineTotal = Number(row.lineTotal || 0).toFixed(2);
+        return `
+            <tr>
+                <td>${idx + 1}</td>
+                <td class="item-desc">
+                    <strong>${esc(row.product)}</strong><br>
+                    <span class="text-muted">${esc(row.description || '')}</span>
+                </td>
+                <td class="text-right">${qty}</td>
+                <td class="text-right">${rate}</td>
+                <td class="text-right">${taxableAmount}</td>
+                <td class="text-right">5.00%</td>
+                <td class="text-right">${taxAmount}</td>
+                <td class="text-right">${lineTotal}</td>
+            </tr>`;
+    }).join('');
 
-  const subtotal = Number(inv.subtotal || 0).toFixed(2);
-  const discount = Number(inv.discountAmount || 0).toFixed(2);
-  const vat = Number(inv.vatAmount || 0).toFixed(2);
-  const grand = Number(inv.grandTotal || 0).toFixed(2);
+    const subtotal = Number(inv.subtotal || 0).toFixed(2);
+    const discount = Number(inv.discountAmount || 0).toFixed(2);
+    const vat = Number(inv.vatAmount || 0).toFixed(2);
+    const grand = Number(inv.grandTotal || 0).toFixed(2);
 
-  return `<!doctype html>
+    // This is the full HTML structure with inline CSS
+    return `<!doctype html>
 <html>
 <head>
-  <meta charset="utf-8" /><title>${title}</title>
-  <style>
-    body { margin:24px; font-family: Arial, sans-serif; font-size: 14px; }
-    table { width:100%; border-collapse: collapse; }
-    th, td { border:1px solid #ddd; padding:8px; }
-    th { background:#f5f5f5; text-align:left; }
-    .grid { display:flex; justify-content:space-between; gap:24px; margin-bottom: 24px; }
-    .totals { display:flex; justify-content:flex-end; margin-top: 24px; }
-    .totals table { width:auto; min-width: 300px; }
-    .right { text-align:right; }
-  </style>
+    <meta charset="utf-8" />
+    <title>Invoice ${esc(inv.invoiceNumber)}</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 10px; color: #333; margin: 0; }
+        .container { padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+        .header .company-details { font-size: 11px; line-height: 1.5; }
+        .header .invoice-title { text-align: right; }
+        .invoice-title h1 { font-size: 24px; color: #A9A9A9; margin: 0; font-weight: bold; }
+        .bill-to { margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .text-right { text-align: right; }
+        .item-desc .text-muted { color: #6c757d; }
+        .totals-section { display: flex; justify-content: flex-end; margin-top: 20px; }
+        .totals-table { width: 40%; }
+        .totals-table td { border: none; padding: 4px 8px; }
+        .totals-table tr td:first-child { font-weight: bold; }
+        .footer-section { margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-start; font-size: 9px; page-break-inside: avoid; }
+        .footer-section > div { width: 48%; }
+    </style>
 </head>
 <body>
-  <h2>Invoice #${esc(inv.invoiceNumber)}</h2>
-  <div class="grid">
-    <div>
-      <div><b>Billed To:</b> ${esc(inv.customerName)}</div>
-      <div><b>Address:</b> ${esc(inv.address)}</div>
+    <div class="container">
+        <div class="header">
+            <div class="company-details">
+                <strong>ARTIFLEX INFORMATION TECHNOLOGY LLC</strong><br>
+                Dubai, United Arab Emirates<br>
+                TRN: 104342158300003<br>
+                +971558086462<br>
+                accounts@artiflexit.com<br>
+                https://artiflexit.com
+            </div>
+            <div class="invoice-title">
+                <h1>PROFORMA INVOICE</h1>
+                <p>
+                    <strong>Quote#:</strong> ${esc(inv.quote.quoteNumber || 'N/A')}<br>
+                        <strong>INVOICE#:</strong> ${esc(inv.invoiceNumber || 'N/A')}<br>
+                    <strong>Quote Date:</strong> ${dateStr}<br>
+                    <strong>Sales person:</strong> ${esc(salesPerson)}
+                </p>
+            </div>
+        </div>
+        <div class="bill-to">
+            <strong>Bill To</strong><br>
+            ${esc(inv.customerName)}
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item & Description</th>
+                    <th class="text-right">Qty</th>
+                    <th class="text-right">Rate</th>
+                    <th class="text-right">Taxable Amount</th>
+                    <th class="text-right">Tax %</th>
+                    <th class="text-right">Tax</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <div class="totals-section">
+            <table class="totals-table">
+                <tr><td>Sub Total</td><td class="text-right">AED ${subtotal}</td></tr>
+                ${discount > 0 ? `<tr><td>Discount</td><td class="text-right">AED ${discount}</td></tr>` : ''}
+                <tr><td>Total Tax (VAT)</td><td class="text-right">${vat}</td></tr>
+                <tr><td><strong>Grand Total</strong></td><td class="text-right"><strong>AED ${grand}</strong></td></tr>
+            </table>
+        </div>
+        <div class="footer-section">
+            <div>
+                <strong>Notes</strong>
+                <p>Thank you for the opportunity and looking forward for your response.</p>
+                <strong>Bank details</strong>
+                <p>
+                    Bank Name: Abu Dhabi Commercial Bank<br>
+                    Account Name: Artiflex Information Technology LLC<br>
+                    Account Number: 13416209820001<br>
+                    IBAN: AE510030013416209820001<br>
+                    Currency: AED
+                </p>
+            </div>
+            <div>
+                <strong>Terms & Conditions</strong><br>
+                <strong>Payment Terms</strong><br>
+                100% advance payment
+            </div>
+        </div>
     </div>
-    <div style="text-align: right;">
-      <div><b>Invoice Date:</b> ${dateStr}</div>
-      <div><b>Due Date:</b> ${dueDateStr}</div>
-      ${quoteRefHtml}
-    </div>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>#</th><th>Product</th><th>Description</th><th class="right">Qty</th>
-        <th class="right">Rate</th><th class="right">Tax (5%)</th><th class="right">Total</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>
-  <div class="totals">
-    <table>
-      <tbody>
-        <tr><td>Subtotal (Pre-tax)</td><td class="right">${subtotal}</td></tr>
-        <tr><td>Discount</td><td class="right">${discount}</td></tr>
-        <tr><td>Total Tax (VAT)</td><td class="right">${vat}</td></tr>
-        <tr><td><b>Grand Total</b></td><td class="right"><b>${grand}</b></td></tr>
-      </tbody>
-    </table>
-  </div>
 </body>
 </html>`;
 }
+
 
 // --- API Routes ---
 
@@ -168,57 +221,57 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 
-router.get('/:id/download', authenticateToken, async (req, res) => {
-  try {
-    const invoice = await Invoice.findByPk(req.params.id, {
-      include: [
-        { model: InvoiceItem, as: 'items' },
-        { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
-      ]
-    });
+// router.get('/:id/download', authenticateToken, async (req, res) => {
+//   try {
+//     const invoice = await Invoice.findByPk(req.params.id, {
+//       include: [
+//         { model: InvoiceItem, as: 'items' },
+//         { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
+//       ]
+//     });
 
-    if (!invoice) {
-      return res.status(404).json({ success: false, message: 'Invoice not found' });
-    }
+//     if (!invoice) {
+//       return res.status(404).json({ success: false, message: 'Invoice not found' });
+//     }
 
-    // 1. Generate HTML content
-    const html = buildInvoiceHTML({ 
-      invoice: invoice.toJSON(), 
-      items: (invoice.items || []).map(i => i.toJSON()) 
-    });
+//     // 1. Generate HTML content
+//     const html = buildInvoiceHTML({ 
+//       invoice: invoice.toJSON(), 
+//       items: (invoice.items || []).map(i => i.toJSON()) 
+//     });
     
-    const invoiceNumber = invoice.invoiceNumber || 'invoice';
+//     const invoiceNumber = invoice.invoiceNumber || 'invoice';
 
-    const options = {
-      format: 'A4',
-      border: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
-      }
-    };
+//     const options = {
+//       format: 'A4',
+//       border: {
+//         top: '20px',
+//         right: '20px',
+//         bottom: '20px',
+//         left: '20px'
+//       }
+//     };
 
-    // 2. Use pdf.create with a callback, just like your quote route
-    pdf.create(html, options).toBuffer((err, buffer) => {
-      if (err) {
-        // This is the source of the instability and timeout errors.
-        console.error('html-pdf generation error:', err);
-        return res.status(500).json({ success: false, message: 'Failed to generate PDF.' });
-      }
+//     // 2. Use pdf.create with a callback, just like your quote route
+//     pdf.create(html, options).toBuffer((err, buffer) => {
+//       if (err) {
+//         // This is the source of the instability and timeout errors.
+//         console.error('html-pdf generation error:', err);
+//         return res.status(500).json({ success: false, message: 'Failed to generate PDF.' });
+//       }
       
-      // 3. Set headers and send the response if successful
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=${invoiceNumber}.pdf`);
-      res.send(buffer);
-    });
+//       // 3. Set headers and send the response if successful
+//       res.setHeader('Content-Type', 'application/pdf');
+//       res.setHeader('Content-Disposition', `attachment; filename=${invoiceNumber}.pdf`);
+//       res.send(buffer);
+//     });
 
-  } catch (e) {
-    // This outer catch block may not be reached if PhantomJS crashes the entire process.
-    console.error('Outer PDF Download Error:', e);
-    res.status(500).json({ success: false, message: 'An unexpected server error occurred while generating the PDF.' });
-  }
-});
+//   } catch (e) {
+//     // This outer catch block may not be reached if PhantomJS crashes the entire process.
+//     console.error('Outer PDF Download Error:', e);
+//     res.status(500).json({ success: false, message: 'An unexpected server error occurred while generating the PDF.' });
+//   }
+// });
 
 
 router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
@@ -395,53 +448,149 @@ router.post('/', authenticateToken, [
  * PATCH /api/invoices/:id/status
  * Updates the status of a single invoice.
  */
+// routes/invoices.js
 router.patch('/:id/status', authenticateToken, async (req, res) => {
-  const { status } = req.body;
-  const { id } = req.params;
+    const { status } = req.body;
+    const { id } = req.params;
 
-  const allowedStatuses = ['Draft', 'Sent', 'Paid', 'Cancelled', 'Overdue'];
-  if (!status || !allowedStatuses.includes(status)) {
-    return res.status(400).json({ success: false, message: 'Invalid status provided.' });
-  }
-
-  try {
-    const invoice = await Invoice.findByPk(id);
-    if (!invoice) {
-      return res.status(404).json({ success: false, message: 'Invoice not found.' });
+    const allowedStatuses = ['Draft', 'Sent', 'Paid', 'Cancelled', 'Overdue'];
+    if (!status || !allowedStatuses.includes(status)) {
+        return res.status(400).json({ success: false, message: 'Invalid status provided.' });
     }
 
-    if (invoice.status === 'Paid' || invoice.status === 'Cancelled') {
-      return res.status(403).json({ 
-        success: false, 
-        message: `Cannot change status of a ${invoice.status} invoice.` 
-      });
+    try {
+        const result = await sequelize.transaction(async (t) => {
+            // --- FIX: Use the correct lowercase aliases ---
+            const invoice = await Invoice.findByPk(id, {
+                include: [{
+                    model: Quote,
+                    as: 'quote', // Use lowercase 'q' as specified in the error
+                    include: [{
+                        model: Lead,
+                        as: 'lead' // Use lowercase 'l' for consistency
+                    }]
+                }],
+                transaction: t
+            });
+
+            if (!invoice) {
+                throw new Error('Invoice not found.');
+            }
+
+            if (invoice.status === 'Paid' || invoice.status === 'Cancelled') {
+                const error = new Error(`Cannot change status of a ${invoice.status} invoice.`);
+                error.status = 403;
+                throw error;
+            }
+
+            invoice.status = status;
+            if (status === 'Paid') {
+                invoice.paidAt = new Date();
+            }
+            await invoice.save({ transaction: t });
+
+            // --- FIX: Access the properties using the correct lowercase aliases ---
+            if (status === 'Paid' && invoice.quote && invoice.quote.lead) {
+                const lead = invoice.quote.lead;
+                lead.stage = 'Deal Closed';
+                await lead.save({ transaction: t });
+            }
+            
+            if (status === 'Paid') {
+                t.afterCommit(() => {
+                    notifyAdminsOfSuccess(
+                        `Invoice Paid: #${invoice.invoiceNumber}`,
+                        `Invoice #${invoice.invoiceNumber} for customer '${invoice.customerName}' has been successfully paid and the corresponding deal is now closed.`
+                    );
+                });
+            }
+
+            return invoice;
+        });
+
+        res.json({ success: true, invoice: result });
+
+    } catch (error) {
+        console.error('Failed to update status:', error);
+        res.status(error.status || 500).json({ success: false, message: error.message || 'Server Error' });
     }
-
-    invoice.status = status;
-    await invoice.save();
-
-    res.json({ success: true, invoice });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
-  }
 });
 
-/**
- * GET /api/invoices/:id/preview
- * Generates an HTML preview for a single invoice.
- */
+
+
+// router.get('/:id/preview', authenticateToken, async (req, res) => {
+//     try {
+//         const invoice = await Invoice.findByPk(req.params.id, { 
+//             include: [
+//                 { model: InvoiceItem, as: 'items' },
+//                 { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
+//             ] 
+//         });
+//         if (!invoice) {
+//             return res.status(404).json({ success: false, message: 'Invoice not found' });
+//         }
+//         const html = buildInvoiceHTML({ invoice: invoice.toJSON(), items: (invoice.items || []).map(i => i.toJSON()) });
+//         res.json({ success: true, html });
+//     } catch (e) {
+//         res.status(500).json({ success: false, message: 'Failed to generate preview: ' + e.message });
+//     }
+// });
+router.get('/:id/download', authenticateToken, async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id, {
+            include: [
+                { model: InvoiceItem, as: 'items' },
+                { model: Quote, as: 'quote', required: false },
+                // FIX: Eagerly load the creator (Member)
+                { model: Member, as: 'creator', attributes: ['name'] }
+            ]
+        });
+
+        if (!invoice) {
+            return res.status(404).json({ success: false, message: 'Invoice not found' });
+        }
+
+        const html = buildInvoiceHTML({ 
+            invoice: invoice.toJSON(), 
+            items: (invoice.items || []).map(i => i.toJSON()),
+            creator: invoice.creator ? invoice.creator.toJSON() : null // Pass creator to HTML builder
+        });
+        
+        const options = { format: 'A4', border: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' } };
+
+        pdf.create(html, options).toBuffer((err, buffer) => {
+            if (err) {
+                return res.status(500).json({ success: false, message: 'Failed to generate PDF.' });
+            }
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=${invoice.invoiceNumber}.pdf`);
+            res.send(buffer);
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'An unexpected error occurred.' });
+    }
+});
+
+// --- UPDATED: GET /:id/preview Route ---
 router.get('/:id/preview', authenticateToken, async (req, res) => {
     try {
         const invoice = await Invoice.findByPk(req.params.id, { 
             include: [
                 { model: InvoiceItem, as: 'items' },
-                { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
+                { model: Quote, as: 'quote', required: false },
+                // FIX: Eagerly load the creator (Member)
+                { model: Member, as: 'creator', attributes: ['name'] }
             ] 
         });
+        console.log(invoice)
         if (!invoice) {
             return res.status(404).json({ success: false, message: 'Invoice not found' });
         }
-        const html = buildInvoiceHTML({ invoice: invoice.toJSON(), items: (invoice.items || []).map(i => i.toJSON()) });
+        const html = buildInvoiceHTML({ 
+            invoice: invoice.toJSON(), 
+            items: (invoice.items || []).map(i => i.toJSON()),
+            creator: invoice.creator ? invoice.creator.toJSON() : null // Pass creator to HTML builder
+        });
         res.json({ success: true, html });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Failed to generate preview: ' + e.message });
