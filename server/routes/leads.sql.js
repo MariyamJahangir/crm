@@ -19,6 +19,8 @@ const BASE_DIR = path.resolve(process.cwd());
 const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
 const STAGES = Lead.STAGES;
 const FORECASTS = Lead.FORECASTS;
+const { sequelize } = require('../config/database');
+const Counter = require('../models/Counter');
 
 function canViewLead(req, lead) {
   if (isAdmin(req)) return true;
@@ -34,7 +36,27 @@ function canModifyLead(req, lead) {
 
 const { upload, toPublicUrl } = makeUploader('lead_attachments');
 
-async function generateUniqueLeadNumber() { return `L-${Date.now()}`; }
+async function generateUniqueLeadNumber() {
+  const result = await sequelize.transaction(async (t) => {
+    // Find the counter and lock the row to prevent race conditions
+    const counter = await Counter.findOne({
+      where: { name: 'leadNumber' },
+      lock: t.LOCK.UPDATE, 
+      transaction: t,
+    });
+
+    if (!counter) {
+      throw new Error('The "leadNumber" counter has not been initialized in the database.');
+    }
+
+    // Increment, save, and return the new formatted number
+    counter.currentValue += 1;
+    await counter.save({ transaction: t });
+    return `L-${String(counter.currentValue).padStart(6, '0')}`;
+  });
+
+  return result;
+}
 
 // Logging helpers
 function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
@@ -73,12 +95,17 @@ async function writeLeadLog(req, leadId, action, message) {
 
 // Compute nearest future follow-up (returns Date or null)
 function nearestFutureFollowup(rows) {
-  const now = new Date();
-  const flat = rows.map(r => (typeof r.get === 'function' ? r.get({ plain: true }) : r));
-  const future = flat
-    .filter(r => r.scheduledAt && new Date(r.scheduledAt) > now)
-    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-  return future?.scheduledAt || null;
+    const now = new Date();
+    // Ensure all items are plain objects
+    const flat = rows.map(r => (typeof r.get === 'function' ? r.get({ plain: true }) : r));
+    
+    // Filter for dates in the future and sort them to find the soonest
+    const future = flat
+      .filter(r => r.scheduledAt && new Date(r.scheduledAt) > now)
+      .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  
+    // CORRECTED: Return the 'scheduledAt' property of the first item in the sorted array
+    return future.length > 0 ? future[0].scheduledAt : null;
 }
 
 // Delete attachment (DELETE)
@@ -223,78 +250,143 @@ router.post('/:id/attachments', authenticateToken, upload.array('files', 10), as
 
 // List leads
 router.get('/', authenticateToken, async (req, res) => {
-  try {
-    const where = isAdmin(req) ? {} : { [Op.or]: [{ salesmanId: req.subjectId }] };
-    const search = String(req.query.search || '').trim();
-    if (search) {
-      where[Op.or] = [
-        ...(where[Op.or] || []),
-        { uniqueNumber: { [Op.like]: `%${search}%` } },
-        { companyName:  { [Op.like]: `%${search}%` } },
-        { contactPerson:{ [Op.like]: `%${search}%` } },
-        { email:        { [Op.like]: `%${search}%` } },
-        { mobile:       { [Op.like]: `%${search}%` } },
-        { city:         { [Op.like]: `%${search}%` } },
-      ];
+    try {
+        const { search, sortBy = 'createdAt', sortDir = 'DESC' } = req.query;
+        // Destructure the new filter query parameters
+        const { stage, forecastCategory, followup } = req.query;
+
+        // --- Build a more robust `where` clause ---
+        const where = {
+            [Op.and]: [], // Start with an array to safely push all conditions
+        };
+
+        // 1. Add permission-based filtering first
+        if (!isAdmin(req)) {
+            where[Op.and].push({ salesmanId: req.subjectId });
+        }
+
+        // 2. Add search term condition
+        if (search && String(search).trim()) {
+            const searchTerm = `%${String(search).trim()}%`;
+            where[Op.and].push({
+                [Op.or]: [
+                    { uniqueNumber: { [Op.like]: searchTerm } },
+                    { companyName:  { [Op.like]: searchTerm } },
+                    { contactPerson:{ [Op.like]: searchTerm } },
+                    { email:        { [Op.like]: searchTerm } },
+                    { mobile:       { [Op.like]: searchTerm } },
+                    { city:         { [Op.like]: searchTerm } },
+                ]
+            });
+        }
+        
+        // 3. Add filters for 'stage' and 'forecastCategory'
+        if (stage) {
+            where[Op.and].push({ stage: { [Op.in]: String(stage).split(',') } });
+        }
+        if (forecastCategory) {
+            where[Op.and].push({ forecastCategory: { [Op.in]: String(forecastCategory).split(',') } });
+        }
+
+        // 4. Add complex filter logic for 'followup' status
+        if (followup) {
+            const followupConditions = String(followup).split(',');
+            const leadIdSubqueries = [];
+
+            if (followupConditions.includes('Upcoming')) {
+                // Find leads that have at least one followup scheduled for the future
+                leadIdSubqueries.push({
+                    id: { [Op.in]: sequelize.literal(`(SELECT DISTINCT leadId FROM lead_followups WHERE scheduledAt > NOW())`) }
+                });
+            }
+            if (followupConditions.includes('Overdue')) {
+                // Find leads that have past followups but no future ones
+                leadIdSubqueries.push({
+                    [Op.and]: [
+                        { id: { [Op.in]: sequelize.literal(`(SELECT DISTINCT leadId FROM lead_followups WHERE scheduledAt < NOW())`) } },
+                        { id: { [Op.notIn]: sequelize.literal(`(SELECT DISTINCT leadId FROM lead_followups WHERE scheduledAt > NOW())`) } }
+                    ]
+                });
+            }
+            if (followupConditions.includes('No Followup')) {
+                // Find leads that have no records in the followups table
+                leadIdSubqueries.push({
+                    id: { [Op.notIn]: sequelize.literal(`(SELECT DISTINCT leadId FROM lead_followups)`) }
+                });
+            }
+            // Use Op.or to combine the different followup statuses
+            if (leadIdSubqueries.length > 0) {
+                where[Op.and].push({ [Op.or]: leadIdSubqueries });
+            }
+        }
+        
+        // --- Fetch Leads with the constructed query ---
+        const leads = await Lead.findAll({
+            where: where[Op.and].length > 0 ? where : {}, // Use the where clause only if it has conditions
+            include: [
+                { model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] },
+                { model: Customer, as: 'customer', attributes: ['id', 'companyName'] },
+            ],
+            order: [[sortBy, sortDir.toUpperCase() === 'ASC' ? 'ASC' : 'DESC']],
+        });
+
+        // The rest of your code for calculating 'nextFollowupAt' is correct and remains unchanged...
+        const leadIds = leads.map(l => l.id);
+        const nextByLead = new Map();
+        if (leadIds.length > 0) {
+            const allFollowups = await LeadFollowup.findAll({
+                where: {
+                    leadId: { [Op.in]: leadIds },
+                    scheduledAt: { [Op.gt]: new Date() }
+                },
+                attributes: ['leadId', 'scheduledAt']
+            });
+            const grouped = allFollowups.reduce((acc, f) => {
+                if (!acc.has(f.leadId)) acc.set(f.leadId, []);
+                acc.get(f.leadId).push(f);
+                return acc;
+            }, new Map());
+            for (const [leadId, followups] of grouped.entries()) {
+                const nearest = followups.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))[0];
+                if (nearest) nextByLead.set(leadId, nearest.scheduledAt);
+            }
+        }
+
+        // Map the final response
+        res.json({
+            success: true,
+            leads: leads.map(l => ({
+                id: l.id,
+                stage: l.stage,
+                forecastCategory: l.forecastCategory,
+                division: l.customer ? l.customer.companyName : '',
+                companyName: l.companyName || (l.customer ? l.customer.companyName : ''),
+                source: l.source,
+                uniqueNumber: l.uniqueNumber,
+                quoteNumber: l.quoteNumber,
+                actualDate: l.actualDate,
+                contactPerson: l.contactPerson,
+                mobile: l.mobile,
+                mobileAlt: l.mobileAlt,
+                email: l.email,
+                city: l.city,
+                salesman: l.salesman ? { id: l.salesman.id, name: l.salesman.name, email: l.salesman.email } : null,
+                description: l.description,
+                attachments: Array.isArray(l.attachmentsJson) ? l.attachmentsJson : [],
+                nextFollowupAt: nextByLead.get(l.id) || null,
+                createdAt: l.createdAt,
+                updatedAt: l.updatedAt
+            }))
+        });
+
+    } catch (e) {
+        console.error('List Leads Error:', e.message, e.stack);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
-    const sortBy = String(req.query.sortBy || 'createdAt');
-    const sortDir = String(req.query.sortDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-
-    const leads = await Lead.findAll({
-      where,
-      include: [
-        { model: Member, as: 'salesman', attributes: ['id','name','email'] },
-        { model: Customer, as: 'customer', attributes: ['id','companyName'] },
-      ],
-      order: [[sortBy, sortDir]],
-    });
-
-    // Compute next followup per lead
-    const leadIds = leads.map(l => l.id);
-    const nextByLead = new Map();
-    if (leadIds.length) {
-      const fus = await LeadFollowup.findAll({
-        where: { leadId: { [Op.in]: leadIds } },
-        attributes: ['leadId','scheduledAt','createdAt']
-      });
-      const grouped = new Map();
-      for (const f of fus) {
-        if (!grouped.has(f.leadId)) grouped.set(f.leadId, []);
-        grouped.get(f.leadId).push(f);
-      }
-      for (const [lid, rows] of grouped.entries()) {
-        nextByLead.set(lid, nearestFutureFollowup(rows));
-      }
-    }
-
-    res.json({ success:true, leads: leads.map(l => ({
-      id: l.id,
-      stage: l.stage,
-      forecastCategory: l.forecastCategory,
-      division: l.customer ? l.customer.companyName : '',
-      companyName: l.companyName || (l.customer ? l.customer.companyName : ''),
-      source: l.source,
-      uniqueNumber: l.uniqueNumber,
-      quoteNumber: l.quoteNumber,
-      previewUrl: l.previewUrl,
-      actualDate: l.actualDate,
-      contactPerson: l.contactPerson,
-      mobile: l.mobile,
-      mobileAlt: l.mobileAlt,
-      email: l.email,
-      city: l.city,
-      salesman: l.salesman ? { id: l.salesman.id, name: l.salesman.name, email: l.salesman.email } : null,
-      description: l.description,
-      attachments: Array.isArray(l.attachmentsJson) ? l.attachmentsJson : [],
-      nextFollowupAt: nextByLead.get(l.id) || null,
-      createdAt: l.createdAt,
-      updatedAt: l.updatedAt
-    }))});
-  } catch (e) {
-    console.error('List Leads Error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
-  }
 });
+
+
+
 router.get('/my-leads', authenticateToken, async (req, res) => {
   if (isAdmin(req)) {
     // Admins can see all leads, so we can redirect to the main list route

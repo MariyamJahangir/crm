@@ -248,8 +248,9 @@ function buildQuoteInternalPreviewHTML({ quote, items, customer }) {
                     <th class="right">Cost</th>
                     <th class="right">Rate</th>
                     <th class="right">Discount</th>
+                     <th class="right">Line GP</th>
                     <th class="right">Line Total</th>
-                    <th class="right">Line GP</th>
+                   
                 </tr>
             </thead>
             <tbody>
