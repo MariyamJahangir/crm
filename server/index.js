@@ -28,7 +28,7 @@ const server = http.createServer(app);
 const dealsRouter = require('./routes/deals.sql');
 const reportRouter = require('./routes/reports')
 const dashboardRouter= require('./routes/dashboard.sql')
-
+const targetRoutes = require('./routes/targets');
 // CORS for API
 const allowedOrigins = [
   process.env.FRONTEND_ORIGIN,      
@@ -143,6 +143,7 @@ async function seedAdmins() {
     app.use('/api', chatRoutes);
     app.use('/api/deals', dealsRouter);
     app.use('/api/contacts', contactsRouter);
+    app.use('/api/targets', targetRoutes);
     app.get('/api/health', (req, res) => res.json({ message: 'Server is up and running!' }));
 
     const PORT = process.env.PORT || 5000;

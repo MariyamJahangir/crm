@@ -10,7 +10,7 @@ const Vendor = require('./Vendor');
 const VendorContact = require('./VendorContact');
 const Invoice = require('./Invoices');
 const InvoiceItem = require('./InvoiceItem');
-
+const SalesTarget = require('./SalesTarget');
 function applyAssociations() {
     // --- Customer & Salesman Associations ---
     Customer.belongsTo(Member, { as: 'salesman', foreignKey: 'salesmanId' });
@@ -48,7 +48,8 @@ function applyAssociations() {
     // --- Quote & QuoteItem Associations ---
     Quote.hasMany(QuoteItem, { foreignKey: 'quoteId', as: 'items', onDelete: 'CASCADE' });
     QuoteItem.belongsTo(Quote, { foreignKey: 'quoteId' });
-
+Member.hasMany(SalesTarget, { foreignKey: 'memberId', as: 'salesTargets' });
+SalesTarget.belongsTo(Member, { foreignKey: 'memberId', as: 'member' });
     // --- Invoice & InvoiceItem Associations ---
     Invoice.hasMany(InvoiceItem, { foreignKey: 'invoiceId', as: 'items', onDelete: 'CASCADE' });
     InvoiceItem.belongsTo(Invoice, { foreignKey: 'invoiceId' });

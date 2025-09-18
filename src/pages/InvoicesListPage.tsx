@@ -38,6 +38,7 @@ const InvoicesListPage: React.FC = () => {
     setLoading(true);
     invoiceService.list(token)
       .then(res => {
+        console.log(res)
         if (res.success) {
           setInvoices(res.invoices);
         } else {

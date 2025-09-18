@@ -1,32 +1,55 @@
 import React from 'react';
-import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { Doughnut } from 'react-chartjs-2';
+import { TooltipItem } from 'chart.js';
 import { LeadStagesData } from '../services/dashboardService';
-
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 const LeadStagesPieChart: React.FC<{ data: LeadStagesData }> = ({ data }) => {
   const chartData = {
-    labels: ['Discovery', 'Quote Sent', 'Closed Won', 'Closed Lost'],
+    labels: data.labels,
     datasets: [{
-      label: 'Lead Stages',
-      data: [
-        data.discovery || 0,
-        data.quote_sent || 0,
-        data.closed_won || 0,
-        data.closed_lost || 0,
-      ],
+      label: 'Leads',
+      data: data.values,
       backgroundColor: [
-        'rgba(54, 162, 235, 0.8)',
+        'rgba(59, 130, 246, 0.8)',
         'rgba(255, 206, 86, 0.8)',
         'rgba(75, 192, 192, 0.8)',
         'rgba(255, 99, 132, 0.8)',
+        'rgba(153, 102, 255, 0.8)',
+        'rgba(255, 159, 64, 0.8)',
       ],
       borderColor: '#fff',
       borderWidth: 2,
+      hoverOffset: 8,
     }],
   };
-  return <Pie data={chartData} options={{ responsive: true, maintainAspectRatio: false }} />;
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '60%',
+    plugins: {
+      legend: {
+        position: 'right' as const,
+        labels: {
+          boxWidth: 20,
+          padding: 20,
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context: TooltipItem<'doughnut'>) { // FIXED: Added TooltipItem type
+            const label = context.label || '';
+            const value = context.parsed || 0;
+            const total = context.dataset.data.reduce((acc: number, val: number) => acc + val, 0);
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+            return `${label}: ${value} (${percentage}%)`;
+          }
+        }
+      }
+    }
+  };
+
+  return <Doughnut data={chartData} options={chartOptions} />;
 };
 
 export default LeadStagesPieChart;

@@ -160,11 +160,11 @@ Invoice.init({
     type: DataTypes.TEXT,
     allowNull: true
   },
-   quoteId: { 
+   quoteId: { // This field is the foreign key for the Quote
     type: DataTypes.UUID,
     allowNull: true,
     references: {
-      model: 'quotes', 
+      model: 'quotes', // This should match the table name of the Quote model
       key: 'id'
     }
   },

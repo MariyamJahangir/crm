@@ -13,6 +13,7 @@ const puppeteer = require('puppeteer');
 const router = express.Router();
 const  {  notifyAdminsOfSuccess  }= require('../utils/emailService')
 const Member = require('../models/Member')
+const Customer = require('../models/Customer')
 // --- Helper Functions ---
 
 /**
@@ -288,103 +289,116 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
     const { quoteId } = req.params;
+    const loggedInUserId = req.subjectId;
+    const loggedInUserType = req.subjectType; // e.g., 'ADMIN' or 'MEMBER'
+
     const transaction = await sequelize.transaction();
 
     try {
+        // --- 1. Fetch Quote and its associated Lead to get the salesmanId ---
         const quote = await Quote.findByPk(quoteId, {
-            include: [{ model: QuoteItem, as: 'items' }, { model: Lead, as: 'lead' }],
+            include: [
+                { model: QuoteItem, as: 'items' },
+                { 
+                    model: Lead, 
+                    as: 'lead', 
+                    attributes: ['id', 'salesmanId', 'customerId'], // Only fetch necessary fields
+                    include: [{ model: Customer, as: 'customer', attributes: ['id'] }]
+                }
+            ],
             transaction
         });
 
-        // --- Validations ---
+        // --- 2. Perform All Validations (including the new Authorization check) ---
+
         if (!quote) {
             await transaction.rollback();
             return res.status(404).json({ success: false, message: 'Quote not found.' });
         }
+
+        // --- NEW AUTHORIZATION LOGIC ---
+        const isAdmin = loggedInUserType === 'ADMIN';
+        const isAssignedSalesman = quote.lead?.salesmanId === loggedInUserId;
+
+        if (!isAdmin && !isAssignedSalesman) {
+            await transaction.rollback();
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Forbidden: You do not have permission to convert this quote.' 
+            });
+        }
+        // --- END OF NEW AUTHORIZATION LOGIC ---
+
         if (quote.status !== 'Accepted') {
             await transaction.rollback();
             return res.status(400).json({ success: false, message: 'Only an "Accepted" quote can be converted to an invoice.' });
         }
+        
+        if (!quote.lead || !quote.lead.customerId || !quote.lead.customer) {
+            await transaction.rollback();
+            return res.status(400).json({ success: false, message: 'Data consistency error: The quote is not linked to a valid customer.' });
+        }
+
         const existingInvoice = await Invoice.findOne({ where: { quoteId: quote.id }, transaction });
         if (existingInvoice) {
             await transaction.rollback();
             return res.status(409).json({ success: false, message: `This quote has already been converted to Invoice #${existingInvoice.invoiceNumber}.` });
         }
 
-        // --- Server-Side Recalculation with Fixed 5% Tax ---
-
+        // --- 3. Calculations (No Changes) ---
         const FIXED_TAX_PERCENT = 5;
-        let calculatedSubtotal = 0;
-        let calculatedVatAmount = 0;
-
-        // First, prepare invoice item data and calculate totals
+        let calculatedSubtotal = 0, calculatedVatAmount = 0;
         const invoiceItemsData = quote.items.map((item, index) => {
             const lineSubtotal = (Number(item.quantity) || 0) * (Number(item.itemRate) || 0) - (Number(item.lineDiscountAmount) || 0);
             const taxAmount = lineSubtotal * (FIXED_TAX_PERCENT / 100);
-
-            // Aggregate totals for the main invoice record
             calculatedSubtotal += lineSubtotal;
             calculatedVatAmount += taxAmount;
-
             return {
-                slNo: index + 1,
-                product: item.product,
-                description: item.description,
-                quantity: item.quantity,
-                itemRate: item.itemRate,
-                taxPercent: FIXED_TAX_PERCENT, // Store the fixed 5% rate
-                taxAmount: taxAmount.toFixed(2),
+                slNo: index + 1, product: item.product, description: item.description, quantity: item.quantity,
+                itemRate: item.itemRate, taxPercent: FIXED_TAX_PERCENT, taxAmount: taxAmount.toFixed(2),
                 lineTotal: (lineSubtotal + taxAmount).toFixed(2),
             };
         });
-        
         const overallDiscountAmount = Number(quote.discountAmount) || 0;
         const calculatedGrandTotal = (calculatedSubtotal - overallDiscountAmount) + calculatedVatAmount;
 
-        // --- Create Records in Database ---
-
-        // Create the main Invoice record using the recalculated values
+        // --- 4. Database Creation (No Changes) ---
         const newInvoice = await Invoice.create({
             quoteId: quote.id,
             invoiceNumber: await generateInvoiceNumber(),
             invoiceDate: new Date(),
             dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
-            customerId: quote.lead?.customerId,
+            customerId: quote.lead.customerId,
             customerName: quote.customerName,
             address: quote.address,
-            // Use server-calculated values, not values from the quote
             subtotal: calculatedSubtotal.toFixed(2),
             discountAmount: overallDiscountAmount.toFixed(2),
             vatAmount: calculatedVatAmount.toFixed(2),
             grandTotal: calculatedGrandTotal.toFixed(2),
             status: 'Draft',
-            createdById: req.subjectId,
+            createdById: loggedInUserId,
         }, { transaction });
 
-        // Add the new invoiceId to each item
-        const finalInvoiceItems = invoiceItemsData.map(item => ({
-            ...item,
-            invoiceId: newInvoice.id,
-        }));
-        
-        // Create the associated InvoiceItem records in bulk
+        const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id, }));
         await InvoiceItem.bulkCreate(finalInvoiceItems, { transaction });
-        
-        // Update the original quote to link to this new invoice
         await quote.update({ invoiceId: newInvoice.id }, { transaction });
 
-        // Commit the transaction if all operations succeed
+        // --- 5. Commit and Respond ---
         await transaction.commit();
         
         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'quote'] });
-        res.status(201).json({ success: true, message: 'Quote successfully converted to invoice with 5% tax.', invoice: fullInvoice });
+        res.status(201).json({ success: true, message: 'Quote successfully converted to invoice.', invoice: fullInvoice });
 
     } catch (error) {
-        // If any error occurs, roll back the entire transaction
-        await transaction.rollback();
-        res.status(500).json({ success: false, message: 'Failed to convert quote to invoice: ' + error.message });
+        if (!transaction.finished) {
+            await transaction.rollback();
+        }
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        console.error(`[CONVERT_QUOTE] FAILED AND ROLLED BACK. Error: ${errorMessage}`, error);
+        res.status(500).json({ success: false, message: 'Failed to convert quote to invoice: ' + errorMessage });
     }
 });
+
 
 /**
  * POST /api/invoices
@@ -498,22 +512,20 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     const { status } = req.body;
     const { id } = req.params;
 
+    // 1. Validate the incoming status
     const allowedStatuses = ['Draft', 'Sent', 'Paid', 'Cancelled', 'Overdue'];
     if (!status || !allowedStatuses.includes(status)) {
         return res.status(400).json({ success: false, message: 'Invalid status provided.' });
     }
 
     try {
+        // 2. Use a transaction for data consistency
         const result = await sequelize.transaction(async (t) => {
-            // --- FIX: Use the correct lowercase aliases ---
             const invoice = await Invoice.findByPk(id, {
                 include: [{
                     model: Quote,
-                    as: 'quote', // Use lowercase 'q' as specified in the error
-                    include: [{
-                        model: Lead,
-                        as: 'lead' // Use lowercase 'l' for consistency
-                    }]
+                    as: 'quote',
+                    include: [{ model: Lead, as: 'lead' }]
                 }],
                 transaction: t
             });
@@ -522,30 +534,40 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
                 throw new Error('Invoice not found.');
             }
 
+            // 3. Prevent changing status of a finalized invoice
             if (invoice.status === 'Paid' || invoice.status === 'Cancelled') {
                 const error = new Error(`Cannot change status of a ${invoice.status} invoice.`);
-                error.status = 403;
+                error.status = 403; // Forbidden
                 throw error;
             }
 
+            // 4. Update the status in memory
             invoice.status = status;
-            if (invoice.status === 'Paid') {
-                invoice.paidAt = new Date();
+
+            // --- THIS IS THE KEY LOGIC ---
+            // 5. If the status is 'Paid', set the 'paidAt' timestamp
+            if (status === 'Paid') {
+               
+                invoice.paidAt = new Date(); // Set the current date and time
+                console.log('done')
+                // Also update the related lead's stage
+                if (invoice.quote && invoice.quote.lead) {
+                    const lead = invoice.quote.lead;
+                    lead.stage = 'Deal Closed';
+                    await lead.save({ transaction: t });
+                }
             }
+
+            // 6. Save all changes to the database
+            // Because the Invoice model is now fixed, Sequelize will correctly save the 'paidAt' field.
             await invoice.save({ transaction: t });
 
-            // --- FIX: Access the properties using the correct lowercase aliases ---
-            if (status === 'Paid' && invoice.quote && invoice.quote.lead) {
-                const lead = invoice.quote.lead;
-                lead.stage = 'Deal Closed';
-                await lead.save({ transaction: t });
-            }
-            
+            // 7. Queue a notification to be sent only if the transaction succeeds
             if (status === 'Paid') {
                 t.afterCommit(() => {
                     notifyAdminsOfSuccess(
                         `Invoice Paid: #${invoice.invoiceNumber}`,
-                        `Invoice #${invoice.invoiceNumber} for customer '${invoice.customerName}' has been successfully paid and the corresponding deal is now closed.`
+                        `Invoice #${invoice.invoiceNumber} for customer '${invoice.customerName}' has been paid.`
                     );
                 });
             }
@@ -553,6 +575,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
             return invoice;
         });
 
+        // 8. Return the updated invoice on success
         res.json({ success: true, invoice: result });
 
     } catch (error) {
@@ -560,7 +583,6 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
         res.status(error.status || 500).json({ success: false, message: error.message || 'Server Error' });
     }
 });
-
 
 
 // router.get('/:id/preview', authenticateToken, async (req, res) => {

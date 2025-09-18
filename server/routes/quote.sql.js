@@ -222,7 +222,7 @@ function buildQuoteInternalPreviewHTML({ quote, items, customer }) {
                     <table>
                         <tr><td>Quote #:</td><td>${esc(q.quoteNumber)}</td></tr>
                         <tr><td>Quote Date:</td><td>${new Date(q.quoteDate || Date.now()).toLocaleDateString()}</td></tr>
-                        <tr><td>Sales Person:</td><td>${esc(q.salesPersonName || 'N/A')}</td></tr>
+                        <tr><td>Sales Person:</td><td>${esc(q.salesmanName || 'N/A')}</td></tr>
                     </table>
                 </div>
             </div>
@@ -621,8 +621,8 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
             return res.status(404).json({ success: false, message: 'Lead not found' });
         }
 
-        const { items, discountMode, discountValue, vatPercent } = req.body;
-        
+        const { items, discountMode, discountValue,  salesmanId, vatPercent } = req.body;
+        console.log(req.body)
         let quoteSubtotal = 0;
         let quoteTotalCost = 0;
 
@@ -679,7 +679,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
             initialStatus = 'PendingApproval';
         }
 
-        const member = await Member.findByPk(req.subjectId);
+        const member = await Member.findByPk(salesmanId);
         if (!member) {
             return res.status(403).json({ success: false, message: 'Creator not found.' });
         }
@@ -731,7 +731,6 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         res.status(500).json({ success: false, message: 'Server error', error: e.message });
     }
 });
-
 
 
 // ADMIN APPROVE QUOTE

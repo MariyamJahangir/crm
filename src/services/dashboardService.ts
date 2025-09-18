@@ -1,42 +1,79 @@
-// services/dashboardService.js
-import { api } from './api'; // Your configured axios instance
+import { api } from './api';
 
-// --- TypeScript Interfaces for Type Safety ---
-
+// --- Base Interfaces ---
 export interface ChartData {
-  labels: string[];
-  values: (number | string)[];
+    labels: string[];
+    values: number[];
 }
 
-export interface LeadPipelineData {
-  discovery: number;
-  quote: number;
-  deal_closed: number;
+export interface AdminChartData {
+    labels: string[];
+    datasets: {
+        label: string;
+        data: number[];
+        backgroundColor?: string;
+        borderColor?: string;
+    }[];
 }
 
+export interface LeadStagesData {
+    labels: string[];
+    values: number[];
+}
+
+export interface OverallStats {
+    queries: number;
+    inProgress: number;
+    clients: number;
+    completed: number;
+}
+
+// --- NEW: Interface for mixed-type charts (Bar + Line) ---
+export interface MixedChartData {
+    labels: string[];
+    datasets: ({
+        type: 'bar';
+        label: string;
+        data: number[];
+        backgroundColor: string;
+        order: number;
+    } | {
+        type: 'line';
+        label: string;
+        data: (number | null)[];
+        borderColor: string;
+        fill: boolean;
+        tension: number;
+        order: number;
+    })[];
+}
+
+// NEW: Interface for member target achievement
+export interface MemberTargetAchievement {
+    name: string;
+    target: number;
+    achieved: number;
+}
+
+// --- Main Dashboard Data Interface ---
 export interface DashboardData {
-  totalSalesComparison: ChartData;
-  leadPipeline: LeadPipelineData;
-  revenueLastSixMonths: ChartData;
+    isAdmin: boolean;
+    overallStats: OverallStats;
+    totalSalesComparison: ChartData | AdminChartData;
+    leadPipeline: LeadStagesData;
+    revenueLastSixMonths: MixedChartData;
+    memberTargetAchievements: MemberTargetAchievement[]; // NEW
 }
 
 export interface DashboardResponse {
-  success: boolean;
-  data: DashboardData;
+    success: boolean;
+    data?: DashboardData;
+    message?: string;
 }
 
-// --- Service Object for API Calls ---
-
+// --- Service Definition ---
 export const dashboardService = {
-  /**
-   * Fetches all dashboard data from the single unified endpoint.
-   * The backend will automatically determine whether to return admin or member data
-   * based on the provided authentication token.
-   *
-   * @param token - The JWT token for authentication.
-   * @returns A promise that resolves with the dashboard data.
-   */
-  getData: (token: string): Promise<DashboardResponse> => {
-    return api.get('/dashboard', token);
-  },
+    getData: (token: string): Promise<DashboardResponse> => {
+        return api.get('/dashboard', token);
+    },
 };
