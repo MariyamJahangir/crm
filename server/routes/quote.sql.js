@@ -285,7 +285,7 @@ function buildQuoteInternalPreviewHTML({ quote, items, customer }) {
 </html>`;
 }
 
-
+ 
 function buildQuoteHTML({ quote, items, lead, customer }) {
     const q = quote || {};
     const it = Array.isArray(items) ? items : [];
@@ -593,7 +593,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
 // Create quote with approval logic
 router.post('/leads/:leadId/quotes', authenticateToken, [
-    // Add validation for new cost-related fields
+    // Validation rules are correct and enforce data integrity
     body('items.*.itemCost').isFloat({ min: 0 }).withMessage('Item cost must be a non-negative number.'),
     body('items.*.itemRate').isFloat({ gt: 0 }).withMessage('Item rate must be a positive number.'),
     body('quoteDate').optional().isISO8601(),
@@ -607,8 +607,11 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
     body('items.*.product').trim().notEmpty(),
     body('items.*.quantity').isFloat({ gt: 0 }),
 ], async (req, res) => {
+    // Optional: Uncomment these lines for debugging if issues arise
+    // console.log('--- QUOTE REQUEST BODY ---', JSON.stringify(req.body, null, 2));
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+        // console.log('--- QUOTE VALIDATION ERRORS ---', errors.array());
         return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
 
@@ -665,7 +668,6 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         const netAfterDiscount = quoteSubtotal - overallDiscount;
         const vatAmount = netAfterDiscount * (Number(vatPercent || 0) / 100);
         const grandTotal = netAfterDiscount + vatAmount;
-
         const grossProfit = netAfterDiscount - quoteTotalCost;
         const profitPercent = netAfterDiscount > 0 ? (grossProfit / netAfterDiscount) * 100 : 0;
 
@@ -684,7 +686,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
 
         const quoteNumber = `Q-${new Date().getFullYear()}-${Date.now()}`;
         
-        // 4. Create the Quote record with all calculated fields
+        // 4. Create the Quote record
         const createdQuote = await Quote.create({
             ...req.body,
             quoteNumber,
@@ -698,16 +700,13 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
             grandTotal: grandTotal.toFixed(2),
             grossProfit: grossProfit.toFixed(2),
             profitPercent: profitPercent.toFixed(3),
-            salesmanName: member.name, // Pass the member's name as a string
+            salesmanName: member.name,
             approvedBy: isApproved ? 'Auto-approved' : null,
             rejectNote: null,
         });
 
         // 5. Create all QuoteItem records
-        await QuoteItem.bulkCreate(computedItems.map(ci => ({
-            ...ci,
-            quoteId: createdQuote.id 
-        })));
+        await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: createdQuote.id })));
 
         if (lead.stage !== 'Quote') {
             await lead.update({ stage: 'Quote' });
@@ -732,7 +731,6 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         res.status(500).json({ success: false, message: 'Server error', error: e.message });
     }
 });
-
 
 
 

@@ -31,7 +31,7 @@ const CreateInvoicePage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [salesmanId, setSalesmanId] = useState('');
-    
+        const [termsAndConditions, setTermsAndConditions] = useState('');
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
     const [dueDate, setDueDate] = useState('');
     const [notes, setNotes] = useState('');
@@ -119,13 +119,26 @@ const CreateInvoicePage: React.FC = () => {
 
         setSubmitting(true);
         setError(null);
+const mapEntityTypeToCustomerType = (entityType?: string): 'Vendor' | 'Customer' | null => {
+            if (entityType === 'Lead') {
+                return 'Customer'; // Business decision: Treat a 'Lead' as a 'Customer' when invoicing.
+            }
+            if (entityType === 'Vendor') {
+                return 'Vendor';
+            }
+            if (entityType === 'Customer') {
+                return 'Customer';
+            }
+            // If the type is unknown or not provided, send null.
+            return null;
+        };
 
         try {
             const payload: { manualData: ManualInvoicePayload } = {
                 manualData: {
                     customerId: selectedCompany.id,
                     customerName, address,
-                    customerType: selectedCompany.entityType,
+                    customerType: mapEntityTypeToCustomerType(selectedCompany.entityType),
                     invoiceDate, dueDate,
                     salesmanId,
                     items: items.map((item, index) => ({
@@ -136,6 +149,7 @@ const CreateInvoicePage: React.FC = () => {
                         itemRate: Number(item.itemRate),
                     })),
                     notes,
+                    termsAndConditions,
                     discountAmount: Number(discountAmount),
                     vatAmount: totalTax,
                 }
@@ -231,6 +245,10 @@ const CreateInvoicePage: React.FC = () => {
                                 <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Notes / Terms</label>
                                 <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={4} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
                             </div>
+                             <div>
+                                    <label htmlFor="terms" className="block text-sm font-medium text-gray-700">Terms & Conditions</label>
+                                    <textarea id="terms" value={termsAndConditions} onChange={e => setTermsAndConditions(e.target.value)} rows={3} className="mt-1 block w-full form-textarea"></textarea>
+                                </div>
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center">
                                     <span className="text-gray-600">Subtotal:</span>

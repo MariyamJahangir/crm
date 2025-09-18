@@ -156,11 +156,15 @@ Invoice.init({
     type: DataTypes.DATE,
     allowNull: true // It's null until the invoice is paid
   },
-   quoteId: { // This field is the foreign key for the Quote
+   termsAndConditions: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+   quoteId: { 
     type: DataTypes.UUID,
     allowNull: true,
     references: {
-      model: 'quotes', // This should match the table name of the Quote model
+      model: 'quotes', 
       key: 'id'
     }
   },

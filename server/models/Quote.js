@@ -5,7 +5,7 @@ class Quote extends Model {}
 
 Quote.init({
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  quoteNumber: { type: DataTypes.STRING, allowNull: false, unique: true }, // ✅ only one unique
+  quoteNumber: { type: DataTypes.STRING, allowNull: false }, 
   leadId: { type: DataTypes.UUID, allowNull: false },
   quoteDate: { type: DataTypes.DATE, allowNull: false },
   validityUntil: { type: DataTypes.DATE, allowNull: true },
@@ -32,6 +32,10 @@ Quote.init({
   status: { type: DataTypes.ENUM('Draft','Sent','Accepted','Rejected','Expired','PendingApproval'), allowNull: false, defaultValue: 'Draft' },
   preparedBy: { type: DataTypes.STRING, allowNull: true },
   approvedBy: { type: DataTypes.STRING, allowNull: true },
+   termsAndConditions: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   rejectNote: { type: DataTypes.TEXT, allowNull: true },
   invoiceId: { // Optional: You can add this to link back from the quote
     type: DataTypes.UUID,

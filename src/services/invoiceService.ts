@@ -21,6 +21,7 @@ export interface Invoice {
   dueDate: string;
   customerId: string;
   customerName: string;
+  customerType?: 'Vendor' | 'Customer' | null;
   address?: string;
   subtotal: number;
   discountAmount: number;
@@ -31,7 +32,7 @@ export interface Invoice {
   notes?: string;
 }
 
-export type ManualInvoicePayload = Omit<Invoice, 'id' | 'invoiceNumber' | 'status' | 'items' | 'subtotal' | 'grandTotal' | 'notes'> & {
+export type ManualInvoicePayload = Omit<Invoice, 'id' | 'invoiceNumber' | 'status' | 'items' |'salesmanId'|  'subtotal' | 'grandTotal' | 'notes'> & {
   items: Omit<InvoiceItem, 'id' | 'lineTotal' | 'taxPercent' | 'taxAmount'>[];
 };
 

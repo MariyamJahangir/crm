@@ -43,7 +43,7 @@ const CreateQuote: React.FC = () => {
   const [vatPercent, setVatPercent] = useState(0);
   const [items, setItems] = useState<(QItem & { lineDiscountMode?: 'PERCENT' | 'AMOUNT' })[]>([
     {
-      slNo: 1, product: '', description: '', unit: '', quantity: 1, itemCost: 0,
+      slNo: 1, product: '', description: '', quantity: 1, itemCost: 0,
       itemRate: 0, lineDiscountPercent: 0, lineDiscountAmount: 0, lineDiscountMode: 'PERCENT',
     },
   ]);
@@ -82,7 +82,7 @@ const CreateQuote: React.FC = () => {
     setItems(prev => [
       ...prev,
       {
-        slNo: prev.length + 1, product: '', description: '', unit: '', quantity: 1, itemCost: 0,
+        slNo: prev.length + 1, product: '', description: '', quantity: 1, itemCost: 0,
         itemRate: 0, lineDiscountPercent: 0, lineDiscountAmount: 0, lineDiscountMode: 'PERCENT',
       },
     ]);
@@ -178,45 +178,66 @@ const CreateQuote: React.FC = () => {
     })();
   }, [token, selectedLeadId]);
 
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!selectedLeadId) {
-      setError('Please select a lead before saving the quote.');
-      return;
-    }
-    if (!customerName.trim()) {
-      setError('Customer Name is required.');
-      return;
-    }
-    if (items.some(it => !it.product.trim() || it.quantity <= 0)) {
-      setError('Each item must have a product name and quantity greater than 0.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        quoteDate: quoteDate ? new Date(quoteDate).toISOString() : undefined,
-        validityUntil: validityUntil ? new Date(validityUntil).toISOString() : undefined,
-        salesmanId, customerId, customerName, contactPerson: contactPerson || undefined,
-        phone: phone || undefined, email: email || undefined, address: address || undefined,
-        description: description || undefined, discountMode, discountValue, vatPercent,
-        items: items.map(it => ({
-          slNo: it.slNo, product: it.product, description: it.description || undefined,
-          unit: it.unit || undefined, quantity: Number(it.quantity || 0),
-          itemCost: Number(it.itemCost || 0), itemRate: Number(it.itemRate || 0),
-          lineDiscountPercent: it.lineDiscountMode === 'PERCENT' ? Number(it.lineDiscountPercent || 0) || undefined : undefined,
-          lineDiscountAmount: it.lineDiscountMode === 'AMOUNT' ? Number(it.lineDiscountAmount || 0) || undefined : undefined,
-        })),
-      };
-      const res = await quotesService.create(selectedLeadId, payload, token!);
-      setLastSavedQuote({ id: res.quoteId, number: res.quoteNumber, isApproved: res.isApproved });
-    } catch (e: any) {
-      setError(e?.data?.message || 'Failed to save quote');
-    } finally {
-      setSaving(false);
-    }
-  };
+   const save = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        // (1) Stricter client-side validation to match the backend.
+        if (!selectedLeadId) {
+            setError('Please select a lead before saving the quote.');
+            return;
+        }
+        if (!customerName.trim()) {
+            setError('Customer Name is required.');
+            return;
+        }
+        // This validation now correctly checks that both quantity and itemRate are > 0.
+        if (items.some(it => !it.product.trim() || it.quantity <= 0 || it.itemRate <= 0)) {
+            setError('Each item must have a product name, and both Quantity and Rate must be greater than 0.');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            // (2) The payload is corrected to include `quantity` and exclude `unit`.
+            const payload = {
+                quoteDate: quoteDate ? new Date(quoteDate).toISOString() : undefined,
+                validityUntil: validityUntil ? new Date(validityUntil).toISOString() : undefined,
+                salesmanId,
+                customerId,
+                customerName,
+                contactPerson: contactPerson || undefined,
+                phone: phone || undefined,
+                email: email || undefined,
+                address: address || undefined,
+                description: description || undefined,
+                discountMode,
+                discountValue,
+                vatPercent,
+                items: items.map(it => ({
+                    slNo: it.slNo,
+                    product: it.product,
+                    description: it.description || undefined,
+                    // 'unit' is intentionally excluded as requested.
+                    quantity: Number(it.quantity),
+                    itemCost: Number(it.itemCost || 0),
+                    itemRate: Number(it.itemRate),
+                    lineDiscountMode: it.lineDiscountMode,
+                    lineDiscountPercent: it.lineDiscountMode === 'PERCENT' ? Number(it.lineDiscountPercent || 0) : undefined,
+                    lineDiscountAmount: it.lineDiscountMode === 'AMOUNT' ? Number(it.lineDiscountAmount || 0) : undefined,
+                })),
+            };
+
+            const res = await quotesService.create(selectedLeadId, payload, token!);
+            setLastSavedQuote({ id: res.quoteId, number: res.quoteNumber, isApproved: res.isApproved });
+
+        } catch (e: any) {
+            const errorMessage = e?.data?.errors?.[0]?.msg || e?.data?.message || 'Failed to save quote. Please check all fields.';
+            setError(errorMessage);
+        } finally {
+            setSaving(false);
+        }
+    };
 
   const downloadPdf = async () => {
     if (!token || !selectedLeadId || !lastSavedQuote) return;
@@ -355,7 +376,7 @@ const CreateQuote: React.FC = () => {
                     <th>Sl</th>
                     <th>Product</th>
                     <th>Description</th>
-                    <th>Unit</th>
+                    {/* <th>Unit</th> */}
                     <th>Qty</th>
                     <th>Cost</th>
                     <th>Rate</th>
@@ -392,13 +413,13 @@ const CreateQuote: React.FC = () => {
                             onChange={e => updateItem(idx, { description: e.target.value })}
                           />
                         </td>
-                        <td>
+                        {/* <td>
                           <input
                             className="input input-bordered w-full"
                             value={item.unit}
                             onChange={e => updateItem(idx, { unit: e.target.value })}
                           />
-                        </td>
+                        </td> */}
                         <td>
                           <input
                             type="number"

@@ -1,5 +1,5 @@
 // components/SelectLeadModal.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import { useAuth } from '../contexts/AuthContext';
@@ -40,43 +40,72 @@ const SelectLeadModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
+  
+  // Ref for the scrollable container
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Reset on open
+  // When the search query changes, reset page and rows
   useEffect(() => {
-    if (!open) return;
-    setQuery('');
     setPage(1);
     setRows([]);
     setTotal(0);
-  }, [open]);
+  }, [debouncedQuery]);
 
+  // Data fetching effect
   useEffect(() => {
     if (!open || !token) return;
+
     let abort = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await leadsService.myLeads(token);
-        
-        if (!abort) {
-          setRows(res.leads);
-          setTotal(res.total);
+    const fetchLeads = async () => {
+        setLoading(true);
+        try {
+            // Assume leadsService.myLeads can accept pagination and query params
+            const res = await leadsService.myLeads(token, {
+                query: debouncedQuery,
+                page,
+                pageSize,
+            });
+            
+            if (!abort) {
+                // Append new leads to the existing list
+                setRows(prevRows => [...prevRows, ...res.leads]);
+                setTotal(res.total);
+            }
+        } catch {
+            if (!abort) {
+                // On error, don't add more rows
+            }
+        } finally {
+            if (!abort) setLoading(false);
         }
-      } catch {
-        if (!abort) {
-          setRows([]);
-          setTotal(0);
-        }
-      } finally {
-        if (!abort) setLoading(false);
-      }
-    })();
+    };
+
+    fetchLeads();
+
     return () => {
       abort = true;
     };
   }, [open, token, debouncedQuery, page, pageSize]);
 
-  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
+  // Effect for handling infinite scroll
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        // Check if user is near the bottom
+        if (scrollHeight - scrollTop - clientHeight < 10) {
+            // Load more if there are more items and not already loading
+            if (rows.length < total && !loading) {
+                setPage(prevPage => prevPage + 1);
+            }
+        }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [loading, rows.length, total]); // Re-attach if these dependencies change
 
   const handleRowSelect = (row: LeadRow) => {
     onSelect(row);
@@ -100,10 +129,7 @@ const SelectLeadModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
           className="flex-1 border rounded px-3 py-2"
           placeholder="Search by Lead # or Company name"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           aria-label="Search Leads"
         />
         <select
@@ -111,7 +137,8 @@ const SelectLeadModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
           value={pageSize}
           onChange={(e) => {
             setPageSize(Number(e.target.value));
-            setPage(1);
+            setPage(1); // Reset page when size changes
+            setRows([]);
           }}
           aria-label="Rows per page"
         >
@@ -121,8 +148,14 @@ const SelectLeadModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
         </select>
       </div>
 
-      <div className="border rounded" role="grid" aria-label="Leads list">
-        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 border-b text-sm font-medium text-gray-700">
+      {/* Attach the ref and add scrolling classes */}
+      <div 
+        ref={scrollContainerRef}
+        className="border rounded max-h-96 overflow-y-auto"
+        role="grid"
+        aria-label="Leads list"
+      >
+        <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 border-b text-sm font-medium text-gray-700 sticky top-0 z-10">
           <div className="col-span-2">Lead #</div>
           <div className="col-span-3">Company</div>
           <div className="col-span-3">Contact</div>
@@ -130,9 +163,7 @@ const SelectLeadModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
           <div className="col-span-2 text-right">Action</div>
         </div>
 
-        {loading && <div className="px-3 py-3 text-sm text-gray-600">Loading...</div>}
-
-        {!loading && rows.map((r) => (
+        {rows.map((r) => (
           <div
             key={r.id}
             className="grid grid-cols-12 gap-2 px-3 py-2 border-b text-sm items-center hover:bg-gray-50 cursor-pointer"
@@ -150,7 +181,7 @@ const SelectLeadModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
             <div className="col-span-2">{r.uniqueNumber}</div>
             <div className="col-span-3">{r.companyName}</div>
             <div className="col-span-3">
-              {r.contactPerson || '-'} {r.mobile ? ` • ${r.mobile}` : ''} {r.email ? ` • ${r.email}` : ''}
+              {r.contactPerson || '-'} {r.mobile ? ` • ${r.mobile}` : ''}
             </div>
             <div className="col-span-2">{r.salesman?.name || '-'}</div>
             <div className="col-span-2 text-right">
@@ -160,20 +191,15 @@ const SelectLeadModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
             </div>
           </div>
         ))}
+        
+        {loading && <div className="px-3 py-3 text-sm text-center text-gray-600">Loading more...</div>}
 
-        {!loading && rows.length === 0 && <div className="px-3 py-4 text-gray-600">No leads found.</div>}
+        {!loading && rows.length === 0 && <div className="px-3 py-4 text-center text-gray-600">No leads found.</div>}
       </div>
 
       <div className="flex justify-between items-center mt-3">
-        <div className="text-sm text-gray-600">Total: {total}</div>
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
-            Prev
-          </Button>
-          <div className="text-sm">Page {page} / {totalPages}</div>
-          <Button type="button" variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
-            Next
-          </Button>
+        <div className="text-sm text-gray-600">
+          Showing {rows.length} of {total}
         </div>
       </div>
     </Modal>

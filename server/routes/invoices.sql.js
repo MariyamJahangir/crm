@@ -37,17 +37,25 @@ async function generateInvoiceNumber() {
  * @param {*} v The value to escape.
  * @returns {string} The escaped string.
  */
-function esc(v) { return (v ?? '').toString(); }
+// A simple utility to escape HTML characters
+function esc(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(`/[&<>"']/g`, match => {
+        switch (match) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case "'": return '&#39;';
+            default: return match;
+        }
+    });
+}
 
-/**
- * Builds the HTML content for an invoice preview.
- * @param {object} data - The invoice and its items.
- * @returns {string} The full HTML document for the invoice.
- */
 function buildInvoiceHTML({ invoice, items, creator }) {
     const inv = invoice || {};
     const it = Array.isArray(items) ? items : [];
-    const salesPerson = creator?.name || 'N/A'; // Use the creator's name
+    const salesPerson = creator?.name || 'N/A';
 
     const dateStr = inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString('en-GB') : '';
 
@@ -67,7 +75,7 @@ function buildInvoiceHTML({ invoice, items, creator }) {
                 <td class="text-right">${qty}</td>
                 <td class="text-right">${rate}</td>
                 <td class="text-right">${taxableAmount}</td>
-                <td class="text-right">5.00%</td>
+                
                 <td class="text-right">${taxAmount}</td>
                 <td class="text-right">${lineTotal}</td>
             </tr>`;
@@ -77,8 +85,8 @@ function buildInvoiceHTML({ invoice, items, creator }) {
     const discount = Number(inv.discountAmount || 0).toFixed(2);
     const vat = Number(inv.vatAmount || 0).toFixed(2);
     const grand = Number(inv.grandTotal || 0).toFixed(2);
+    const quoteNumberDisplay = esc(inv.quote?.quoteNumber || 'N/A');
 
-    // This is the full HTML structure with inline CSS
     return `<!doctype html>
 <html>
 <head>
@@ -93,7 +101,7 @@ function buildInvoiceHTML({ invoice, items, creator }) {
         .invoice-title h1 { font-size: 24px; color: #A9A9A9; margin: 0; font-weight: bold; }
         .bill-to { margin-bottom: 20px; }
         table { width: 100%; border-collapse: collapse; font-size: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; word-break: break-word; }
         th { background-color: #f2f2f2; font-weight: bold; }
         .text-right { text-align: right; }
         .item-desc .text-muted { color: #6c757d; }
@@ -103,6 +111,7 @@ function buildInvoiceHTML({ invoice, items, creator }) {
         .totals-table tr td:first-child { font-weight: bold; }
         .footer-section { margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-start; font-size: 9px; page-break-inside: avoid; }
         .footer-section > div { width: 48%; }
+        .pre-wrap { white-space: pre-wrap; } /* This style is key for preserving line breaks */
     </style>
 </head>
 <body>
@@ -119,16 +128,17 @@ function buildInvoiceHTML({ invoice, items, creator }) {
             <div class="invoice-title">
                 <h1>PROFORMA INVOICE</h1>
                 <p>
-                    <strong>Quote#:</strong> ${esc(inv.quote.quoteNumber || 'N/A')}<br>
-                        <strong>INVOICE#:</strong> ${esc(inv.invoiceNumber || 'N/A')}<br>
-                    <strong>Quote Date:</strong> ${dateStr}<br>
+                    <strong>Quote#:</strong> ${quoteNumberDisplay}<br>
+                    <strong>INVOICE#:</strong> ${esc(inv.invoiceNumber || 'N/A')}<br>
+                    <strong>Date:</strong> ${dateStr}<br>
                     <strong>Sales person:</strong> ${esc(salesPerson)}
                 </p>
             </div>
         </div>
         <div class="bill-to">
             <strong>Bill To</strong><br>
-            ${esc(inv.customerName)}
+            ${esc(inv.customerName)}<br>
+            <div class="pre-wrap">${esc(inv.address)}</div>
         </div>
         <table>
             <thead>
@@ -138,7 +148,7 @@ function buildInvoiceHTML({ invoice, items, creator }) {
                     <th class="text-right">Qty</th>
                     <th class="text-right">Rate</th>
                     <th class="text-right">Taxable Amount</th>
-                    <th class="text-right">Tax %</th>
+                    
                     <th class="text-right">Tax</th>
                     <th class="text-right">Total</th>
                 </tr>
@@ -149,14 +159,17 @@ function buildInvoiceHTML({ invoice, items, creator }) {
             <table class="totals-table">
                 <tr><td>Sub Total</td><td class="text-right">AED ${subtotal}</td></tr>
                 ${discount > 0 ? `<tr><td>Discount</td><td class="text-right">AED ${discount}</td></tr>` : ''}
-                <tr><td>Total Tax (VAT)</td><td class="text-right">${vat}</td></tr>
+                <tr><td>Total Tax (VAT)</td><td class="text-right">AED ${vat}</td></tr>
                 <tr><td><strong>Grand Total</strong></td><td class="text-right"><strong>AED ${grand}</strong></td></tr>
             </table>
         </div>
+        
+        
         <div class="footer-section">
             <div>
                 <strong>Notes</strong>
-                <p>Thank you for the opportunity and looking forward for your response.</p>
+                <p class="pre-wrap">${esc(inv.notes || 'Thank you for your business.')}</p>
+                <br>
                 <strong>Bank details</strong>
                 <p>
                     Bank Name: Abu Dhabi Commercial Bank<br>
@@ -167,9 +180,8 @@ function buildInvoiceHTML({ invoice, items, creator }) {
                 </p>
             </div>
             <div>
-                <strong>Terms & Conditions</strong><br>
-                <strong>Payment Terms</strong><br>
-                100% advance payment
+                <strong>Terms & Conditions</strong>
+                <div class="pre-wrap">${esc(inv.termsAndConditions || '100% advance payment is required.')}</div>
             </div>
         </div>
     </div>
@@ -379,27 +391,54 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
  * Creates a new invoice manually.
  */
 router.post('/', authenticateToken, [
+    // --- Validation Rules ---
     body('manualData.customerId').isUUID().withMessage('A valid customer must be selected.'),
     body('manualData.invoiceDate').isISO8601().withMessage('A valid invoice date is required.'),
     body('manualData.items').isArray({ min: 1 }).withMessage('Invoice must have at least one item.'),
     body('manualData.salesmanId').isUUID().withMessage('A valid salesman must be assigned.'),
+    body('manualData.termsAndConditions').optional({ checkFalsy: true }).isString().withMessage('Terms and conditions must be a string.'),
+    
+    // This rule validates that if 'customerType' is sent, it must be 'Vendor' or 'Customer'.
+    body('manualData.customerType').optional({ checkFalsy: true }).isIn(['Vendor', 'Customer']).withMessage('Invalid customer type specified.'),
+
 ], async (req, res) => {
+   
+    
+
     const errors = validationResult(req);
+
+    // --- (2) Error Handling: Check for and log validation errors ---
     if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+      
+        
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Validation failed. Please check the data.', 
+            errors: errors.array() 
+        });
     }
 
+    // --- (3) Transaction and Data Processing ---
     const { manualData } = req.body;
     const transaction = await sequelize.transaction();
 
     try {
         if (!manualData) {
-            throw new Error('Request must include `manualData`.');
+            // This case should be rare since the body is not empty, but it's good practice.
+            await transaction.rollback();
+            return res.status(400).json({ success: false, message: 'Request must include `manualData`.' });
         }
 
-        const { items, ...invoiceData } = manualData;
+        // --- (4) Sanitize and Prepare Data ---
+        // Explicitly destructure `customerType` to handle it safely.
+        const { items, termsAndConditions, customerType, ...invoiceData } = manualData;
+
+        // Ensure `customerType` is a valid ENUM value or null before it reaches the database.
+        const finalCustomerType = ['Vendor', 'Customer'].includes(customerType) ? customerType : null;
+        
         const TAX_PERCENT = 5;
 
+        // --- (5) Invoice Calculation Logic ---
         let calculatedSubtotal = 0;
         let calculatedVatAmount = 0;
         const invoiceItemsData = items.map((item, index) => {
@@ -419,8 +458,10 @@ router.post('/', authenticateToken, [
         const discountAmount = Number(invoiceData.discountAmount) || 0;
         const calculatedGrandTotal = (calculatedSubtotal - discountAmount) + calculatedVatAmount;
 
+        // --- (6) Database Creation ---
         const newInvoice = await Invoice.create({
             ...invoiceData,
+            customerType: finalCustomerType, // Use the sanitized value
             invoiceNumber: await generateInvoiceNumber(),
             subtotal: calculatedSubtotal.toFixed(2),
             discountAmount: discountAmount.toFixed(2),
@@ -428,6 +469,7 @@ router.post('/', authenticateToken, [
             grandTotal: calculatedGrandTotal.toFixed(2),
             status: 'Draft',
             createdById: manualData.salesmanId, 
+            termsAndConditions: termsAndConditions || '', // Ensure it's not null if model doesn't allow it
         }, { transaction });
         
         const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id }));
@@ -435,12 +477,15 @@ router.post('/', authenticateToken, [
 
         await transaction.commit();
         
+        // --- (7) Success Response ---
         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: 'items' });
+       
         res.status(201).json({ success: true, invoice: fullInvoice });
 
     } catch (error) {
         await transaction.rollback();
-        res.status(500).json({ success: false, message: 'Failed to create invoice: ' + error.message });
+        console.error('--- FAILED TO CREATE INVOICE (CATCH BLOCK) ---', error);
+        res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
     }
 });
 
@@ -484,7 +529,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
             }
 
             invoice.status = status;
-            if (status === 'Paid') {
+            if (invoice.status === 'Paid') {
                 invoice.paidAt = new Date();
             }
             await invoice.save({ transaction: t });
@@ -582,7 +627,7 @@ router.get('/:id/preview', authenticateToken, async (req, res) => {
                 { model: Member, as: 'creator', attributes: ['name'] }
             ] 
         });
-        console.log(invoice)
+        
         if (!invoice) {
             return res.status(404).json({ success: false, message: 'Invoice not found' });
         }

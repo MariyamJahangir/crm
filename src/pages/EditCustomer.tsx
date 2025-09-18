@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
-import { useNavigate, useParams, useLocation } from 'react-router-dom'; // Import useLocation
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { customerService, Customer } from '../services/customerService';
 import { teamService, TeamUser } from '../services/teamService';
 import ConfirmDialog from '../components/ConfirmDialog';
+import EditContactModal from '../components/EditContactModal';
 
 type FormState = {
   companyName: string;
@@ -27,14 +29,14 @@ const initialForm: FormState = {
   vatNo: '',
   address: '',
   industry: '',
-  category: '',
+category: '',
   website: '',
 };
 
 const EditCustomer: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const location = useLocation(); // Get location object from react-router
+  const location = useLocation();
   const isCreate = !id;
   const { token, user } = useAuth();
   const isAdmin = user?.type === 'ADMIN';
@@ -45,10 +47,7 @@ const EditCustomer: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
-
-  // --- NEW --- State to control visibility of the contacts section
   const [showContacts, setShowContacts] = useState(false);
-
   const [contactForm, setContactForm] = useState({
     name: '',
     designation: '',
@@ -62,6 +61,21 @@ const EditCustomer: React.FC = () => {
   const [selectedContacts, setSelectedContacts] = useState<Record<string, boolean>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
+
+  const loadCustomer = async () => {
+    if (!id || !token) return;
+    setLoading(true);
+    try {
+      const res = await customerService.getOne(id, token);
+      setCustomer(res.customer);
+    } catch (e: any) {
+      setError(e?.data?.message || 'Failed to reload customer data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -95,12 +109,9 @@ const EditCustomer: React.FC = () => {
           category: ((res.customer as any).category as any) || '',
           website: (res.customer as any).website || '',
         });
-        
-        // --- MODIFIED ---: Only show contacts if not just created
         if (!location.state?.justCreated) {
           setShowContacts(true);
         }
-
       } catch (e: any) {
         setError(e?.data?.message || 'Failed to load customer');
       } finally {
@@ -118,22 +129,18 @@ const EditCustomer: React.FC = () => {
   const saveCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
     if (form.website && !/^(https?:\/\/|www\.).+/i.test(form.website)) {
-        setError('Website must start with http://, https://, or www.');
-        return;
+      setError('Website must start with http://, https://, or www.');
+      return;
     }
-
     setSaving(true);
     try {
       const payload: Partial<FormState> = { ...form };
       if (!isAdmin) {
         delete (payload as Partial<FormState>).salesmanId;
       }
-
       if (isCreate) {
         const out = await customerService.create(payload as any, token);
-        // --- MODIFIED ---: Pass state to indicate creation
         navigate(`/customers/${out.customerId}/edit`, { 
             replace: true, 
             state: { justCreated: true } 
@@ -165,7 +172,6 @@ const EditCustomer: React.FC = () => {
       setContactError('Mobile number is required');
       return;
     }
-
     try {
       await customerService.addContact(id, {
           name: contactForm.name.trim(),
@@ -178,8 +184,7 @@ const EditCustomer: React.FC = () => {
         },
         token
       );
-      const res = await customerService.getOne(id, token);
-      setCustomer(res.customer);
+      await loadCustomer();
       setContactForm({ name: '', designation: '', department: '', mobile: '', fax: '', email: '', social: '' });
     } catch (e: any) {
       setContactError(e?.data?.message || 'Failed to add contact');
@@ -200,14 +205,24 @@ const EditCustomer: React.FC = () => {
     setDeleting(true);
     try {
       await customerService.bulkDeleteContacts(id, selectedIds, token);
-      const res = await customerService.getOne(id, token);
-      setCustomer(res.customer);
+      await loadCustomer();
       setSelectedContacts({});
       setConfirmOpen(false);
     } catch { /* ignore */ }
     finally {
       setDeleting(false);
     }
+  };
+
+  const handleEditSuccess = () => {
+    setEditModalOpen(false);
+    setEditingContactId(null);
+    loadCustomer();
+  };
+
+  const openEditModal = (contactId: string) => {
+    setEditingContactId(contactId);
+    setEditModalOpen(true);
   };
 
   return (
@@ -226,8 +241,7 @@ const EditCustomer: React.FC = () => {
           {(!loading || isCreate) && (
             <>
               <form onSubmit={saveCustomer} className="space-y-6 bg-white p-6 rounded-lg shadow-sm border mb-8">
-                {/* Customer form fields remain the same */}
-                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
                     <input value={form.companyName} onChange={onChange('companyName')} required className="w-full rounded-md border-gray-300 shadow-sm" placeholder="Acme Pvt Ltd" />
@@ -283,7 +297,6 @@ const EditCustomer: React.FC = () => {
                 </div>
               </form>
               
-              {/* --- NEW CONDITIONAL RENDERING LOGIC --- */}
               {!isCreate && !showContacts && (
                 <div className="text-center py-8">
                   <Button onClick={() => setShowContacts(true)}>Add Customer Contacts</Button>
@@ -292,57 +305,62 @@ const EditCustomer: React.FC = () => {
 
               {(!isCreate && showContacts) && (
                 <section className="bg-white p-6 rounded-lg shadow-sm border">
-                  {/* ... All the existing contact section JSX ... */}
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
-                        <div className="flex gap-2">
-                        <Button variant="danger" disabled={selectedIds.length === 0} onClick={() => setConfirmOpen(true)}>Delete Selected ({selectedIds.length})</Button>
-                        </div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
+                    <div className="flex gap-2">
+                    <Button variant="danger" disabled={selectedIds.length === 0} onClick={() => setConfirmOpen(true)}>Delete Selected ({selectedIds.length})</Button>
                     </div>
-                     <form onSubmit={addContact} className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
-                        <input className="border rounded px-3 py-2" placeholder="Name*" value={contactForm.name} onChange={(e) => setContactForm((p) => ({ ...p, name: e.target.value }))} required />
-                        <input className="border rounded px-3 py-2" placeholder="Designation*" value={contactForm.designation} onChange={(e) => setContactForm((p) => ({ ...p, designation: e.target.value }))} required />
-                        <input className="border rounded px-3 py-2" placeholder="Department" value={contactForm.department} onChange={(e) => setContactForm((p) => ({ ...p, department: e.target.value }))} />
-                        <input className="border rounded px-3 py-2" placeholder="Mobile*" value={contactForm.mobile} onChange={(e) => setContactForm((p) => ({ ...p, mobile: e.target.value }))} required />
-                        <input className="border rounded px-3 py-2" placeholder="Fax" value={contactForm.fax} onChange={(e) => setContactForm((p) => ({ ...p, fax: e.target.value }))} />
-                        <input className="border rounded px-3 py-2" placeholder="Email" type="email" value={contactForm.email} onChange={(e) => setContactForm((p) => ({ ...p, email: e.target.value }))} />
-                        <div className="sm:col-span-2 flex gap-2">
-                        <input className="flex-1 border rounded px-3 py-2" placeholder="LinkedIn/Social" value={contactForm.social} onChange={(e) => setContactForm((p) => ({ ...p, social: e.target.value }))} />
-                        <Button type="submit">Add</Button>
-                        </div>
-                    </form>
-                     {contactError && <div className="text-red-600 mb-3">{contactError}</div>}
-                    <div className="border rounded overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><input type="checkbox" className="h-4 w-4" disabled /></th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Social</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {customer?.contacts.map((ct) => (
-                            <tr key={ct.id}>
-                                <td className="px-4 py-2 whitespace-nowrap"><input type="checkbox" className="h-4 w-4" checked={!!selectedContacts[ct.id]} onChange={() => toggleContactSelect(ct.id)} /></td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{ct.name}</td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{ct.designation || '-'}</td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{(ct as any).department || '-'}</td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{ct.mobile || '-'}</td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{ct.email || '-'}</td>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-                                    {(ct as any).social ? <a href={(ct as any).social} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900">Profile</a> : '-'}
-                                </td>
-                            </tr>
-                            ))}
-                        </tbody>
-                        </table>
-                        {customer && customer.contacts.length === 0 && (<div className="px-3 py-4 text-center text-gray-600">No contacts yet.</div>)}
+                  </div>
+                  <form onSubmit={addContact} className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
+                    <input className="border rounded px-3 py-2" placeholder="Name*" value={contactForm.name} onChange={(e) => setContactForm((p) => ({ ...p, name: e.target.value }))} required />
+                    <input className="border rounded px-3 py-2" placeholder="Designation*" value={contactForm.designation} onChange={(e) => setContactForm((p) => ({ ...p, designation: e.target.value }))} required />
+                    <input className="border rounded px-3 py-2" placeholder="Department" value={contactForm.department} onChange={(e) => setContactForm((p) => ({ ...p, department: e.target.value }))} />
+                    <input className="border rounded px-3 py-2" placeholder="Mobile*" value={contactForm.mobile} onChange={(e) => setContactForm((p) => ({ ...p, mobile: e.target.value }))} required />
+                    <input className="border rounded px-3 py-2" placeholder="Fax" value={contactForm.fax} onChange={(e) => setContactForm((p) => ({ ...p, fax: e.target.value }))} />
+                    <input className="border rounded px-3 py-2" placeholder="Email" type="email" value={contactForm.email} onChange={(e) => setContactForm((p) => ({ ...p, email: e.target.value }))} />
+                    <div className="sm:col-span-2 flex gap-2">
+                    <input className="flex-1 border rounded px-3 py-2" placeholder="LinkedIn/Social" value={contactForm.social} onChange={(e) => setContactForm((p) => ({ ...p, social: e.target.value }))} />
+                    <Button type="submit">Add</Button>
                     </div>
+                  </form>
+                  {contactError && <div className="text-red-600 mb-3">{contactError}</div>}
+                  <div className="border rounded overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><input type="checkbox" className="h-4 w-4" disabled /></th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Social</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {customer?.contacts.map((ct) => (
+                      <tr key={ct.id}>
+                        <td className="px-4 py-2 whitespace-nowrap"><input type="checkbox" className="h-4 w-4" checked={!!selectedContacts[ct.id]} onChange={() => toggleContactSelect(ct.id)} /></td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">{ct.name}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{ct.designation || '-'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{(ct as any).department || '-'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{ct.mobile || '-'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{ct.email || '-'}</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {(ct as any).social ? <a href={(ct as any).social} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-900">Profile</a> : '-'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <button onClick={() => openEditModal(ct.id)} className="text-gray-500 hover:text-indigo-600">
+                            <Pencil size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                      ))}
+                    </tbody>
+                    </table>
+                    {customer && customer.contacts.length === 0 && (<div className="px-3 py-4 text-center text-gray-600">No contacts yet.</div>)}
+                  </div>
                 </section>
               )}
             </>
@@ -350,6 +368,12 @@ const EditCustomer: React.FC = () => {
         </main>
       </div>
       <ConfirmDialog open={confirmOpen} title="Delete Contacts" message={`Are you sure you want to delete ${selectedIds.length} selected contact(s)?`} confirmText={deleting ? 'Deleting...' : 'Yes, Delete'} cancelText="Cancel" onConfirm={bulkDeleteContacts} onCancel={() => setConfirmOpen(false)} />
+      <EditContactModal
+        open={isEditModalOpen}
+        contactId={editingContactId}
+        onClose={() => setEditModalOpen(false)}
+        onSuccess={handleEditSuccess}
+      />
     </div>
   );
 };
