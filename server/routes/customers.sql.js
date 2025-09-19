@@ -6,7 +6,11 @@ const Member = require('../models/Member');
 const CustomerContact = require('../models/CustomerContact');
 const { Op } = require('sequelize');
 const { createNotification, notifyAdmins } = require('../utils/notify');
+<<<<<<< HEAD
 
+=======
+const {  notifyAssignment  } = require('../utils/emailService')
+>>>>>>> origin/main
 const router = express.Router();
 
 // Helper to add unique member id to customer's contactedBy array
@@ -109,6 +113,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // POST /customers - create new customer
+<<<<<<< HEAD
 router.post('/', authenticateToken, [
   body('companyName').trim().notEmpty().withMessage('Company name is required'),
   body('email').optional().trim().isEmail().withMessage('Invalid email'),
@@ -192,6 +197,219 @@ router.post('/', authenticateToken, [
   }
 });
   
+=======
+// router.post('/', authenticateToken, [
+//   body('companyName').trim().notEmpty().withMessage('Company name is required'),
+//   body('email').optional().trim().isEmail().withMessage('Invalid email'),
+// ], async (req, res) => {
+//   try {
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty())
+//       return res.status(400).json({ success: false, message: 'validation failed', errors: errors.array() });
+
+//     const {
+//       companyName, contactNumber, email, vatNo,
+//       address, industry, website, category,
+//       salesmanId: requestedSalesmanId
+//     } = req.body;
+
+//     let resolvedSalesmanId = null;
+
+//     if (isAdmin(req)) {
+//       if (!requestedSalesmanId)
+//         return res.status(400).json({ success: false, message: 'Salesman is required' });
+
+//       const salesman = await Member.findByPk(requestedSalesmanId);
+//       if (!salesman)
+//         return res.status(400).json({ success: false, message: 'Invalid salesman' });
+
+//       resolvedSalesmanId = salesman.id;
+
+//     } else {
+//       // Member creates customer for self only
+//       const self = await Member.findByPk(req.subjectId);
+//       if (!self)
+//         return res.status(400).json({ success: false, message: 'Invalid member' });
+
+//       if (requestedSalesmanId && requestedSalesmanId !== self.id)
+//         return res.status(403).json({ success: false, message: 'Cannot assign other salesman' });
+
+//       resolvedSalesmanId = self.id;
+//     }
+
+//     const created = await Customer.create({
+//       companyName,
+//       contactNumber: contactNumber || '',
+//       email: email || '',
+//       vatNo: vatNo || '',
+//       address: address || '',
+//       industry: industry || null,
+//       website: website || null,
+//       category: category || null,
+//       salesmanId: resolvedSalesmanId,
+//       contactedBy: [] // initialize empty
+//     });
+
+   
+//     await pushContactedBy(created, resolvedSalesmanId);
+
+//     notifyAdmins(req.app.get('io'), {
+//       event: 'CUSTOMER_CREATED',
+//       entityType: 'customer',
+//       entityId: created.id,
+//       title: 'New Customer Created',
+//       message: `Customer ${companyName} was created.`,
+//     });
+
+//     if (isAdmin(req) && resolvedSalesmanId) {
+//       await createNotification({
+//         toType: 'MEMBER',
+//         toId: resolvedSalesmanId,
+//         event: 'CUSTOMER_ASSIGNED',
+//         entityType: 'customer',
+//         entityId: created.id,
+//         title: 'Customer Assigned',
+//         message: `Customer ${companyName} assigned to you.`,
+//       }, req.app.get('io'));
+//     }
+
+//     res.status(201).json({ success: true, customerId: created.id });
+
+//   } catch (err) {
+//     console.error('Error creating customer:', err);
+//     res.status(500).json({ success: false, message: 'server error' });
+//   }
+// });
+  
+
+router.post('/', authenticateToken, [
+    body('companyName').trim().notEmpty().withMessage('Company name is required'),
+    body('email').optional().trim().isEmail().withMessage('Invalid email'),
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, message: 'validation failed', errors: errors.array() });
+        }
+
+        const {
+            companyName, contactNumber, email, vatNo,
+            address, industry, website, category,
+            salesmanId: requestedSalesmanId
+        } = req.body;
+
+        let resolvedSalesmanId = null;
+        let assignedSalesman = null;
+
+        if (isAdmin(req)) {
+            if (!requestedSalesmanId) {
+                return res.status(400).json({ success: false, message: 'Salesman is required' });
+            }
+            assignedSalesman = await Member.findByPk(requestedSalesmanId);
+            if (!assignedSalesman) {
+                return res.status(400).json({ success: false, message: 'Invalid salesman' });
+            }
+            resolvedSalesmanId = assignedSalesman.id;
+        } else {
+            const self = await Member.findByPk(req.subjectId);
+            if (!self) {
+                return res.status(400).json({ success: false, message: 'Invalid member' });
+            }
+            if (requestedSalesmanId && requestedSalesmanId !== self.id) {
+                return res.status(403).json({ success: false, message: 'Cannot assign other salesman' });
+            }
+            resolvedSalesmanId = self.id;
+            assignedSalesman = self;
+        }
+
+        const createdCustomer = await Customer.create({
+            companyName,
+            contactNumber: contactNumber || '',
+            email: email || '',
+            vatNo: vatNo || '',
+            address: address || '',
+            industry: industry || null,
+            website: website || null,
+            category: category || null,
+            salesmanId: resolvedSalesmanId,
+            contactedBy: []
+        });
+
+        await pushContactedBy(createdCustomer, resolvedSalesmanId);
+
+        // Your existing socket.io notification
+        notifyAdmins(req.app.get('io'), {
+            event: 'CUSTOMER_CREATED',
+            entityType: 'customer',
+            entityId: createdCustomer.id,
+            title: 'New Customer Created',
+            message: `Customer ${companyName} was created.`,
+        });
+
+        // --- EMAIL NOTIFICATION LOGIC ---
+        // If an admin created this customer for another member, send an email.
+        if (isAdmin(req) && assignedSalesman) {
+            // Your existing in-app notification
+            await createNotification({
+                toType: 'MEMBER',
+                toId: resolvedSalesmanId,
+                event: 'CUSTOMER_ASSIGNED',
+                entityType: 'customer',
+                entityId: createdCustomer.id,
+                title: 'Customer Assigned',
+                message: `Customer ${companyName} assigned to you.`,
+            }, req.app.get('io'));
+
+            // **Send the email notification**
+            await notifyAssignment(assignedSalesman, 'Customer', createdCustomer);
+        }
+
+        res.status(201).json({ success: true, customerId: createdCustomer.id });
+
+    } catch (err) {
+        console.error('Error creating customer:', err);
+        res.status(500).json({ success: false, message: 'server error' });
+    }
+});
+
+// --- UPDATED: Create New Contact for a Customer Route ---
+router.post('/:id/contacts', authenticateToken, [
+    body('name').trim().notEmpty().withMessage('Name is required'),
+], async (req, res) => {
+    try {
+        const customerId = req.params.id;
+        const customer = await Customer.findByPk(customerId, { include: 'salesman' });
+        if (!customer) {
+            return res.status(404).json({ success: false, message: 'Customer not found' });
+        }
+
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, message: 'validation failed', errors: errors.array() });
+        }
+
+        const { name, designation, department, mobile, fax, email, social } = req.body;
+
+        const newContact = await CustomerContact.create({
+            customerId, name, designation, department, mobile, fax, email, social,
+        });
+
+        // --- EMAIL NOTIFICATION LOGIC ---
+        // If an admin adds a contact to a customer assigned to a member, notify the member.
+        if (isAdmin(req) && customer.salesman && customer.salesmanId !== req.subjectId) {
+            // **Send the email notification**
+            await notifyAssignment(customer.salesman, 'Contact', newContact);
+        }
+
+        res.status(201).json({ success: true, contact: newContact });
+
+    } catch (err) {
+        console.error('Error creating contact:', err);
+        res.status(500).json({ success: false, message: 'server error' });
+    }
+});
+
+>>>>>>> origin/main
 // GET /customers/:id - get detail customer info
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
@@ -330,7 +548,11 @@ router.put('/:id', authenticateToken, [
   }
 });
 
+<<<<<<< HEAD
 // DELETE /customers/:id - remove a customer
+=======
+
+>>>>>>> origin/main
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const c = await Customer.findByPk(req.params.id);
@@ -379,6 +601,7 @@ router.get('/:id/contacts', authenticateToken, async (req, res) => {
 });
 
 // POST /customers/:id/contacts - add contact to customer
+<<<<<<< HEAD
 router.post('/:id/contacts', authenticateToken, [
   body('name').trim().notEmpty().withMessage('Name is required'),
 ], async (req, res) => {
@@ -412,6 +635,41 @@ router.post('/:id/contacts', authenticateToken, [
     res.status(500).json({ success: false, message: 'server error' });
   }
 });
+=======
+// router.post('/:id/contacts', authenticateToken, [
+//   body('name').trim().notEmpty().withMessage('Name is required'),
+// ], async (req, res) => {
+//   try {
+//     const customerId = req.params.id;
+//     const c = await Customer.findByPk(customerId);
+//     if (!c)
+//       return res.status(404).json({ success: false, message: 'not found' });
+
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty())
+//       return res.status(400).json({ success: false, message: 'validation failed', errors: errors.array() });
+
+//     const { name, designation, department, mobile, fax, email, social } = req.body;
+
+//     const newContact = await CustomerContact.create({
+//       customerId,
+//       name,
+//       designation,
+//       department,
+//       mobile,
+//       fax,
+//       email,
+//       social,
+//     });
+
+//     res.status(201).json({ success: true, contact: newContact });
+
+//   } catch (err) {
+//     console.error('Error creating contact:', err);
+//     res.status(500).json({ success: false, message: 'server error' });
+//   }
+// });
+>>>>>>> origin/main
 
 // DELETE /customers/:id/contacts/:contactId - remove a contact
 router.delete('/:id/contacts/:contactId', authenticateToken, async (req, res) => {

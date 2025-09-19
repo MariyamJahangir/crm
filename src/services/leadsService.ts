@@ -1,6 +1,6 @@
 // src/services/leadsService.ts
 import { api } from './api';
-
+import { Filter } from '../components/FilterDropdown'; 
 export type SalesmanUser = { id: string; name: string; email?: string };
 
 export type Lead = {
@@ -37,7 +37,20 @@ export type ListLeadsResponse = { success: boolean; leads: Lead[] };
 export type GetLeadResponse = { success: boolean; lead: Lead };
 
 export const leadsService = {
-  list: (token?: string | null) => api.get<ListLeadsResponse>('/leads', token),
+    list: (token: string, filters: Filter[] = [], signal?: AbortSignal) => {
+    // Create URL search parameters from the filters array
+    const params = new URLSearchParams();
+    for (const filter of filters) {
+      if (filter.values.length > 0) {
+        // Append as a comma-separated string, e.g., ?stage=Quote,Negotiation
+        params.append(filter.type, filter.values.join(','));
+      }
+    }
+    const queryString = params.toString();
+    
+    // The `api.get` function in your app should handle adding the token to headers
+    return api.get<ListLeadsResponse>(`/leads${queryString ? `?${queryString}` : ''}`, token);
+  },
 
   getOne: (id: string, token?: string | null) => api.get<GetLeadResponse>(`/leads/${id}`, token),
  myLeads: (token?: string | null) => api.get<ListLeadsResponse>('/leads/my-leads', token),

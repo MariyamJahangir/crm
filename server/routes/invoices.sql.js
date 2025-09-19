@@ -11,7 +11,13 @@ const Lead = require('../models/Lead');
 const { authenticateToken,isAdmin } = require('../middleware/auth');
 const puppeteer = require('puppeteer');
 const router = express.Router();
+<<<<<<< HEAD
 
+=======
+const  {  notifyAdminsOfSuccess  }= require('../utils/emailService')
+const Member = require('../models/Member')
+const Customer = require('../models/Customer')
+>>>>>>> origin/main
 // --- Helper Functions ---
 
 /**
@@ -36,6 +42,7 @@ async function generateInvoiceNumber() {
  * @param {*} v The value to escape.
  * @returns {string} The escaped string.
  */
+<<<<<<< HEAD
 function esc(v) { return (v ?? '').toString(); }
 
 /**
@@ -121,10 +128,164 @@ function buildInvoiceHTML({ invoice, items }) {
       </tbody>
     </table>
   </div>
+=======
+// A simple utility to escape HTML characters
+function esc(str) {
+    if (typeof str !== 'string') return '';
+    return str.replace(`/[&<>"']/g`, match => {
+        switch (match) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case "'": return '&#39;';
+            default: return match;
+        }
+    });
+}
+
+function buildInvoiceHTML({ invoice, items, creator }) {
+    const inv = invoice || {};
+    const it = Array.isArray(items) ? items : [];
+    const salesPerson = creator?.name || 'N/A';
+
+    const dateStr = inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString('en-GB') : '';
+
+    const rows = it.map((row, idx) => {
+        const qty = Number(row.quantity || 0).toFixed(2);
+        const rate = Number(row.itemRate || 0).toFixed(2);
+        const taxableAmount = (Number(qty) * Number(rate)).toFixed(2);
+        const taxAmount = Number(row.taxAmount || 0).toFixed(2);
+        const lineTotal = Number(row.lineTotal || 0).toFixed(2);
+        return `
+            <tr>
+                <td>${idx + 1}</td>
+                <td class="item-desc">
+                    <strong>${esc(row.product)}</strong><br>
+                    <span class="text-muted">${esc(row.description || '')}</span>
+                </td>
+                <td class="text-right">${qty}</td>
+                <td class="text-right">${rate}</td>
+                <td class="text-right">${taxableAmount}</td>
+                
+                <td class="text-right">${taxAmount}</td>
+                <td class="text-right">${lineTotal}</td>
+            </tr>`;
+    }).join('');
+
+    const subtotal = Number(inv.subtotal || 0).toFixed(2);
+    const discount = Number(inv.discountAmount || 0).toFixed(2);
+    const vat = Number(inv.vatAmount || 0).toFixed(2);
+    const grand = Number(inv.grandTotal || 0).toFixed(2);
+    const quoteNumberDisplay = esc(inv.quote?.quoteNumber || 'N/A');
+
+    return `<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Invoice ${esc(inv.invoiceNumber)}</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 10px; color: #333; margin: 0; }
+        .container { padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+        .header .company-details { font-size: 11px; line-height: 1.5; }
+        .header .invoice-title { text-align: right; }
+        .invoice-title h1 { font-size: 24px; color: #A9A9A9; margin: 0; font-weight: bold; }
+        .bill-to { margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; word-break: break-word; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .text-right { text-align: right; }
+        .item-desc .text-muted { color: #6c757d; }
+        .totals-section { display: flex; justify-content: flex-end; margin-top: 20px; }
+        .totals-table { width: 40%; }
+        .totals-table td { border: none; padding: 4px 8px; }
+        .totals-table tr td:first-child { font-weight: bold; }
+        .footer-section { margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-start; font-size: 9px; page-break-inside: avoid; }
+        .footer-section > div { width: 48%; }
+        .pre-wrap { white-space: pre-wrap; } /* This style is key for preserving line breaks */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="company-details">
+                <strong>ARTIFLEX INFORMATION TECHNOLOGY LLC</strong><br>
+                Dubai, United Arab Emirates<br>
+                TRN: 104342158300003<br>
+                +971558086462<br>
+                accounts@artiflexit.com<br>
+                https://artiflexit.com
+            </div>
+            <div class="invoice-title">
+                <h1>PROFORMA INVOICE</h1>
+                <p>
+                    <strong>Quote#:</strong> ${quoteNumberDisplay}<br>
+                    <strong>INVOICE#:</strong> ${esc(inv.invoiceNumber || 'N/A')}<br>
+                    <strong>Date:</strong> ${dateStr}<br>
+                    <strong>Sales person:</strong> ${esc(salesPerson)}
+                </p>
+            </div>
+        </div>
+        <div class="bill-to">
+            <strong>Bill To</strong><br>
+            ${esc(inv.customerName)}<br>
+            <div class="pre-wrap">${esc(inv.address)}</div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Item & Description</th>
+                    <th class="text-right">Qty</th>
+                    <th class="text-right">Rate</th>
+                    <th class="text-right">Taxable Amount</th>
+                    
+                    <th class="text-right">Tax</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <div class="totals-section">
+            <table class="totals-table">
+                <tr><td>Sub Total</td><td class="text-right">AED ${subtotal}</td></tr>
+                ${discount > 0 ? `<tr><td>Discount</td><td class="text-right">AED ${discount}</td></tr>` : ''}
+                <tr><td>Total Tax (VAT)</td><td class="text-right">AED ${vat}</td></tr>
+                <tr><td><strong>Grand Total</strong></td><td class="text-right"><strong>AED ${grand}</strong></td></tr>
+            </table>
+        </div>
+        
+        
+        <div class="footer-section">
+            <div>
+                <strong>Notes</strong>
+                <p class="pre-wrap">${esc(inv.notes || 'Thank you for your business.')}</p>
+                <br>
+                <strong>Bank details</strong>
+                <p>
+                    Bank Name: Abu Dhabi Commercial Bank<br>
+                    Account Name: Artiflex Information Technology LLC<br>
+                    Account Number: 13416209820001<br>
+                    IBAN: AE510030013416209820001<br>
+                    Currency: AED
+                </p>
+            </div>
+            <div>
+                <strong>Terms & Conditions</strong>
+                <div class="pre-wrap">${esc(inv.termsAndConditions || '100% advance payment is required.')}</div>
+            </div>
+        </div>
+    </div>
+>>>>>>> origin/main
 </body>
 </html>`;
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 // --- API Routes ---
 
 /**
@@ -168,6 +329,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 
+<<<<<<< HEAD
 router.get('/:id/download', authenticateToken, async (req, res) => {
   try {
     const invoice = await Invoice.findByPk(req.params.id, {
@@ -219,10 +381,64 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
     res.status(500).json({ success: false, message: 'An unexpected server error occurred while generating the PDF.' });
   }
 });
+=======
+// router.get('/:id/download', authenticateToken, async (req, res) => {
+//   try {
+//     const invoice = await Invoice.findByPk(req.params.id, {
+//       include: [
+//         { model: InvoiceItem, as: 'items' },
+//         { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
+//       ]
+//     });
+
+//     if (!invoice) {
+//       return res.status(404).json({ success: false, message: 'Invoice not found' });
+//     }
+
+//     // 1. Generate HTML content
+//     const html = buildInvoiceHTML({ 
+//       invoice: invoice.toJSON(), 
+//       items: (invoice.items || []).map(i => i.toJSON()) 
+//     });
+    
+//     const invoiceNumber = invoice.invoiceNumber || 'invoice';
+
+//     const options = {
+//       format: 'A4',
+//       border: {
+//         top: '20px',
+//         right: '20px',
+//         bottom: '20px',
+//         left: '20px'
+//       }
+//     };
+
+//     // 2. Use pdf.create with a callback, just like your quote route
+//     pdf.create(html, options).toBuffer((err, buffer) => {
+//       if (err) {
+//         // This is the source of the instability and timeout errors.
+//         console.error('html-pdf generation error:', err);
+//         return res.status(500).json({ success: false, message: 'Failed to generate PDF.' });
+//       }
+      
+//       // 3. Set headers and send the response if successful
+//       res.setHeader('Content-Type', 'application/pdf');
+//       res.setHeader('Content-Disposition', `attachment; filename=${invoiceNumber}.pdf`);
+//       res.send(buffer);
+//     });
+
+//   } catch (e) {
+//     // This outer catch block may not be reached if PhantomJS crashes the entire process.
+//     console.error('Outer PDF Download Error:', e);
+//     res.status(500).json({ success: false, message: 'An unexpected server error occurred while generating the PDF.' });
+//   }
+// });
+>>>>>>> origin/main
 
 
 router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
     const { quoteId } = req.params;
+<<<<<<< HEAD
     const transaction = await sequelize.transaction();
 
     try {
@@ -232,20 +448,71 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
         });
 
         // --- Validations ---
+=======
+    const loggedInUserId = req.subjectId;
+    const loggedInUserType = req.subjectType; // e.g., 'ADMIN' or 'MEMBER'
+
+    const transaction = await sequelize.transaction();
+
+    try {
+        // --- 1. Fetch Quote and its associated Lead to get the salesmanId ---
+        const quote = await Quote.findByPk(quoteId, {
+            include: [
+                { model: QuoteItem, as: 'items' },
+                { 
+                    model: Lead, 
+                    as: 'lead', 
+                    attributes: ['id', 'salesmanId', 'customerId'], // Only fetch necessary fields
+                    include: [{ model: Customer, as: 'customer', attributes: ['id'] }]
+                }
+            ],
+            transaction
+        });
+
+        // --- 2. Perform All Validations (including the new Authorization check) ---
+
+>>>>>>> origin/main
         if (!quote) {
             await transaction.rollback();
             return res.status(404).json({ success: false, message: 'Quote not found.' });
         }
+<<<<<<< HEAD
+=======
+
+        // --- NEW AUTHORIZATION LOGIC ---
+        const isAdmin = loggedInUserType === 'ADMIN';
+        const isAssignedSalesman = quote.lead?.salesmanId === loggedInUserId;
+
+        if (!isAdmin && !isAssignedSalesman) {
+            await transaction.rollback();
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Forbidden: You do not have permission to convert this quote.' 
+            });
+        }
+        // --- END OF NEW AUTHORIZATION LOGIC ---
+
+>>>>>>> origin/main
         if (quote.status !== 'Accepted') {
             await transaction.rollback();
             return res.status(400).json({ success: false, message: 'Only an "Accepted" quote can be converted to an invoice.' });
         }
+<<<<<<< HEAD
+=======
+        
+        if (!quote.lead || !quote.lead.customerId || !quote.lead.customer) {
+            await transaction.rollback();
+            return res.status(400).json({ success: false, message: 'Data consistency error: The quote is not linked to a valid customer.' });
+        }
+
+>>>>>>> origin/main
         const existingInvoice = await Invoice.findOne({ where: { quoteId: quote.id }, transaction });
         if (existingInvoice) {
             await transaction.rollback();
             return res.status(409).json({ success: false, message: `This quote has already been converted to Invoice #${existingInvoice.invoiceNumber}.` });
         }
 
+<<<<<<< HEAD
         // --- Server-Side Recalculation with Fixed 5% Tax ---
 
         const FIXED_TAX_PERCENT = 5;
@@ -279,20 +546,47 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
         // --- Create Records in Database ---
 
         // Create the main Invoice record using the recalculated values
+=======
+        // --- 3. Calculations (No Changes) ---
+        const FIXED_TAX_PERCENT = 5;
+        let calculatedSubtotal = 0, calculatedVatAmount = 0;
+        const invoiceItemsData = quote.items.map((item, index) => {
+            const lineSubtotal = (Number(item.quantity) || 0) * (Number(item.itemRate) || 0) - (Number(item.lineDiscountAmount) || 0);
+            const taxAmount = lineSubtotal * (FIXED_TAX_PERCENT / 100);
+            calculatedSubtotal += lineSubtotal;
+            calculatedVatAmount += taxAmount;
+            return {
+                slNo: index + 1, product: item.product, description: item.description, quantity: item.quantity,
+                itemRate: item.itemRate, taxPercent: FIXED_TAX_PERCENT, taxAmount: taxAmount.toFixed(2),
+                lineTotal: (lineSubtotal + taxAmount).toFixed(2),
+            };
+        });
+        const overallDiscountAmount = Number(quote.discountAmount) || 0;
+        const calculatedGrandTotal = (calculatedSubtotal - overallDiscountAmount) + calculatedVatAmount;
+
+        // --- 4. Database Creation (No Changes) ---
+>>>>>>> origin/main
         const newInvoice = await Invoice.create({
             quoteId: quote.id,
             invoiceNumber: await generateInvoiceNumber(),
             invoiceDate: new Date(),
             dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
+<<<<<<< HEAD
             customerId: quote.lead?.customerId,
             customerName: quote.customerName,
             address: quote.address,
             // Use server-calculated values, not values from the quote
+=======
+            customerId: quote.lead.customerId,
+            customerName: quote.customerName,
+            address: quote.address,
+>>>>>>> origin/main
             subtotal: calculatedSubtotal.toFixed(2),
             discountAmount: overallDiscountAmount.toFixed(2),
             vatAmount: calculatedVatAmount.toFixed(2),
             grandTotal: calculatedGrandTotal.toFixed(2),
             status: 'Draft',
+<<<<<<< HEAD
             createdById: req.subjectId,
         }, { transaction });
 
@@ -321,32 +615,106 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
     }
 });
 
+=======
+            createdById: loggedInUserId,
+        }, { transaction });
+
+        const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id, }));
+        await InvoiceItem.bulkCreate(finalInvoiceItems, { transaction });
+        await quote.update({ invoiceId: newInvoice.id }, { transaction });
+
+        // --- 5. Commit and Respond ---
+        await transaction.commit();
+        
+        const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'quote'] });
+        res.status(201).json({ success: true, message: 'Quote successfully converted to invoice.', invoice: fullInvoice });
+
+    } catch (error) {
+        if (!transaction.finished) {
+            await transaction.rollback();
+        }
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        console.error(`[CONVERT_QUOTE] FAILED AND ROLLED BACK. Error: ${errorMessage}`, error);
+        res.status(500).json({ success: false, message: 'Failed to convert quote to invoice: ' + errorMessage });
+    }
+});
+
+
+>>>>>>> origin/main
 /**
  * POST /api/invoices
  * Creates a new invoice manually.
  */
 router.post('/', authenticateToken, [
+<<<<<<< HEAD
+=======
+    // --- Validation Rules ---
+>>>>>>> origin/main
     body('manualData.customerId').isUUID().withMessage('A valid customer must be selected.'),
     body('manualData.invoiceDate').isISO8601().withMessage('A valid invoice date is required.'),
     body('manualData.items').isArray({ min: 1 }).withMessage('Invoice must have at least one item.'),
     body('manualData.salesmanId').isUUID().withMessage('A valid salesman must be assigned.'),
+<<<<<<< HEAD
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
 
+=======
+    body('manualData.termsAndConditions').optional({ checkFalsy: true }).isString().withMessage('Terms and conditions must be a string.'),
+    
+    // This rule validates that if 'customerType' is sent, it must be 'Vendor' or 'Customer'.
+    body('manualData.customerType').optional({ checkFalsy: true }).isIn(['Vendor', 'Customer']).withMessage('Invalid customer type specified.'),
+
+], async (req, res) => {
+   
+    
+
+    const errors = validationResult(req);
+
+    // --- (2) Error Handling: Check for and log validation errors ---
+    if (!errors.isEmpty()) {
+      
+        
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Validation failed. Please check the data.', 
+            errors: errors.array() 
+        });
+    }
+
+    // --- (3) Transaction and Data Processing ---
+>>>>>>> origin/main
     const { manualData } = req.body;
     const transaction = await sequelize.transaction();
 
     try {
         if (!manualData) {
+<<<<<<< HEAD
             throw new Error('Request must include `manualData`.');
         }
 
         const { items, ...invoiceData } = manualData;
         const TAX_PERCENT = 5;
 
+=======
+            // This case should be rare since the body is not empty, but it's good practice.
+            await transaction.rollback();
+            return res.status(400).json({ success: false, message: 'Request must include `manualData`.' });
+        }
+
+        // --- (4) Sanitize and Prepare Data ---
+        // Explicitly destructure `customerType` to handle it safely.
+        const { items, termsAndConditions, customerType, ...invoiceData } = manualData;
+
+        // Ensure `customerType` is a valid ENUM value or null before it reaches the database.
+        const finalCustomerType = ['Vendor', 'Customer'].includes(customerType) ? customerType : null;
+        
+        const TAX_PERCENT = 5;
+
+        // --- (5) Invoice Calculation Logic ---
+>>>>>>> origin/main
         let calculatedSubtotal = 0;
         let calculatedVatAmount = 0;
         const invoiceItemsData = items.map((item, index) => {
@@ -366,8 +734,15 @@ router.post('/', authenticateToken, [
         const discountAmount = Number(invoiceData.discountAmount) || 0;
         const calculatedGrandTotal = (calculatedSubtotal - discountAmount) + calculatedVatAmount;
 
+<<<<<<< HEAD
         const newInvoice = await Invoice.create({
             ...invoiceData,
+=======
+        // --- (6) Database Creation ---
+        const newInvoice = await Invoice.create({
+            ...invoiceData,
+            customerType: finalCustomerType, // Use the sanitized value
+>>>>>>> origin/main
             invoiceNumber: await generateInvoiceNumber(),
             subtotal: calculatedSubtotal.toFixed(2),
             discountAmount: discountAmount.toFixed(2),
@@ -375,6 +750,10 @@ router.post('/', authenticateToken, [
             grandTotal: calculatedGrandTotal.toFixed(2),
             status: 'Draft',
             createdById: manualData.salesmanId, 
+<<<<<<< HEAD
+=======
+            termsAndConditions: termsAndConditions || '', // Ensure it's not null if model doesn't allow it
+>>>>>>> origin/main
         }, { transaction });
         
         const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id }));
@@ -382,12 +761,23 @@ router.post('/', authenticateToken, [
 
         await transaction.commit();
         
+<<<<<<< HEAD
         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: 'items' });
+=======
+        // --- (7) Success Response ---
+        const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: 'items' });
+       
+>>>>>>> origin/main
         res.status(201).json({ success: true, invoice: fullInvoice });
 
     } catch (error) {
         await transaction.rollback();
+<<<<<<< HEAD
         res.status(500).json({ success: false, message: 'Failed to create invoice: ' + error.message });
+=======
+        console.error('--- FAILED TO CREATE INVOICE (CATCH BLOCK) ---', error);
+        res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
+>>>>>>> origin/main
     }
 });
 
@@ -395,6 +785,7 @@ router.post('/', authenticateToken, [
  * PATCH /api/invoices/:id/status
  * Updates the status of a single invoice.
  */
+<<<<<<< HEAD
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   const { status } = req.body;
   const { id } = req.params;
@@ -430,11 +821,146 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
  * GET /api/invoices/:id/preview
  * Generates an HTML preview for a single invoice.
  */
+=======
+// routes/invoices.js
+router.patch('/:id/status', authenticateToken, async (req, res) => {
+    const { status } = req.body;
+    const { id } = req.params;
+
+    // 1. Validate the incoming status
+    const allowedStatuses = ['Draft', 'Sent', 'Paid', 'Cancelled', 'Overdue'];
+    if (!status || !allowedStatuses.includes(status)) {
+        return res.status(400).json({ success: false, message: 'Invalid status provided.' });
+    }
+
+    try {
+        // 2. Use a transaction for data consistency
+        const result = await sequelize.transaction(async (t) => {
+            const invoice = await Invoice.findByPk(id, {
+                include: [{
+                    model: Quote,
+                    as: 'quote',
+                    include: [{ model: Lead, as: 'lead' }]
+                }],
+                transaction: t
+            });
+
+            if (!invoice) {
+                throw new Error('Invoice not found.');
+            }
+
+            // 3. Prevent changing status of a finalized invoice
+            if (invoice.status === 'Paid' || invoice.status === 'Cancelled') {
+                const error = new Error(`Cannot change status of a ${invoice.status} invoice.`);
+                error.status = 403; // Forbidden
+                throw error;
+            }
+
+            // 4. Update the status in memory
+            invoice.status = status;
+
+            // --- THIS IS THE KEY LOGIC ---
+            // 5. If the status is 'Paid', set the 'paidAt' timestamp
+            if (status === 'Paid') {
+               
+                invoice.paidAt = new Date(); // Set the current date and time
+                console.log('done')
+                // Also update the related lead's stage
+                if (invoice.quote && invoice.quote.lead) {
+                    const lead = invoice.quote.lead;
+                    lead.stage = 'Deal Closed';
+                    await lead.save({ transaction: t });
+                }
+            }
+
+            // 6. Save all changes to the database
+            // Because the Invoice model is now fixed, Sequelize will correctly save the 'paidAt' field.
+            await invoice.save({ transaction: t });
+
+            // 7. Queue a notification to be sent only if the transaction succeeds
+            if (status === 'Paid') {
+                t.afterCommit(() => {
+                    notifyAdminsOfSuccess(
+                        `Invoice Paid: #${invoice.invoiceNumber}`,
+                        `Invoice #${invoice.invoiceNumber} for customer '${invoice.customerName}' has been paid.`
+                    );
+                });
+            }
+
+            return invoice;
+        });
+
+        // 8. Return the updated invoice on success
+        res.json({ success: true, invoice: result });
+
+    } catch (error) {
+        console.error('Failed to update status:', error);
+        res.status(error.status || 500).json({ success: false, message: error.message || 'Server Error' });
+    }
+});
+
+
+// router.get('/:id/preview', authenticateToken, async (req, res) => {
+//     try {
+//         const invoice = await Invoice.findByPk(req.params.id, { 
+//             include: [
+//                 { model: InvoiceItem, as: 'items' },
+//                 { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
+//             ] 
+//         });
+//         if (!invoice) {
+//             return res.status(404).json({ success: false, message: 'Invoice not found' });
+//         }
+//         const html = buildInvoiceHTML({ invoice: invoice.toJSON(), items: (invoice.items || []).map(i => i.toJSON()) });
+//         res.json({ success: true, html });
+//     } catch (e) {
+//         res.status(500).json({ success: false, message: 'Failed to generate preview: ' + e.message });
+//     }
+// });
+router.get('/:id/download', authenticateToken, async (req, res) => {
+    try {
+        const invoice = await Invoice.findByPk(req.params.id, {
+            include: [
+                { model: InvoiceItem, as: 'items' },
+                { model: Quote, as: 'quote', required: false },
+                // FIX: Eagerly load the creator (Member)
+                { model: Member, as: 'creator', attributes: ['name'] }
+            ]
+        });
+
+        if (!invoice) {
+            return res.status(404).json({ success: false, message: 'Invoice not found' });
+        }
+
+        const html = buildInvoiceHTML({ 
+            invoice: invoice.toJSON(), 
+            items: (invoice.items || []).map(i => i.toJSON()),
+            creator: invoice.creator ? invoice.creator.toJSON() : null // Pass creator to HTML builder
+        });
+        
+        const options = { format: 'A4', border: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' } };
+
+        pdf.create(html, options).toBuffer((err, buffer) => {
+            if (err) {
+                return res.status(500).json({ success: false, message: 'Failed to generate PDF.' });
+            }
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=${invoice.invoiceNumber}.pdf`);
+            res.send(buffer);
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'An unexpected error occurred.' });
+    }
+});
+
+// --- UPDATED: GET /:id/preview Route ---
+>>>>>>> origin/main
 router.get('/:id/preview', authenticateToken, async (req, res) => {
     try {
         const invoice = await Invoice.findByPk(req.params.id, { 
             include: [
                 { model: InvoiceItem, as: 'items' },
+<<<<<<< HEAD
                 { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
             ] 
         });
@@ -442,6 +968,22 @@ router.get('/:id/preview', authenticateToken, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Invoice not found' });
         }
         const html = buildInvoiceHTML({ invoice: invoice.toJSON(), items: (invoice.items || []).map(i => i.toJSON()) });
+=======
+                { model: Quote, as: 'quote', required: false },
+                // FIX: Eagerly load the creator (Member)
+                { model: Member, as: 'creator', attributes: ['name'] }
+            ] 
+        });
+        
+        if (!invoice) {
+            return res.status(404).json({ success: false, message: 'Invoice not found' });
+        }
+        const html = buildInvoiceHTML({ 
+            invoice: invoice.toJSON(), 
+            items: (invoice.items || []).map(i => i.toJSON()),
+            creator: invoice.creator ? invoice.creator.toJSON() : null // Pass creator to HTML builder
+        });
+>>>>>>> origin/main
         res.json({ success: true, html });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Failed to generate preview: ' + e.message });

@@ -14,12 +14,22 @@ const fs = require('fs/promises');
 const path = require('path');
 const router = express.Router();
 const { createNotification, notifyAdmins } = require('../utils/notify');
+<<<<<<< HEAD
 
 const BASE_DIR = path.resolve(process.cwd());
 const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
 
 const STAGES = Lead.STAGES;
 const FORECASTS = Lead.FORECASTS;
+=======
+const {  notifyAssignment ,notifyLeadUpdate  } = require('../utils/emailService')
+const BASE_DIR = path.resolve(process.cwd());
+const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
+const STAGES = Lead.STAGES;
+const FORECASTS = Lead.FORECASTS;
+const { sequelize } = require('../config/database');
+const Counter = require('../models/Counter');
+>>>>>>> origin/main
 
 function canViewLead(req, lead) {
   if (isAdmin(req)) return true;
@@ -35,7 +45,31 @@ function canModifyLead(req, lead) {
 
 const { upload, toPublicUrl } = makeUploader('lead_attachments');
 
+<<<<<<< HEAD
 async function generateUniqueLeadNumber() { return `L-${Date.now()}`; }
+=======
+async function generateUniqueLeadNumber() {
+  const result = await sequelize.transaction(async (t) => {
+    // Find the counter and lock the row to prevent race conditions
+    const counter = await Counter.findOne({
+      where: { name: 'leadNumber' },
+      lock: t.LOCK.UPDATE, 
+      transaction: t,
+    });
+
+    if (!counter) {
+      throw new Error('The "leadNumber" counter has not been initialized in the database.');
+    }
+
+    // Increment, save, and return the new formatted number
+    counter.currentValue += 1;
+    await counter.save({ transaction: t });
+    return `L-${String(counter.currentValue).padStart(6, '0')}`;
+  });
+
+  return result;
+}
+>>>>>>> origin/main
 
 // Logging helpers
 function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
@@ -74,12 +108,26 @@ async function writeLeadLog(req, leadId, action, message) {
 
 // Compute nearest future follow-up (returns Date or null)
 function nearestFutureFollowup(rows) {
+<<<<<<< HEAD
   const now = new Date();
   const flat = rows.map(r => (typeof r.get === 'function' ? r.get({ plain: true }) : r));
   const future = flat
     .filter(r => r.scheduledAt && new Date(r.scheduledAt) > now)
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
   return future?.scheduledAt || null;
+=======
+    const now = new Date();
+    // Ensure all items are plain objects
+    const flat = rows.map(r => (typeof r.get === 'function' ? r.get({ plain: true }) : r));
+    
+    // Filter for dates in the future and sort them to find the soonest
+    const future = flat
+      .filter(r => r.scheduledAt && new Date(r.scheduledAt) > now)
+      .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  
+    // CORRECTED: Return the 'scheduledAt' property of the first item in the sorted array
+    return future.length > 0 ? future[0].scheduledAt : null;
+>>>>>>> origin/main
 }
 
 // Delete attachment (DELETE)
@@ -168,6 +216,7 @@ router.post('/:id/attachments/delete', authenticateToken, async (req, res) => {
 
 // Upload attachments
 router.post('/:id/attachments', authenticateToken, upload.array('files', 10), async (req, res) => {
+<<<<<<< HEAD
   try {
     const lead = await Lead.findByPk(req.params.id);
     if (!lead) return res.status(404).json({ success: false, message: 'Not found' });
@@ -209,10 +258,65 @@ router.post('/:id/attachments', authenticateToken, upload.array('files', 10), as
     console.error('Upload attachments error:', e);
     res.status(500).json({ success: false, message: 'Server error' });
   }
+=======
+    try {
+        // Include the salesman details in the initial query
+        const lead = await Lead.findByPk(req.params.id, {
+            include: { model: Member, as: 'salesman' }
+        });
+        if (!lead) return res.status(404).json({ success: false, message: 'Not found' });
+        
+        // Assuming canModifyLead is a valid function in your scope
+        // if (!canModifyLead(req, lead)) return res.status(403).json({ success: false, message: 'Forbidden' });
+
+        const files = req.files || [];
+        if (!files.length) return res.status(400).json({ success: false, message: 'No files uploaded' });
+
+        const now = new Date();
+        const newAttachments = files.map(f => ({
+            filename: f.originalname,
+            url: toPublicUrl(f.path),
+            createdAt: now.toISOString(),
+            uploadedBy: req.subjectId,
+        }));
+
+        const current = Array.isArray(lead.attachmentsJson) ? lead.attachmentsJson : [];
+        const added = [];
+        for (const att of newAttachments) {
+            if (!current.some(x => x.url === att.url && x.filename === att.filename)) {
+                current.push(att);
+                added.push(att);
+            }
+        }
+        lead.attachmentsJson = current;
+        await lead.save();
+
+        const io = req.app.get('io');
+        added.forEach(att => {
+            io?.to(`lead:${lead.id}`).emit('attachment:new', { leadId: String(lead.id), attachment: att });
+        });
+
+        if (added.length) {
+            await writeLeadLog(req, lead.id, 'ATTACHMENT_ADDED', `${actorLabel(req)} added ${added.length} attachment(s)`);
+        }
+
+        // --- EMAIL NOTIFICATION LOGIC ---
+        if (isAdmin(req) && lead.salesman && lead.salesman.id !== req.subjectId) {
+            await notifyLeadUpdate(lead.salesman, lead, 'new attachment');
+        }
+
+        res.json({ success: true, attachments: added });
+
+    } catch (e) {
+        console.error('Upload attachments error:', e);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+>>>>>>> origin/main
 });
 
 // List leads
 router.get('/', authenticateToken, async (req, res) => {
+<<<<<<< HEAD
   try {
     const where = isAdmin(req) ? {} : { [Op.or]: [{ salesmanId: req.subjectId }] };
     const search = String(req.query.search || '').trim();
@@ -285,6 +389,145 @@ router.get('/', authenticateToken, async (req, res) => {
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
+=======
+    try {
+        const { search, sortBy = 'createdAt', sortDir = 'DESC' } = req.query;
+        // Destructure the new filter query parameters
+        const { stage, forecastCategory, followup } = req.query;
+
+        // --- Build a more robust `where` clause ---
+        const where = {
+            [Op.and]: [], // Start with an array to safely push all conditions
+        };
+
+        // 1. Add permission-based filtering first
+        if (!isAdmin(req)) {
+            where[Op.and].push({ salesmanId: req.subjectId });
+        }
+
+        // 2. Add search term condition
+        if (search && String(search).trim()) {
+            const searchTerm = `%${String(search).trim()}%`;
+            where[Op.and].push({
+                [Op.or]: [
+                    { uniqueNumber: { [Op.like]: searchTerm } },
+                    { companyName:  { [Op.like]: searchTerm } },
+                    { contactPerson:{ [Op.like]: searchTerm } },
+                    { email:        { [Op.like]: searchTerm } },
+                    { mobile:       { [Op.like]: searchTerm } },
+                    { city:         { [Op.like]: searchTerm } },
+                ]
+            });
+        }
+        
+        // 3. Add filters for 'stage' and 'forecastCategory'
+        if (stage) {
+            where[Op.and].push({ stage: { [Op.in]: String(stage).split(',') } });
+        }
+        if (forecastCategory) {
+            where[Op.and].push({ forecastCategory: { [Op.in]: String(forecastCategory).split(',') } });
+        }
+
+        // 4. Add complex filter logic for 'followup' status
+        if (followup) {
+            const followupConditions = String(followup).split(',');
+            const leadIdSubqueries = [];
+
+            if (followupConditions.includes('Upcoming')) {
+                // Find leads that have at least one followup scheduled for the future
+                leadIdSubqueries.push({
+                    id: { [Op.in]: sequelize.literal(`(SELECT DISTINCT leadId FROM lead_followups WHERE scheduledAt > NOW())`) }
+                });
+            }
+            if (followupConditions.includes('Overdue')) {
+                // Find leads that have past followups but no future ones
+                leadIdSubqueries.push({
+                    [Op.and]: [
+                        { id: { [Op.in]: sequelize.literal(`(SELECT DISTINCT leadId FROM lead_followups WHERE scheduledAt < NOW())`) } },
+                        { id: { [Op.notIn]: sequelize.literal(`(SELECT DISTINCT leadId FROM lead_followups WHERE scheduledAt > NOW())`) } }
+                    ]
+                });
+            }
+            if (followupConditions.includes('No Followup')) {
+                // Find leads that have no records in the followups table
+                leadIdSubqueries.push({
+                    id: { [Op.notIn]: sequelize.literal(`(SELECT DISTINCT leadId FROM lead_followups)`) }
+                });
+            }
+            // Use Op.or to combine the different followup statuses
+            if (leadIdSubqueries.length > 0) {
+                where[Op.and].push({ [Op.or]: leadIdSubqueries });
+            }
+        }
+        
+        // --- Fetch Leads with the constructed query ---
+        const leads = await Lead.findAll({
+            where: where[Op.and].length > 0 ? where : {}, // Use the where clause only if it has conditions
+            include: [
+                { model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] },
+                { model: Customer, as: 'customer', attributes: ['id', 'companyName'] },
+            ],
+            order: [[sortBy, sortDir.toUpperCase() === 'ASC' ? 'ASC' : 'DESC']],
+        });
+
+        // The rest of your code for calculating 'nextFollowupAt' is correct and remains unchanged...
+        const leadIds = leads.map(l => l.id);
+        const nextByLead = new Map();
+        if (leadIds.length > 0) {
+            const allFollowups = await LeadFollowup.findAll({
+                where: {
+                    leadId: { [Op.in]: leadIds },
+                    scheduledAt: { [Op.gt]: new Date() }
+                },
+                attributes: ['leadId', 'scheduledAt']
+            });
+            const grouped = allFollowups.reduce((acc, f) => {
+                if (!acc.has(f.leadId)) acc.set(f.leadId, []);
+                acc.get(f.leadId).push(f);
+                return acc;
+            }, new Map());
+            for (const [leadId, followups] of grouped.entries()) {
+                const nearest = followups.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))[0];
+                if (nearest) nextByLead.set(leadId, nearest.scheduledAt);
+            }
+        }
+
+        // Map the final response
+        res.json({
+            success: true,
+            leads: leads.map(l => ({
+                id: l.id,
+                stage: l.stage,
+                forecastCategory: l.forecastCategory,
+                division: l.customer ? l.customer.companyName : '',
+                companyName: l.companyName || (l.customer ? l.customer.companyName : ''),
+                source: l.source,
+                uniqueNumber: l.uniqueNumber,
+                quoteNumber: l.quoteNumber,
+                actualDate: l.actualDate,
+                contactPerson: l.contactPerson,
+                mobile: l.mobile,
+                mobileAlt: l.mobileAlt,
+                email: l.email,
+                city: l.city,
+                salesman: l.salesman ? { id: l.salesman.id, name: l.salesman.name, email: l.salesman.email } : null,
+                description: l.description,
+                attachments: Array.isArray(l.attachmentsJson) ? l.attachmentsJson : [],
+                nextFollowupAt: nextByLead.get(l.id) || null,
+                createdAt: l.createdAt,
+                updatedAt: l.updatedAt
+            }))
+        });
+
+    } catch (e) {
+        console.error('List Leads Error:', e.message, e.stack);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+
+
+>>>>>>> origin/main
 router.get('/my-leads', authenticateToken, async (req, res) => {
   if (isAdmin(req)) {
     // Admins can see all leads, so we can redirect to the main list route
@@ -407,6 +650,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // Create lead
 router.post('/', authenticateToken, [
+<<<<<<< HEAD
   body('customerId').trim().notEmpty(),
   body('stage').optional().isIn(STAGES),
   body('forecastCategory').optional().isIn(FORECASTS),
@@ -518,6 +762,131 @@ router.post('/', authenticateToken, [
   }
 });
 
+=======
+    body('customerId').trim().notEmpty(),
+    body('stage').optional().isIn(STAGES),
+    body('forecastCategory').optional().isIn(FORECASTS),
+], async (req, res) => {
+    try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+        }
+
+        let resolvedSalesmanId = null;
+        let assignedSalesman = null;
+
+        if (isAdmin(req)) {
+            const requested = String(req.body.salesmanId || '').trim();
+            if (!requested) {
+                return res.status(400).json({ success: false, message: 'Salesman is required for admin-created leads' });
+            }
+            // FIX: Fetch id, name, and email for the notification
+            assignedSalesman = await Member.findByPk(requested, {
+                attributes: ['id', 'name', 'email']
+            });
+            if (!assignedSalesman) {
+                return res.status(400).json({ success: false, message: 'Invalid salesman (not found in members)' });
+            }
+            resolvedSalesmanId = assignedSalesman.id;
+        } else {
+            const self = await Member.findByPk(String(req.subjectId));
+            if (!self) {
+                return res.status(400).json({ success: false, message: 'Current member not found in system' });
+            }
+            if (req.body.salesmanId && String(req.body.salesmanId) !== String(self.id)) {
+                return res.status(403).json({ success: false, message: 'Members can only assign themselves as salesman' });
+            }
+            resolvedSalesmanId = self.id;
+        }
+
+        const customer = await Customer.findByPk(req.body.customerId);
+        if (!customer) {
+            return res.status(400).json({ success: false, message: 'Invalid customer' });
+        }
+
+        const snap = {
+            contactPerson: req.body.contactPerson || '',
+            mobile: req.body.mobile || '',
+            mobileAlt: req.body.mobileAlt || '',
+            email: req.body.email || '',
+            city: req.body.city || '',
+        };
+
+        if (!req.body.contactPerson) {
+            let selected = null;
+            if (req.body.contactId) {
+                selected = await CustomerContact.findOne({ where: { id: req.body.contactId, customerId: customer.id } });
+            } else {
+                selected = await CustomerContact.findOne({ where: { customerId: customer.id }, order: [['createdAt', 'ASC']] });
+            }
+            if (selected) {
+                if (!snap.contactPerson) snap.contactPerson = selected.name || '';
+                if (!snap.mobile) snap.mobile = selected.mobile || '';
+                if (!snap.email) snap.email = selected.email || '';
+            }
+        }
+
+        const uniqueNumber = await generateUniqueLeadNumber();
+        const lead = await Lead.create({
+            stage: req.body.stage || 'Discover',
+            forecastCategory: req.body.forecastCategory || 'Pipeline',
+            customerId: customer.id,
+            companyName: customer.companyName,
+            source: req.body.source || 'Website',
+            uniqueNumber,
+            quoteNumber: req.body.quoteNumber || '',
+            previewUrl: req.body.previewUrl || '',
+            actualDate: new Date(),
+            ...snap,
+            salesmanId: resolvedSalesmanId,
+            description: req.body.description || '',
+            creatorType: req.subjectType,
+            creatorId: req.subjectId,
+        });
+
+        const marker = String(resolvedSalesmanId);
+        const arr = Array.isArray(customer.contactedBy) ? customer.contactedBy : [];
+        if (!arr.includes(marker)) {
+            arr.push(marker);
+            customer.contactedBy = arr;
+            await customer.save();
+        }
+
+        notifyAdmins(req.app.get('io'), {
+            event: 'LEAD_CREATED',
+            entityType: 'LEAD',
+            entityId: String(lead.id),
+            title: `Lead #${lead.uniqueNumber} created`,
+            message: `${actorLabel(req)} created a lead`,
+        });
+
+        if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
+            await createNotification({
+                toType: 'MEMBER',
+                toId: resolvedSalesmanId,
+                event: 'LEAD_ASSIGNED',
+                entityType: 'LEAD',
+                entityId: lead.id,
+                title: `New lead #${lead.uniqueNumber}`,
+                message: `Assigned by admin`,
+            }, req.app.get('io'));
+
+            // FIX: Use the 'assignedSalesman' object that contains the email
+            if (assignedSalesman) {
+                await notifyAssignment(assignedSalesman, 'Lead', lead);
+            }
+        }
+
+        await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`);
+        res.status(201).json({ success: true, id: lead.id, uniqueNumber: lead.uniqueNumber });
+
+    } catch (e) {
+        console.error('Create Lead Error:', e.message);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+>>>>>>> origin/main
 // Update lead
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
@@ -581,6 +950,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
   const lead = await Lead.findByPk(req.params.leadId);
   if (!lead) return res.status(404).json({ success:false, message:'Lead not found' });
