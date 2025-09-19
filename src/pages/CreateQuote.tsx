@@ -20,7 +20,7 @@ const CreateQuote: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
   const isAdmin = user?.type === 'ADMIN';
-    const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
+  const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
   const [previewLoading, setPreviewLoading] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(routeLeadId || null);
   const [leadNumber, setLeadNumber] = useState('');
@@ -88,7 +88,7 @@ const CreateQuote: React.FC = () => {
     ]);
   };
 
-   const showPreview = async () => {
+  const showPreview = async () => {
     if (!lastSavedQuote || !token || !selectedLeadId) return;
     setPreviewLoading(true);
     setPreview({ open: true, html: '<div>Loading preview...</div>' });
@@ -131,7 +131,7 @@ const CreateQuote: React.FC = () => {
     if (routeLeadId) setSelectedLeadId(routeLeadId);
   }, [routeLeadId]);
 
- const onSelectContact = (selectedContactId: string) => {
+  const onSelectContact = (selectedContactId: string) => {
     const contact = contacts.find(c => c.id === selectedContactId);
     if (contact) {
       setContactId(contact.id);
@@ -150,7 +150,7 @@ const CreateQuote: React.FC = () => {
         setLeadNumber(lead.uniqueNumber || '');
         setCustomerId(lead.customerId || null);
         setCustomerName(lead.division || '');
-        
+
         if (lead.customerId) {
           const [contactsResp, custResp] = await Promise.all([
             customerService.getContacts(lead.customerId, token),
@@ -241,51 +241,88 @@ const CreateQuote: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
       <Sidebar />
-      <div className="pl-64">
+      <div className="flex-1 overflow-y-auto h-screen">
         <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-semibold mb-6">Create Quote</h1>
-          <form onSubmit={save} className="space-y-6 bg-white p-6 rounded-lg shadow-sm border">
-           
+
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+            <div>
+              <h1 className="text-2xl font-semibold text-midnight-900 dark:text-ivory-200">
+                Create Quote
+              </h1>
+              <p className="text-gray-600 dark:text-midnight-400">
+                Generate a new quote for a customer.
+              </p>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form
+            onSubmit={save}
+            className="space-y-6 bg-cloud-50/40 dark:bg-midnight-900/40 
+             backdrop-blur-xl border border-cloud-300/40 
+             dark:border-midnight-700/40 rounded-2xl p-8 shadow-xl"
+          >
             {/* Lead Number and Date */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Lead Number</label>
+                <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                  Lead Number
+                </label>
                 <input
                   type="text"
                   readOnly
                   value={leadNumber}
-                  className="input input-bordered w-full cursor-pointer"
+                  className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                   bg-white/70 dark:bg-midnight-800/60 
+                   text-midnight-900 dark:text-ivory-100 
+                   shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 cursor-pointer transition"
                   onClick={() => setOpenLeadModal(true)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Quote Date</label>
+                <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                  Quote Date
+                </label>
                 <input
                   type="date"
                   value={quoteDate}
-                  className="input input-bordered w-full"
-                  onChange={e => setQuoteDate(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                   bg-white/70 dark:bg-midnight-800/60 
+                   text-midnight-900 dark:text-ivory-100 
+                   shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                  onChange={(e) => setQuoteDate(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Validity Until</label>
+                <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                  Validity Until
+                </label>
                 <input
                   type="date"
                   value={validityUntil}
-                  className="input input-bordered w-full"
-                  onChange={e => setValidityUntil(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                   bg-white/70 dark:bg-midnight-800/60 
+                   text-midnight-900 dark:text-ivory-100 
+                   shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                  onChange={(e) => setValidityUntil(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Salesman</label>
+                <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                  Salesman
+                </label>
                 <select
                   value={salesmanId}
-                  className="select select-bordered w-full"
-                  onChange={e => setSalesmanId(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                   bg-white/70 dark:bg-midnight-800/60 
+                   text-midnight-900 dark:text-ivory-100 
+                   shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                  onChange={(e) => setSalesmanId(e.target.value)}
                 >
-                  {salesmen.map(s => (
+                  {salesmen.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
@@ -295,159 +332,225 @@ const CreateQuote: React.FC = () => {
             </div>
 
             {/* Customer and Contact */}
-            <div className="border-t pt-4">
+            <div className="border-t border-cloud-300/40 dark:border-midnight-700/40 pt-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Customer Name</label>
+                  <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                    Customer Name
+                  </label>
                   <input
                     type="text"
-                    className="input input-bordered w-full"
+                    className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                     bg-white/70 dark:bg-midnight-800/60 
+                     text-midnight-900 dark:text-ivory-100 
+                     shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
                     value={customerName}
-                    onChange={e => setCustomerName(e.target.value)}
+                    onChange={(e) => setCustomerName(e.target.value)}
                   />
                 </div>
-                 <div>
-                  <label className="block text-sm font-medium mb-1">Contact Person</label>
+                <div>
+                  <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                    Contact Person
+                  </label>
                   <select
-                    className="select select-bordered w-full"
-                    value={contactId ?? ''}
-                    onChange={e => onSelectContact(e.target.value)}
+                    className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                     bg-white/70 dark:bg-midnight-800/60 
+                     text-midnight-900 dark:text-ivory-100 
+                     shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                    value={contactId ?? ""}
+                    onChange={(e) => onSelectContact(e.target.value)}
                   >
-                    <option value="" disabled>Select Contact</option>
-                    {contacts.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                    <option value="" disabled>
+                      Select Contact
+                    </option>
+                    {contacts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Phone</label>
-                  <input type="text" className="input input-bordered w-full" value={phone} onChange={e => setPhone(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Email</label>
-                  <input type="email" className="input input-bordered w-full" value={email} onChange={e => setEmail(e.target.value)} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Address</label>
+                  <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                    Phone
+                  </label>
                   <input
                     type="text"
-                    className="input input-bordered w-full"
-                    value={address}
-                    onChange={e => setAddress(e.target.value)}
+                    className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                     bg-white/70 dark:bg-midnight-800/60 
+                     text-midnight-900 dark:text-ivory-100 
+                     shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                     bg-white/70 dark:bg-midnight-800/60 
+                     text-midnight-900 dark:text-ivory-100 
+                     shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                    Address
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                     bg-white/70 dark:bg-midnight-800/60 
+                     text-midnight-900 dark:text-ivory-100 
+                     shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                    Description
+                  </label>
                   <textarea
-                    className="textarea textarea-bordered w-full"
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                     bg-white/70 dark:bg-midnight-800/60 
+                     text-midnight-900 dark:text-ivory-100 
+                     shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
                     value={description}
-                    onChange={e => setDescription(e.target.value)}
+                    onChange={(e) => setDescription(e.target.value)}
                   />
                 </div>
               </div>
             </div>
 
             {/* Items Table */}
-            <div className="overflow-x-auto">
-              <table className="table table-compact w-full mt-4">
+            <div className="overflow-x-auto mt-6">
+              <table
+                className="w-full border border-cloud-300/40 dark:border-midnight-700/40 
+               bg-white/80 dark:bg-midnight-800/60 shadow-md rounded-xl"
+              >
                 <thead>
-                  <tr>
-                    <th>Sl</th>
-                    <th>Product</th>
-                    <th>Description</th>
-                    <th>Unit</th>
-                    <th>Qty</th>
-                    <th>Cost</th>
-                    <th>Rate</th>
-                    <th>Discount Mode</th>
-                    <th>Discount</th>
-                    <th>Line Total</th>
-                    <th></th>
+                  <tr className="text-sm font-semibold text-midnight-900 dark:text-ivory-200 bg-cloud-100/60 dark:bg-midnight-700/40">
+                    <th className="px-4 py-2 text-left">Sl</th>
+                    <th className="px-4 py-2 text-left">Product</th>
+                    <th className="px-4 py-2 text-left">Description</th>
+                    <th className="px-4 py-2 text-left">Unit</th>
+                    <th className="px-4 py-2 text-right">Qty</th>
+                    <th className="px-4 py-2 text-right">Cost</th>
+                    <th className="px-4 py-2 text-right">Rate</th>
+                    <th className="px-4 py-2 text-left">Discount Mode</th>
+                    <th className="px-4 py-2 text-right">Discount</th>
+                    <th className="px-4 py-2 text-right">Line Total</th>
+                    <th className="px-2 py-2"></th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-cloud-300/30 dark:divide-midnight-700/30">
                   {items.map((item, idx) => {
                     const qty = Number(item.quantity);
                     const rate = Number(item.itemRate);
                     const gross = qty * rate;
                     const discountAmount =
-                      item.lineDiscountMode === 'AMOUNT'
+                      item.lineDiscountMode === "AMOUNT"
                         ? Number(item.lineDiscountAmount) || 0
                         : gross * ((Number(item.lineDiscountPercent) || 0) / 100);
                     const lineTotal = Math.max(0, gross - discountAmount);
+
                     return (
-                      <tr key={idx}>
-                        <td>{item.slNo}</td>
-                        <td>
+                      <tr
+                        key={idx}
+                        className="text-sm text-midnight-800 dark:text-ivory-200 hover:bg-cloud-50/60 dark:hover:bg-midnight-700/40 transition-colors"
+                      >
+                        <td className="px-4 py-2">{item.slNo}</td>
+                        <td className="px-4 py-2">
                           <input
-                            className="input input-bordered w-full"
+                            className="input input-sm input-bordered w-full"
                             value={item.product}
-                            onChange={e => updateItem(idx, { product: e.target.value })}
+                            onChange={(e) => updateItem(idx, { product: e.target.value })}
                           />
                         </td>
-                        <td>
+                        <td className="px-4 py-2">
                           <input
-                            className="input input-bordered w-full"
+                            className="input input-sm input-bordered w-full"
                             value={item.description}
-                            onChange={e => updateItem(idx, { description: e.target.value })}
+                            onChange={(e) => updateItem(idx, { description: e.target.value })}
                           />
                         </td>
-                        <td>
+                        <td className="px-4 py-2">
                           <input
-                            className="input input-bordered w-full"
+                            className="input input-sm input-bordered w-full"
                             value={item.unit}
-                            onChange={e => updateItem(idx, { unit: e.target.value })}
+                            onChange={(e) => updateItem(idx, { unit: e.target.value })}
                           />
                         </td>
-                        <td>
+                        <td className="px-4 py-2 text-right">
                           <input
                             type="number"
                             min="0"
                             step="0.001"
-                            className="input input-bordered w-full"
+                            className="input input-sm input-bordered w-full text-right"
                             value={item.quantity}
-                            onChange={e => updateItem(idx, { quantity: Number(e.target.value) })}
+                            onChange={(e) =>
+                              updateItem(idx, { quantity: Number(e.target.value) })
+                            }
                           />
                         </td>
-                        <td>
+                        <td className="px-4 py-2 text-right">
                           <input
                             type="number"
                             min="0"
                             step="0.01"
-                            className="input input-bordered w-full"
+                            className="input input-sm input-bordered w-full text-right"
                             value={item.itemCost}
-                            onChange={e => updateItem(idx, { itemCost: Number(e.target.value) })}
+                            onChange={(e) =>
+                              updateItem(idx, { itemCost: Number(e.target.value) })
+                            }
                           />
                         </td>
-                        <td>
+                        <td className="px-4 py-2 text-right">
                           <input
                             type="number"
                             min="0"
                             step="0.01"
-                            className="input input-bordered w-full"
+                            className="input input-sm input-bordered w-full text-right"
                             value={item.itemRate}
-                            onChange={e => updateItem(idx, { itemRate: Number(e.target.value) })}
+                            onChange={(e) =>
+                              updateItem(idx, { itemRate: Number(e.target.value) })
+                            }
                           />
                         </td>
-                        <td>
+                        <td className="px-4 py-2">
                           <select
-                            className="select select-bordered w-full"
+                            className="select select-sm select-bordered w-full"
                             value={item.lineDiscountMode}
-                            onChange={e => updateItem(idx, { lineDiscountMode: e.target.value as 'PERCENT' | 'AMOUNT' })}
+                            onChange={(e) =>
+                              updateItem(idx, {
+                                lineDiscountMode: e.target.value as "PERCENT" | "AMOUNT",
+                              })
+                            }
                           >
                             <option value="PERCENT">Percent</option>
                             <option value="AMOUNT">Amount</option>
                           </select>
                         </td>
-                        <td>
-                          {item.lineDiscountMode === 'AMOUNT' ? (
+                        <td className="px-4 py-2 text-right">
+                          {item.lineDiscountMode === "AMOUNT" ? (
                             <input
                               type="number"
                               min="0"
                               step="0.01"
-                              className="input input-bordered w-full"
+                              className="input input-sm input-bordered w-full text-right"
                               value={item.lineDiscountAmount}
-                              onChange={e => updateItem(idx, { lineDiscountAmount: Number(e.target.value) })}
+                              onChange={(e) =>
+                                updateItem(idx, {
+                                  lineDiscountAmount: Number(e.target.value),
+                                })
+                              }
                             />
                           ) : (
                             <input
@@ -455,15 +558,25 @@ const CreateQuote: React.FC = () => {
                               min="0"
                               step="0.01"
                               max="100"
-                              className="input input-bordered w-full"
+                              className="input input-sm input-bordered w-full text-right"
                               value={item.lineDiscountPercent}
-                              onChange={e => updateItem(idx, { lineDiscountPercent: Number(e.target.value) })}
+                              onChange={(e) =>
+                                updateItem(idx, {
+                                  lineDiscountPercent: Number(e.target.value),
+                                })
+                              }
                             />
                           )}
                         </td>
-                        <td>{lineTotal.toFixed(2)}</td>
-                        <td>
-                          <Button variant="danger" size="sm" onClick={() => removeRow(idx)}>
+                        <td className="px-4 py-2 text-right font-medium">
+                          {lineTotal.toFixed(2)}
+                        </td>
+                        <td className="px-2 py-2">
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => removeRow(idx)}
+                          >
                             Remove
                           </Button>
                         </td>
@@ -472,20 +585,29 @@ const CreateQuote: React.FC = () => {
                   })}
                 </tbody>
               </table>
-              <Button size="sm" onClick={addRow} className="mt-2">
-                Add Item
-              </Button>
+
+              <div className="mt-3">
+                <Button size="sm" onClick={addRow}>
+                  Add Item
+                </Button>
+              </div>
             </div>
 
+
             {/* Discount and VAT */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-              <div>
-                <label className="block mb-1 font-medium">Discount</label>
-                <div className="flex space-x-2">
+            <div className="flex flex-col sm:flex-row gap-6 mt-8 w-full">
+              {/* Discount Section */}
+              <div className="flex-1 p-4 rounded-xl border border-cloud-300/40 dark:border-midnight-700/40 bg-white/70 dark:bg-midnight-800/60 shadow-sm">
+                <label className="block mb-2 text-sm font-semibold text-midnight-700 dark:text-ivory-300">
+                  Discount
+                </label>
+                <div className="flex items-center gap-3">
                   <select
-                    className="select select-bordered"
+                    className="select select-bordered w-40"
                     value={discountMode}
-                    onChange={e => syncDiscountMode(e.target.value as 'PERCENT' | 'AMOUNT', discountValue)}
+                    onChange={(e) =>
+                      syncDiscountMode(e.target.value as "PERCENT" | "AMOUNT", discountValue)
+                    }
                   >
                     <option value="PERCENT">Percent (%)</option>
                     <option value="AMOUNT">Amount</option>
@@ -494,45 +616,67 @@ const CreateQuote: React.FC = () => {
                     type="number"
                     min="0"
                     step="0.01"
-                    className="input input-bordered w-full"
+                    className="input input-bordered flex-1"
                     value={discountValue}
-                    onChange={e => setDiscountValue(Number(e.target.value))}
+                    onChange={(e) => setDiscountValue(Number(e.target.value))}
                   />
                 </div>
-                {discountMode === 'AMOUNT' && (
-                  <p className="text-xs text-gray-500 mt-1">
+                {discountMode === "AMOUNT" && (
+                  <p className="text-xs text-gray-500 mt-2">
                     Approximate: {(discountValue / totals.subtotal) * 100 || 0}%
                   </p>
                 )}
               </div>
-              <div>
-                <label className="block mb-1 font-medium">VAT (%)</label>
+
+              {/* VAT Section */}
+              <div className="flex-1 p-4 rounded-xl border border-cloud-300/40 dark:border-midnight-700/40 bg-white/70 dark:bg-midnight-800/60 shadow-sm">
+                <label className="block mb-2 text-sm font-semibold text-midnight-700 dark:text-ivory-300">
+                  VAT (%)
+                </label>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
                   className="input input-bordered w-full"
                   value={vatPercent}
-                  onChange={e => setVatPercent(Number(e.target.value))}
+                  onChange={(e) => setVatPercent(Number(e.target.value))}
                 />
               </div>
             </div>
 
-            {/* Totals */}
-            <div className="mt-4 p-4 border rounded bg-gray-50 space-y-1 text-sm">
-              <p>Subtotal: {totals.subtotal.toFixed(2)}</p>
-              <p>Total Cost: {totals.cost.toFixed(2)}</p>
-              <p>Discount: {totals.overallDiscount.toFixed(2)}</p>
-              <p>VAT: {totals.vatAmt.toFixed(2)}</p>
-              <p>Grand Total: {totals.grandTotal.toFixed(2)}</p>
-              <p>Gross Profit: {totals.grossProfit.toFixed(2)}</p>
-              <p>Profit %: {totals.profitPercent.toFixed(2)}</p>
-            </div>
+
+{/* Totals */}
+<div className="mt-6 p-5 rounded-xl border border-cloud-300/40 dark:border-midnight-700/40 
+                bg-white/70 dark:bg-midnight-800/60 backdrop-blur-sm shadow-sm 
+                text-sm text-midnight-800 dark:text-ivory-200 space-y-2">
+  <p className="flex justify-between">
+    <span className="font-medium">Subtotal:</span> {totals.subtotal.toFixed(2)}
+  </p>
+  <p className="flex justify-between">
+    <span className="font-medium">Total Cost:</span> {totals.cost.toFixed(2)}
+  </p>
+  <p className="flex justify-between">
+    <span className="font-medium">Discount:</span> {totals.overallDiscount.toFixed(2)}
+  </p>
+  <p className="flex justify-between">
+    <span className="font-medium">VAT:</span> {totals.vatAmt.toFixed(2)}
+  </p>
+  <p className="flex justify-between text-base font-semibold text-sky-600 dark:text-sky-400">
+    <span>Grand Total:</span> {totals.grandTotal.toFixed(2)}
+  </p>
+  <p className="flex justify-between">
+    <span className="font-medium">Gross Profit:</span> {totals.grossProfit.toFixed(2)}
+  </p>
+  <p className="flex justify-between">
+    <span className="font-medium">Profit %:</span> {totals.profitPercent.toFixed(2)}
+  </p>
+</div>
+
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 mt-6 border-t pt-4">
+            <div className="flex justify-end gap-3 mt-6 border-t border-cloud-300/30 dark:border-midnight-700/30 pt-4">
               <Button type="submit" disabled={saving || !!lastSavedQuote}>
-                {saving ? 'Saving...' : 'Save Quote'}
+                {saving ? "Saving..." : "Save Quote"}
               </Button>
               {lastSavedQuote && (
                 <>
@@ -542,39 +686,54 @@ const CreateQuote: React.FC = () => {
                     disabled={previewLoading}
                     onClick={showPreview}
                   >
-                    {previewLoading ? 'Loading Preview...' : 'Preview'}
+                    {previewLoading ? "Loading Preview..." : "Preview"}
                   </Button>
-
                   <Button
                     type="button"
                     variant="secondary"
                     disabled={!lastSavedQuote.isApproved && !isAdmin}
                     onClick={downloadPdf}
-                    title={!lastSavedQuote.isApproved && !isAdmin ? 'Waiting for admin approval' : 'Download as PDF'}
+                    title={
+                      !lastSavedQuote.isApproved && !isAdmin
+                        ? "Waiting for admin approval"
+                        : "Download as PDF"
+                    }
                   >
                     Download PDF
                   </Button>
                 </>
               )}
-              <Button type="button" variant="secondary" onClick={() => navigate(selectedLeadId ? `/leads/${selectedLeadId}` : '/leads')} disabled={saving}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  navigate(selectedLeadId ? `/leads/${selectedLeadId}` : "/leads")
+                }
+                disabled={saving}
+              >
                 Cancel
               </Button>
             </div>
 
+            {/* Error / Success */}
             {error && <p className="text-red-600 mt-2 text-center">{error}</p>}
             {lastSavedQuote && (
-                <div className="mt-4 p-4 border rounded bg-green-50 text-green-800 text-center">
-                    Quote #{lastSavedQuote.number} saved successfully. 
-                    {lastSavedQuote.isApproved === false && ' It is now pending admin approval.'}
-                </div>
+              <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-900/40 
+                            text-green-800 dark:text-green-200 text-center">
+                Quote #{lastSavedQuote.number} saved successfully.
+                {lastSavedQuote.isApproved === false &&
+                  " It is now pending admin approval."}
+              </div>
             )}
           </form>
+
+          {/* Modals */}
           <SelectLeadModal
             open={openLeadModal}
             onClose={() => setOpenLeadModal(false)}
-            onSelect={lead => {
+            onSelect={(lead) => {
               setSelectedLeadId(lead.id);
-              setLeadNumber(lead.uniqueNumber || '');
+              setLeadNumber(lead.uniqueNumber || "");
               setOpenLeadModal(false);
             }}
           />
@@ -588,6 +747,8 @@ const CreateQuote: React.FC = () => {
       </div>
     </div>
   );
+
+
 };
 
 export default CreateQuote;

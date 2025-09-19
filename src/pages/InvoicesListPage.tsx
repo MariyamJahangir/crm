@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-// NEW: Import the Download icon from lucide-react
-import { Eye, Download } from 'lucide-react';
+import { Eye, Download, Plus } from 'lucide-react';
 
 // Component Imports
 import Sidebar from '../components/Sidebar';
@@ -30,7 +29,7 @@ const InvoicesListPage: React.FC = () => {
   // State for the preview modal
   const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
   
-  // NEW: State to track which invoice is currently being downloaded
+  // Track downloading
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,11 +68,8 @@ const InvoicesListPage: React.FC = () => {
       prevInvoices.map(inv => (inv.id === updatedInvoice.id ? updatedInvoice : inv))
     );
   };
-  
-  /**
-   * NEW: Handler for the download PDF action.
-   */
- const handleDownload = async (invoice: Invoice) => {
+
+  const handleDownload = async (invoice: Invoice) => {
     if (!token) return;
     setDownloadingId(invoice.id);
     setError(null);
@@ -94,21 +90,33 @@ const InvoicesListPage: React.FC = () => {
       setDownloadingId(null);
     }
   };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
       <Sidebar />
-      <div className="pl-64">
-        <main className="max-w-screen-xl mx-auto py-8 px-6">
-          <div className="flex items-center justify-between mb-6">
+      <div className="flex-1 overflow-y-auto min-h-screen">
+        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Invoices</h1>
-              <p className="text-gray-600">Manage, create, and track all your invoices.</p>
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-ivory-200">Invoices</h1>
+              <p className="text-gray-600 dark:text-midnight-400">
+                Manage, create, and track all your invoices.
+              </p>
             </div>
-            <Button onClick={() => navigate('/invoices/create')}>Create Invoice</Button>
+            <Button
+              onClick={() => navigate('/invoices/create')}
+              className="flex items-center px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 
+                         backdrop-blur-md text-midnight-700 dark:text-ivory-300 
+                         hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
+                         shadow-md rounded-xl transition"
+            >
+              <Plus size={18} className="mr-2" />
+              Create Invoice
+            </Button>
           </div>
-          
-          {loading && <div className="text-center p-4">Loading invoices...</div>}
-          {error && <div className="text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
+
+          {loading && <div className="text-midnight-700 dark:text-ivory-300">Loading invoices...</div>}
+          {error && <div className="text-red-600">{error}</div>}
 
           {!loading && !error && (
             <DataTable
@@ -121,7 +129,6 @@ const InvoicesListPage: React.FC = () => {
                   render: (r) => (
                     <div>
                       <div>{r.customerName}</div>
-                      {/* Note: 'customerType' is not on the Invoice model, this will only render if added */}
                       {r.customerType && (
                         <span className={`mt-1 inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${customerTypeStyles[r.customerType] || 'bg-gray-100'}`}>
                           {r.customerType}
@@ -154,19 +161,16 @@ const InvoicesListPage: React.FC = () => {
                       <Button variant="icon" title="Preview" onClick={() => showPreview(r)}>
                         <Eye size={18} />
                       </Button>
-                      
-                      {/* NEW: Download Button */}
                       <Button
                         variant="icon"
                         title="Download PDF"
                         onClick={() => handleDownload(r)}
-                        disabled={downloadingId === r.id} // Disable button while downloading this item
+                        disabled={downloadingId === r.id}
                       >
-                        {/* Show a spinner or the icon */}
                         {downloadingId === r.id ? (
-                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
                         ) : (
-                           <Download size={18} />
+                          <Download size={18} />
                         )}
                       </Button>
                     </div>
@@ -175,11 +179,14 @@ const InvoicesListPage: React.FC = () => {
               ]}
               filterKeys={['invoiceNumber', 'customerName', 'status']}
               searchPlaceholder="Filter invoices..."
+              className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                         border border-cloud-300/30 dark:border-midnight-700/30 
+                         rounded-2xl p-3"
             />
           )}
         </main>
       </div>
-      
+
       <PreviewModal
         open={preview.open}
         onClose={() => setPreview({ open: false, html: undefined })}

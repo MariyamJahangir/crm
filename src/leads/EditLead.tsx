@@ -119,129 +119,272 @@ const EditLead: React.FC = () => {
   }
   if (!token) return null;
 
-  return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 overflow-y-auto">
-        <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900">Edit Lead #{lead?.uniqueNumber}</h1>
-            <p className="text-gray-600">Update lead details.</p>
+return (
+  <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+    <Sidebar />
+
+    <div className="flex-1 overflow-y-auto h-screen">
+      <main className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-midnight-800 dark:text-ivory-100">
+            Edit Lead #{lead?.uniqueNumber}
+          </h1>
+          <p className="text-midnight-400 dark:text-ivory-400 mt-1">
+            Update lead details.
+          </p>
+        </div>
+
+        {loading && <div className="text-midnight-600 dark:text-ivory-300">Loading...</div>}
+        {error && (
+          <div className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 
+            text-stone-700 dark:text-stone-200 px-4 py-3 rounded-lg mb-6 shadow-sm">
+            {error}
           </div>
+        )}
 
-          {loading && <div>Loading...</div>}
-          {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">{error}</div>}
-
-          {!loading && lead && (
-            <form onSubmit={save} className="space-y-6 bg-white p-6 rounded-lg shadow-sm border">
-              <div>
-                <div className="text-sm font-medium text-gray-700 mb-2">Stage</div>
-                <div className="flex flex-wrap gap-2">
-                  {STAGES.map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      className={`px-3 py-1.5 rounded border ${stage === s ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                      onClick={() => setStage(s)}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
+        {!loading && lead && (
+          <form
+            onSubmit={save}
+            className="space-y-6 bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+             p-6 rounded-2xl shadow-xl border border-cloud-300/30 dark:border-midnight-700/30"
+          >
+            {/* Stage */}
+            <div>
+              <div className="text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Stage</div>
+              <div className="flex flex-wrap gap-2">
+                {STAGES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`px-3 py-1.5 rounded-xl border transition shadow-sm 
+                      ${stage === s 
+                        ? 'bg-sky-500 text-white border-sky-500 shadow-md' 
+                        : 'bg-white/60 dark:bg-midnight-800/60 text-midnight-700 dark:text-ivory-200 border-cloud-200/50 dark:border-midnight-600/50 hover:bg-cloud-100/70 dark:hover:bg-midnight-700/70'}`}
+                    onClick={() => setStage(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              <div>
-                <div className="text-sm font-medium text-gray-700 mb-2">Forecast</div>
-                <div className="flex gap-3">
-                  {FORECASTS.map((f) => (
-                    <label key={f} className="inline-flex items-center gap-2 text-sm text-gray-700">
-                      <input type="radio" name="forecast" value={f} checked={forecastCategory === f} onChange={() => setForecastCategory(f)} />
-                      <span>{f}</span>
-                    </label>
-                  ))}
-                </div>
+            {/* Forecast */}
+            <div>
+              <div className="text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Forecast</div>
+              <div className="flex gap-3">
+                {FORECASTS.map((f) => (
+                  <label
+                    key={f}
+                    className="inline-flex items-center gap-2 text-sm text-midnight-700 dark:text-ivory-300"
+                  >
+                    <input
+                      type="radio"
+                      name="forecast"
+                      value={f}
+                      checked={forecastCategory === f}
+                      onChange={() => setForecastCategory(f)}
+                      className="text-sky-500 focus:ring-sky-400"
+                    />
+                    <span>{f}</span>
+                  </label>
+                ))}
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer (Company)</label>
+            {/* Customer + Source */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                  Customer (Company)
+                </label>
+                <select
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                   focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+                  disabled={!isAdmin}
+                >
+                  <option value="">-- Select --</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.companyName}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                  Source
+                </label>
+                <select
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                   focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+                >
+                  {SOURCES.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Contact + Salesman + Mobile + Email */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                  Contact Person
+                </label>
+                <input
+                  value={contactPerson}
+                  onChange={(e) => setContactPerson(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                   focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                  Salesman
+                </label>
+                {isAdmin ? (
                   <select
-                    value={customerId}
-                    onChange={(e) => setCustomerId(e.target.value)}
-                    className="w-full rounded-md border-gray-300 bg-white shadow-sm"
-                    disabled={!isAdmin}
+                    value={salesmanId}
+                    onChange={(e) => setSalesmanId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                     bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                     focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
                   >
                     <option value="">-- Select --</option>
-                    {customers.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}
+                    {salesmen.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
                   </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
-                  <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full rounded-md border-gray-300 bg-white shadow-sm">
-                    {SOURCES.map((s) => <option key={s}>{s}</option>)}
-                  </select>
-                </div>
+                ) : (
+                  <input
+                    value={lead.salesman?.name || ''}
+                    disabled
+                    className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                     bg-midnight-100 dark:bg-midnight-700/40 text-midnight-600 dark:text-ivory-300 shadow-sm"
+                  />
+                )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
-                  <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Salesman</label>
-                  {isAdmin ? (
-                    <select value={salesmanId} onChange={(e) => setSalesmanId(e.target.value)} className="w-full rounded-md border-gray-300 bg-white shadow-sm">
-                      <option value="">-- Select --</option>
-                      {salesmen.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                  ) : (
-                    <input value={lead.salesman?.name || ''} disabled className="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm" />
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mobile</label>
-                  <input value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Alternative Mobile</label>
-                  <input value={mobileAlt} onChange={(e) => setMobileAlt(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input type="email" value={emailField} onChange={(e) => setEmailField(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                  <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-                </div>
-              </div>
-
+              {/* Mobile Fields */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description / Notes</label>
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-md border-gray-300 shadow-sm" />
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                  Mobile
+                </label>
+                <input
+                  value={mobile}
+                  onChange={(e) => setMobile(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                   focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+                />
               </div>
-
-              {stage === 'Deal Lost' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lost Reason</label>
-                  <input value={lostReason} onChange={(e) => setLostReason(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="Reason for losing the deal" />
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3">
-                <Button type="button" className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={() => navigate(`/leads/${id}`)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+              <div>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                  Alternative Mobile
+                </label>
+                <input
+                  value={mobileAlt}
+                  onChange={(e) => setMobileAlt(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                   focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+                />
               </div>
-            </form>
-          )}
-        </main>
-      </div>
+              <div>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={emailField}
+                  onChange={(e) => setEmailField(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                   focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                  City
+                </label>
+                <input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                   focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                Description / Notes
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                 focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+              />
+            </div>
+
+            {/* Lost Reason */}
+            {stage === 'Deal Lost' && (
+              <div>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-1">
+                  Lost Reason
+                </label>
+                <input
+                  value={lostReason}
+                  onChange={(e) => setLostReason(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                   focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+                  placeholder="Reason for losing the deal"
+                />
+              </div>
+            )}
+
+            {/* Buttons */}
+            <div className="flex justify-end gap-4 pt-4">
+              <Button
+                type="button"
+                className="px-5 py-2 rounded-xl bg-cloud-100/60 dark:bg-midnight-700/60 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-midnight-700 dark:text-ivory-200 
+                 hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 
+                 backdrop-blur-md shadow-md transition"
+                onClick={() => navigate(`/leads/${id}`)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="px-5 py-2 rounded-xl bg-sky-500/90 hover:bg-sky-600 
+                 text-white shadow-lg transition disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </main>
     </div>
-  );
+  </div>
+);
+
+
+  
 };
 
 export default EditLead;

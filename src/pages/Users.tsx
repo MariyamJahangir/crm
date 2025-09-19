@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { teamService, TeamUser } from '../services/teamService';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { Pencil, Trash2, ListRestart } from "lucide-react";
+import { Pencil, Trash2, ListRestart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 type SortKey = 'name' | 'email' | 'designation' | 'createdAt' | 'status';
 type SortDir = 'asc' | 'desc';
@@ -235,7 +235,7 @@ const Users: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-midnight-800/50 transition-colors duration-300">
-    
+
       <div className="flex z-10 min-h-screen">
         <Sidebar />
         <main className="flex-1 transition-all duration-300 
@@ -252,10 +252,11 @@ const Users: React.FC = () => {
             <div className="flex items-center gap-3">
               {isAdmin && (
                 <Button className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl"
-                onClick={() => navigate('/users/create')}>
+                  onClick={() => navigate('/users/create')}>
                   Create User
                 </Button>
               )}
+              
               <Button
                 variant="secondary"
                 onClick={load}
@@ -270,6 +271,13 @@ const Users: React.FC = () => {
               >
                 Export CSV
               </Button>
+
+              {isAdmin && (
+                <Button className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl"
+                  onClick={() => navigate('/sales-report')}>
+                   Sales Report
+                </Button>
+              )}
             </div>
           </div>
 
@@ -437,6 +445,18 @@ const Users: React.FC = () => {
                         {isAdmin && (
                           <td className="px-4 py-3 text-sm text-center align-middle">
                             <div className="flex items-center justify-center gap-2">
+
+                              <div className="hidden sm:inline-flex items-center justify-center 
+                                  w-8 h-8 rounded-full
+                                  bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md 
+                                  hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
+                                  shadow-md transition"
+                                onClick={() => navigate(`/users/${u.id}/sales-report`)}
+                              >
+                                <Eye className="w-4 h-4 text-midnight-500" />
+                              </div>
+
+
                               <div className="hidden sm:inline-flex items-center justify-center 
                                   w-8 h-8 rounded-full
                                   bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md 
@@ -502,29 +522,38 @@ const Users: React.FC = () => {
               {/* Footer: pagination info */}
               <div className="px-4 py-3 bg-cloud-100/30 dark:bg-midnight-800/30 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-midnight-700 dark:text-ivory-300 select-none rounded-b-2xl">
                 <div className="text-sm">
-                  Showing <span className="font-semibold">{Math.min((currentPage - 1) * pageSize + 1, total)}</span> to{' '}
-                  <span className="font-semibold">{Math.min(currentPage * pageSize, total)}</span> of{' '}
-                  <span className="font-semibold">{total}</span> results
+                  Showing{" "}
+                  <span className="font-semibold">
+                    {Math.min((currentPage - 1) * pageSize + 1, total)}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-semibold">
+                    {Math.min(currentPage * pageSize, total)}
+                  </span>{" "}
+                  of <span className="font-semibold">{total}</span> results
                 </div>
+
                 <div className="flex items-center gap-2">
                   <Button
                     variant="secondary"
-                    className="px-3 py-1 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition"
+                    className="p-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
-                    Prev
+                    <ChevronLeft className="h-5 w-5" />
                   </Button>
+
                   <span className="text-sm tabular-nums">
                     Page {currentPage} / {totalPages}
                   </span>
+
                   <Button
                     variant="secondary"
-                    className="px-3 py-1 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition"
+                    className="p-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage >= totalPages}
                   >
-                    Next
+                    <ChevronRight className="h-5 w-5" />
                   </Button>
                 </div>
               </div>

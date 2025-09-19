@@ -186,175 +186,245 @@ const CreateLead: React.FC = () => {
     }
   };
 
-  return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 overflow-y-auto">
-        <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900">Create Lead</h1>
-            <p className="text-gray-600">Select company, salesman, and contact. Create new ones inline if needed.</p>
+ return (
+  <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+    <Sidebar />
+
+    <div className="flex-1 overflow-y-auto h-screen">
+      <main className="max-w-5xl mx-auto py-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-midnight-800 dark:text-ivory-100">
+            Create Lead
+          </h1>
+          <p className="text-midnight-400 dark:text-ivory-400 mt-1">
+            Select company, salesman, and contact. Create new ones inline if needed.
+          </p>
+        </div>
+
+        {error && (
+          <div className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 px-4 py-3 rounded-lg mb-6 shadow-sm">
+            {error}
+          </div>
+        )}
+
+        <form
+          onSubmit={save}
+          className="space-y-6 bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+           p-6 rounded-2xl shadow-xl border border-cloud-300/30 dark:border-midnight-700/30"
+        >
+          {/* Stage */}
+          <div>
+            <div className="text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Stage</div>
+            <div className="flex flex-wrap gap-2">
+              {STAGES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`px-3 py-1.5 rounded-xl border transition shadow-sm 
+                    ${stage === s 
+                      ? 'bg-sky-500/90 text-white border-sky-500 hover:bg-sky-600' 
+                      : 'bg-white/60 dark:bg-midnight-800/60 text-midnight-700 dark:text-ivory-200 border-cloud-200/50 dark:border-midnight-600/50 hover:bg-cloud-100/70 dark:hover:bg-midnight-700/60'
+                    }`}
+                  onClick={() => setStage(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
 
-
-          <form onSubmit={save} className="space-y-6 bg-white p-6 rounded-lg shadow-sm border">
-            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
-
-
-            {/* Stage */}
-            <div>
-              <div className="text-sm font-medium text-gray-700 mb-2">Stage</div>
-              <div className="flex flex-wrap gap-2">
-                {STAGES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`px-3 py-1.5 rounded border ${stage === s ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                    onClick={() => setStage(s)}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Forecast */}
-            <div>
-              <div className="text-sm font-medium text-gray-700 mb-2">Forecast</div>
-              <div className="flex gap-3">
-                {FORECASTS.map((f) => (
-                  <label key={f} className="inline-flex items-center gap-2 text-sm text-gray-700">
-                    <input type="radio" name="forecast" value={f} checked={forecastCategory === f} onChange={() => setForecastCategory(f)} />
-                    <span>{f}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-
-            {/* Customer + Source */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Customer (Company)</label>
-                <div className="flex gap-2">
-                  <select
-                    value={customerId}
-                    onChange={(e) => setCustomerId(e.target.value)}
-                    className="flex-1 rounded-md border-gray-300 bg-white shadow-sm"
-                  >
-                    <option value="" disabled>Select a company</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.companyName}</option>
-                    ))}
-                  </select>
-                  <Button type="button" variant="secondary" onClick={() => setOpenNewCustomer(true)}>+ New</Button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Source</label>
-                <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full rounded-md border-gray-300 bg-white shadow-sm">
-                  {SOURCES.map((s) => <option key={s}>{s}</option>)}
-                </select>
-              </div>
-            </div>
-
-
-            {/* Contact + Salesman */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select Contact</label>
-                <div className="flex gap-2">
-                  <select
-                    value={contactId || ''}
-                    onChange={(e) => setContactId(e.target.value || '')}
-                    className="flex-1 rounded-md border-gray-300 bg-white shadow-sm"
-                    disabled={!customerId}
-                  >
-                    <option value="" disabled>{contacts.length ? 'Select a contact' : 'No contacts available'}</option>
-                    {contacts.map((c) => <option key={c.id} value={c.id}>{c.name} {c.mobile ? `(${c.mobile})` : ''}</option>)}
-                  </select>
-                  <Button type="button" variant="secondary" onClick={() => setOpenNewContact(true)} disabled={!customerId}>+ New</Button>
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Modify fields below to override selected contact details for this lead.</div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Salesman</label>
-                {isAdmin ? (
-                  <select
-                    value={salesmanId}
-                    onChange={(e) => setSalesmanId(e.target.value)}
-                    className="w-full rounded-md border-gray-300 bg-white shadow-sm"
-                    required
-                  >
-                    <option value="" disabled>-- Select Salesman --</option>
-                    {salesmen.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                ) : (
+          {/* Forecast */}
+          <div>
+            <div className="text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Forecast</div>
+            <div className="flex gap-4">
+              {FORECASTS.map((f) => (
+                <label key={f} className="inline-flex items-center gap-2 text-sm text-midnight-700 dark:text-ivory-200">
                   <input
-                    value={user?.name || ''}
-                    disabled
-                    className="w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
+                    type="radio"
+                    name="forecast"
+                    value={f}
+                    checked={forecastCategory === f}
+                    onChange={() => setForecastCategory(f)}
                   />
-                )}
-              </div>
+                  <span>{f}</span>
+                </label>
+              ))}
             </div>
+          </div>
 
-
-            {/* Contact Override Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person Name</label>
-                <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mobile</label>
-                <input value={mobile} onChange={(e) => setMobile(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Alternative Mobile</label>
-                <input value={mobileAlt} onChange={(e) => setMobileAlt(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" value={emailField} onChange={(e) => setEmailField(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm" />
-              </div>
-            </div>
-
-
+          {/* Customer + Source */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description / Notes</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-md border-gray-300 shadow-sm" />
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                Customer (Company)
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                  className="flex-1 h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                   focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+                >
+                  <option value="" disabled>Select a company</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.companyName}</option>
+                  ))}
+                </select>
+                <Button type="button" variant="secondary" onClick={() => setOpenNewCustomer(true)}>+ New</Button>
+              </div>
             </div>
-
-
-            <div className="flex justify-end gap-3">
-              <Button type="button" onClick={() => navigate('/leads')} className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</Button>
-              <Button type="submit" disabled={submitting}>{submitting ? 'Saving...' : 'Save Lead'}</Button>
+            <div>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Source</label>
+              <select
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                 focus:border-sky-400 focus:ring focus:ring-sky-300/50 transition"
+              >
+                {SOURCES.map((s) => <option key={s}>{s}</option>)}
+              </select>
             </div>
-          </form>
-        </main>
-      </div>
+          </div>
 
+          {/* Contact + Salesman */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Select Contact</label>
+              <div className="flex gap-2">
+                <select
+                  value={contactId || ''}
+                  onChange={(e) => setContactId(e.target.value || '')}
+                  className="flex-1 h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm"
+                  disabled={!customerId}
+                >
+                  <option value="" disabled>
+                    {contacts.length ? 'Select a contact' : 'No contacts available'}
+                  </option>
+                  {contacts.map((c) => <option key={c.id} value={c.id}>{c.name} {c.mobile ? `(${c.mobile})` : ''}</option>)}
+                </select>
+                <Button type="button" variant="secondary" onClick={() => setOpenNewContact(true)} disabled={!customerId}>+ New</Button>
+              </div>
+              <div className="text-xs text-midnight-400 dark:text-ivory-400 mt-1">
+                Modify fields below to override selected contact details for this lead.
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Salesman</label>
+              {isAdmin ? (
+                <select
+                  value={salesmanId}
+                  onChange={(e) => setSalesmanId(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm"
+                  required
+                >
+                  <option value="" disabled>-- Select Salesman --</option>
+                  {salesmen.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={user?.name || ''}
+                  disabled
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-gray-100 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm"
+                />
+              )}
+            </div>
+          </div>
 
-      <NewCustomerModal
-        open={openNewCustomer}
-        onClose={() => setOpenNewCustomer(false)}
-        onCreated={refreshCustomersAndSelect}
-      />
-      <NewContactModal
-        open={openNewContact}
-        onClose={() => setOpenNewContact(false)}
-        customerId={customerId}
-        onCreated={refreshContactsAndSelectFirst}
-      />
+          {/* Contact Override Fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-cloud-200/40 dark:border-midnight-700/40">
+            <div>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Contact Person Name</label>
+              <input value={contactPerson} onChange={(e) => setContactPerson(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Mobile</label>
+              <input value={mobile} onChange={(e) => setMobile(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Alternative Mobile</label>
+              <input value={mobileAlt} onChange={(e) => setMobileAlt(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Email</label>
+              <input type="email" value={emailField} onChange={(e) => setEmailField(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">City</label>
+              <input value={city} onChange={(e) => setCity(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm" />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Description / Notes</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+               bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm"
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex justify-end gap-4 pt-4">
+            <Button
+              type="button"
+              className="px-5 py-2 rounded-xl bg-cloud-100/60 dark:bg-midnight-700/60 
+               border border-cloud-300/40 dark:border-midnight-600/40 
+               text-midnight-700 dark:text-ivory-200 
+               hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 
+               backdrop-blur-md shadow-md transition"
+              onClick={() => navigate('/leads')}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 rounded-xl bg-sky-500/90 hover:bg-sky-600 
+               text-white shadow-lg transition disabled:opacity-50"
+            >
+              {submitting ? 'Saving...' : 'Save Lead'}
+            </Button>
+          </div>
+        </form>
+      </main>
     </div>
-  );
+
+    <NewCustomerModal
+      open={openNewCustomer}
+      onClose={() => setOpenNewCustomer(false)}
+      onCreated={refreshCustomersAndSelect}
+    />
+    <NewContactModal
+      open={openNewContact}
+      onClose={() => setOpenNewContact(false)}
+      customerId={customerId}
+      onCreated={refreshContactsAndSelectFirst}
+    />
+  </div>
+);
+
+
+  
 };
 
 export default CreateLead;

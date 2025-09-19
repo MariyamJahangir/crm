@@ -55,101 +55,158 @@ const CreateUser: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
       <Sidebar />
-      {/* --- CHANGE: Added pl-64 to offset for the sidebar width --- */}
-      <div className="pl-64">
-        <main className="max-w-3xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+
+      <div className="flex-1 overflow-y-auto h-screen">
+        <main className="max-w-3xl mx-auto py-6 ">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-gray-900">Create User</h1>
-            <p className="text-gray-600">Add a user under your account.</p>
+            <h1 className="text-3xl font-bold text-midnight-800 dark:text-ivory-100">
+              Create User
+            </h1>
+            <p className="text-midnight-400 dark:text-ivory-400 mt-1">
+              Add a user under your account.
+            </p>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 px-4 py-3 rounded-lg mb-6 shadow-sm">
               {error}
             </div>
           )}
 
-          <form onSubmit={onSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-sm border">
+          <form
+            onSubmit={onSubmit}
+            className="space-y-4 bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+             p-6 rounded-2xl shadow-xl border border-cloud-300/30 dark:border-midnight-700/30"
+          >
+            {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                Name
+              </label>
               <input
                 name="name"
                 value={form.name}
                 onChange={onChange}
                 required
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 
+                 text-midnight-800 dark:text-ivory-100 
+                 placeholder-midnight-300 dark:placeholder-ivory-500 
+                 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 
+                 transition"
                 placeholder="John Doe"
               />
             </div>
 
+            {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                Email
+              </label>
               <input
                 type="email"
                 name="email"
                 value={form.email}
                 onChange={onChange}
                 required
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 
+                 text-midnight-800 dark:text-ivory-100 
+                 placeholder-midnight-300 dark:placeholder-ivory-500 
+                 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 
+                 transition"
                 placeholder="john@example.com"
               />
             </div>
 
+            {/* Designation */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                Designation
+              </label>
               <input
                 name="designation"
                 value={form.designation}
                 onChange={onChange}
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                 bg-white/60 dark:bg-midnight-800/60 
+                 text-midnight-800 dark:text-ivory-100 
+                 placeholder-midnight-300 dark:placeholder-ivory-500 
+                 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 
+                 transition"
                 placeholder="Sales Executive"
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Password & Confirm */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                  Password
+                </label>
                 <input
                   type="password"
                   name="password"
                   value={form.password}
                   onChange={onChange}
                   required
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 
+                   text-midnight-800 dark:text-ivory-100 
+                   shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 
+                   transition"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                  Confirm Password
+                </label>
                 <input
                   type="password"
                   name="confirmPassword"
                   value={form.confirmPassword}
                   onChange={onChange}
                   required
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+                   bg-white/60 dark:bg-midnight-800/60 
+                   text-midnight-800 dark:text-ivory-100 
+                   shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 
+                   transition"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3">
+            {/* Buttons */}
+            <div className="flex justify-end gap-4 pt-4">
               <Button
                 type="button"
-                className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="px-5 py-2 rounded-xl bg-cloud-100/60 dark:bg-midnight-700/60 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-midnight-700 dark:text-ivory-200 
+                 hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 
+                 backdrop-blur-md shadow-md transition"
                 onClick={() => navigate('/users')}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={submitting}>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="px-5 py-2 rounded-xl bg-sky-500/90 hover:bg-sky-600 
+                 text-white shadow-lg transition disabled:opacity-50"
+              >
                 {submitting ? 'Creating...' : 'Create User'}
               </Button>
             </div>
           </form>
+
         </main>
       </div>
     </div>
   );
+
 };
 
 export default CreateUser;

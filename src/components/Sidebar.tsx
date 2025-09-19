@@ -1,8 +1,14 @@
 import React from 'react';
 import {
   LayoutDashboard,
-  User as UserIcon,
+  UserCircle,
+  UserPlus,
+  Handshake,
+  Receipt,
+  FileText,
   Settings,
+  Store,
+  Contact,
   Bell,
   LogOut,
   Users,
@@ -32,7 +38,7 @@ const Sidebar: React.FC = () => {
     <aside
       className="group inset-y-0 left-0 z-40 
                  w-16 hover:w-56 
-                 bg-midnight-900/80 backdrop-blur-xl 
+                 bg-midnight-900/60 backdrop-blur-xl 
                  border-r border-midnight-700/40 
                  flex flex-col shadow-2xl 
                  transition-all duration-300 overflow-hidden"
@@ -44,7 +50,7 @@ const Sidebar: React.FC = () => {
             <LayoutDashboard className="h-6 w-6 text-ivory-100" />
           </div>
           <span className="text-lg font-semibold text-ivory-100 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            Dashboard
+            Aieera's CRM
           </span>
         </div>
       </div>
@@ -60,7 +66,7 @@ const Sidebar: React.FC = () => {
         >
           <LayoutDashboard size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            Overview
+            Dashboard
           </span>
         </NavLink>
         <NavLink
@@ -69,7 +75,7 @@ const Sidebar: React.FC = () => {
             `${linkBase} ${isActive ? linkActive : linkInactive}`
           }
         >
-          <UserIcon size={18} className="mr-3 flex-shrink-0" />
+          <UserCircle size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             Users
           </span>
@@ -80,7 +86,7 @@ const Sidebar: React.FC = () => {
             `${linkBase} ${isActive ? linkActive : linkInactive}`
           }
         >
-          <Users size={18} className="mr-3 flex-shrink-0" />
+          <UserPlus size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             Leads
           </span>
@@ -89,7 +95,7 @@ const Sidebar: React.FC = () => {
           to="/deals"
           className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
         >
-          <Users size={18} className="mr-3 flex-shrink-0" />
+          <Handshake size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           Deals
           </span>
@@ -113,7 +119,7 @@ const Sidebar: React.FC = () => {
             `${linkBase} ${isActive ? linkActive : linkInactive}`
           }
         >
-          <Building2 size={18} className="mr-3 flex-shrink-0" />
+          <FileText size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             Quote
           </span>
@@ -124,7 +130,7 @@ const Sidebar: React.FC = () => {
             `${linkBase} ${isActive ? linkActive : linkInactive}`
           }
         >
-          <Bell size={18} className="mr-3 flex-shrink-0" />
+          <Contact size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             Contacts
           </span>
@@ -133,7 +139,7 @@ const Sidebar: React.FC = () => {
           to="/invoices"
           className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
         >
-          <Bell size={18} className="mr-3 flex-shrink-0" />
+          <Receipt size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           invoice
           </span>
@@ -142,7 +148,7 @@ const Sidebar: React.FC = () => {
           to="/vendors"
           className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
         >
-          <Settings size={18} className="mr-3 flex-shrink-0" />
+          <Store size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           vendors
           </span>

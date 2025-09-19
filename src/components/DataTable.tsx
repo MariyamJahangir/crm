@@ -122,7 +122,7 @@ const DataTable = <Row extends Record<string, any>>({
   };
 
   return (
-    <div className={`w-full ${className}`}>
+    <div>
       {/* Search Input */}
       <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
         <input
@@ -147,9 +147,8 @@ const DataTable = <Row extends Record<string, any>>({
                     <th
                       key={c.key}
                       style={{ width: c.width }}
-                      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 select-none ${
-                        canSort ? 'cursor-pointer' : ''
-                      }`}
+                      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 select-none ${canSort ? 'cursor-pointer' : ''
+                        }`}
                       onClick={() => canSort && onHeaderClick(c)}
                     >
                       <div className="inline-flex items-center gap-1">
@@ -188,46 +187,87 @@ const DataTable = <Row extends Record<string, any>>({
         </div>
 
         {/* Pagination */}
-        <div className="px-4 py-3 bg-cloud-100/30 dark:bg-midnight-800/30 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-midnight-700 dark:text-ivory-300 select-none rounded-b-2xl">
+        <div className="px-4 py-3 bg-cloud-100/30 dark:bg-midnight-800/30 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4 text-midnight-700 dark:text-ivory-300 select-none rounded-b-2xl">
+          {/* Left side - results info */}
           <div className="text-sm">
-            Showing <span className="font-semibold">{Math.min(startIdx + 1, total)}</span> to{' '}
-            <span className="font-semibold">{Math.min(startIdx + view.length, total)}</span> of{' '}
-            <span className="font-semibold">{total}</span> results
+            Showing{" "}
+            <span className="font-semibold">{Math.min(startIdx + 1, total)}</span> to{" "}
+            <span className="font-semibold">
+              {Math.min(startIdx + view.length, total)}
+            </span>{" "}
+            of <span className="font-semibold">{total}</span> results
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+
+          {/* Right side - pagination */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Prev / First */}
             <button
-              className="px-3 py-1 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition disabled:opacity-50"
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-cloud-200/50 dark:bg-midnight-700/50 
+                 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 text-sm font-medium
+                 shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => setPage(1)}
               disabled={currentPage <= 1}
             >
-              « First
+              «
             </button>
             <button
-              className="px-3 py-1 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition disabled:opacity-50"
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-cloud-200/50 dark:bg-midnight-700/50 
+                 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 text-sm font-medium
+                 shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={currentPage <= 1}
             >
-              ‹ Prev
+              ‹
             </button>
+
+            {/* Page Numbers */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .slice(
+                  Math.max(0, currentPage - 3),
+                  Math.min(totalPages, currentPage + 2)
+                )
+                .map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setPage(page)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium shadow-md transition 
+              ${currentPage === page
+                        ? "bg-sky-500 text-white"
+                        : "bg-cloud-200/50 dark:bg-midnight-700/50 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 text-midnight-700 dark:text-ivory-300"
+                      }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+            </div>
+
+            {/* Next / Last */}
             <button
-              className="px-3 py-1 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition disabled:opacity-50"
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-cloud-200/50 dark:bg-midnight-700/50 
+                 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 text-sm font-medium
+                 shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
             >
-              Next ›
+              ›
             </button>
             <button
-              className="px-3 py-1 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition disabled:opacity-50"
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-cloud-200/50 dark:bg-midnight-700/50 
+                 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 text-sm font-medium
+                 shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={() => setPage(totalPages)}
               disabled={currentPage >= totalPages}
             >
-              Last »
+              »
             </button>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm">Rows per page</label>
+            {/* Rows per page */}
+            <div className="flex items-center gap-2 ml-2">
+              <label className="text-sm">Rows:</label>
               <select
-                className="border rounded-lg px-2 py-1 bg-white dark:bg-midnight-700/40 text-midnight-900 dark:text-ivory-300"
+                className="border rounded-lg px-2 py-1 bg-white dark:bg-midnight-700/40 
+                   text-midnight-900 dark:text-ivory-300 text-sm"
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
               >
@@ -240,6 +280,10 @@ const DataTable = <Row extends Record<string, any>>({
             </div>
           </div>
         </div>
+
+
+
+
       </div>
     </div>
   );

@@ -113,142 +113,212 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="New Customer"
-      size="lg"
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} disabled={saving || !companyName.trim()}>
-            {saving ? 'Saving...' : 'Create'}
-          </Button>
-        </>
-      }
-    >
-      {err && <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded mb-3">{err}</div>}
+  <Modal
+  open={open}
+  onClose={onClose}
+  title="New Customer"
+  size="lg"
+  footer={
+    <>
+      <Button
+        variant="secondary"
+        onClick={onClose}
+        className="px-4 py-2 rounded-lg border border-white/30 text-white/80 
+                   bg-white/5 backdrop-blur-sm
+                   hover:text-white hover:border-white/60
+                   hover:bg-white/10
+                   hover:shadow-[0_0_12px_rgba(255,255,255,0.5)]
+                   transition-all"
+      >
+        Cancel
+      </Button>
 
-      <div className="max-h-[70vh] overflow-y-auto pr-1">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-medium text-gray-700">Company Name</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              value={companyName}
-              onChange={e => setCompanyName(e.target.value)}
-              placeholder="Apex Engineering Pvt Ltd"
-              required
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Contact Number</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              value={contactNumber}
-              onChange={e => setContactNumber(e.target.value)}
-              placeholder="+91 44xxxxxxx"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Email</label>
-            <input
-              type="email"
-              className="w-full border rounded px-3 py-2"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="info@company.com"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">VAT No</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              value={vatNo}
-              onChange={e => setVatNo(e.target.value)}
-              placeholder="TIN/VAT number"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium text-gray-700">Address</label>
-            <textarea
-              className="w-full border rounded px-3 py-2"
-              rows={3}
-              value={address}
-              onChange={e => setAddress(e.target.value)}
-              placeholder="Billing address"
-            />
-          </div>
+      <Button
+        onClick={save}
+        disabled={saving || !companyName.trim()}
+        className={`px-4 py-2 rounded-lg border border-sky-400/40 text-sky-200
+                   bg-sky-500/10 backdrop-blur-sm
+                   hover:text-white hover:bg-sky-500/20
+                   hover:shadow-[0_0_16px_rgba(56,189,248,0.6)]
+                   transition-all
+                   ${saving || !companyName.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        {saving ? 'Saving...' : 'Create'}
+      </Button>
+    </>
+  }
+>
+  {err && (
+    <div className="bg-red-500/10 border border-red-400/50 text-red-300 
+                    px-3 py-2 rounded-lg mb-3
+                    backdrop-blur-sm shadow-[0_0_10px_rgba(248,113,113,0.4)]">
+      {err}
+    </div>
+  )}
 
-          {/* New fields */}
-          <div>
-            <label className="text-sm font-medium text-gray-700">Industry</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              value={industry}
-              onChange={e => setIndustry(e.target.value)}
-              placeholder="Manufacturing, EPC, Pharma..."
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Website</label>
-            <input
-              className="w-full border rounded px-3 py-2"
-              value={website}
-              onChange={e => setWebsite(e.target.value)}
-              placeholder="https://example.com"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Category</label>
-            <select
-              className="w-full border rounded px-3 py-2 bg-white"
-              value={category}
-              onChange={e => setCategory(e.target.value as any)}
-            >
-              <option value="">-- Select --</option>
-              <option value="Enterprise">Enterprise</option>
-              <option value="SMB">SMB</option>
-              <option value="Individual">Individual</option>
-            </select>
-          </div>
-
-          {/* UPDATED: Conditional salesman field */}
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium text-gray-700">Salesman</label>
-            {isAdmin ? (
-              <>
-                <select
-                  className="w-full border rounded px-3 py-2 bg-white"
-                  value={salesmanId}
-                  onChange={e => setSalesmanId(e.target.value)}
-                  required={isAdmin}
-                  disabled={loadingTeam}
-                >
-                  <option value="" disabled>Select salesman</option>
-                  {salesmen.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <div className="text-xs text-gray-500 mt-1">
-                  Admins must choose a salesman.
-                </div>
-              </>
-            ) : (
-              <>
-                <input
-                  className="w-full border rounded px-3 py-2 bg-gray-100"
-                  value={user?.name || ''}
-                  disabled
-                />
-                <div className="text-xs text-gray-500 mt-1">
-                  You are assigned as the salesman for this customer.
-                </div>
-              </>
-            )}
-          </div>
+  <div className="max-h-[70vh] overflow-y-auto pr-1">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* Reusable glass input style */}
+      {[
+        {
+          label: 'Company Name',
+          value: companyName,
+          setter: setCompanyName,
+          placeholder: 'Apex Engineering Pvt Ltd',
+          required: true,
+        },
+        {
+          label: 'Contact Number',
+          value: contactNumber,
+          setter: setContactNumber,
+          placeholder: '+91 44xxxxxxx',
+        },
+        {
+          label: 'Email',
+          type: 'email',
+          value: email,
+          setter: setEmail,
+          placeholder: 'info@company.com',
+        },
+        {
+          label: 'VAT No',
+          value: vatNo,
+          setter: setVatNo,
+          placeholder: 'TIN/VAT number',
+        },
+      ].map((field, i) => (
+        <div key={i}>
+          <label className="text-sm font-medium text-white/80">{field.label}</label>
+          <input
+            type={field.type || 'text'}
+            className="w-full rounded-lg px-3 py-2 
+                       bg-white/5 border border-white/20 text-white/90
+                       placeholder-white/40 backdrop-blur-sm
+                       focus:outline-none focus:border-white/50
+                       hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
+                       transition-all"
+            value={field.value}
+            onChange={e => field.setter(e.target.value)}
+            placeholder={field.placeholder}
+            required={field.required}
+          />
         </div>
+      ))}
+
+      <div className="sm:col-span-2">
+        <label className="text-sm font-medium text-white/80">Address</label>
+        <textarea
+          className="w-full rounded-lg px-3 py-2 
+                     bg-white/5 border border-white/20 text-white/90
+                     placeholder-white/40 backdrop-blur-sm
+                     focus:outline-none focus:border-white/50
+                     hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
+                     transition-all"
+          rows={3}
+          value={address}
+          onChange={e => setAddress(e.target.value)}
+          placeholder="Billing address"
+        />
       </div>
-    </Modal>
+
+      <div>
+        <label className="text-sm font-medium text-white/80">Industry</label>
+        <input
+          className="w-full rounded-lg px-3 py-2 
+                     bg-white/5 border border-white/20 text-white/90
+                     placeholder-white/40 backdrop-blur-sm
+                     focus:outline-none focus:border-white/50
+                     hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
+                     transition-all"
+          value={industry}
+          onChange={e => setIndustry(e.target.value)}
+          placeholder="Manufacturing, EPC, Pharma..."
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-white/80">Website</label>
+        <input
+          className="w-full rounded-lg px-3 py-2 
+                     bg-white/5 border border-white/20 text-white/90
+                     placeholder-white/40 backdrop-blur-sm
+                     focus:outline-none focus:border-white/50
+                     hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
+                     transition-all"
+          value={website}
+          onChange={e => setWebsite(e.target.value)}
+          placeholder="https://example.com"
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-white/80">Category</label>
+        <select
+          className="w-full rounded-lg px-3 py-2 
+                     bg-white/5 border border-white/20 text-white/90
+                     backdrop-blur-sm
+                     focus:outline-none focus:border-white/50
+                     hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
+                     transition-all"
+          value={category}
+          onChange={e => setCategory(e.target.value as any)}
+        >
+          <option value="" className='bg-cloud-500'>-- Select --</option>
+          <option value="Enterprise" className='bg-cloud-500'>Enterprise</option>
+          <option value="SMB" className='bg-cloud-500'>SMB</option>
+          <option value="Individual" className='bg-cloud-500'>Individual</option>
+        </select>
+      </div>
+
+      {/* Conditional salesman field */}
+      <div className="sm:col-span-2">
+        <label className="text-sm font-medium text-white/80">Salesman</label>
+        {isAdmin ? (
+          <>
+            <select
+              className="w-full rounded-lg px-3 py-2 
+                         bg-white/5 border border-white/20 text-white/90
+                         backdrop-blur-sm
+                         focus:outline-none focus:border-white/50
+                         hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
+                         transition-all"
+              value={salesmanId}
+              onChange={e => setSalesmanId(e.target.value)}
+              required={isAdmin}
+              disabled={loadingTeam}
+            >
+              <option value="" disabled>Select salesman</option>
+              {salesmen.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            <div className="text-xs text-white/60 mt-1">
+              Admins must choose a salesman.
+            </div>
+          </>
+        ) : (
+          <>
+            <input
+              className="w-full rounded-lg px-3 py-2 
+                         bg-gray-500/20 border border-white/20 text-white/90
+                         backdrop-blur-sm cursor-not-allowed"
+              value={user?.name || ''}
+              disabled
+            />
+            <div className="text-xs text-white/60 mt-1">
+              You are assigned as the salesman for this customer.
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+</Modal>
+
   );
+
+
+  
 };
 
 export default NewCustomerModal;
