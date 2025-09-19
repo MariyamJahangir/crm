@@ -8,6 +8,7 @@ Admin.init({
   email: { type: DataTypes.STRING(180), allowNull: false },
   password: { type: DataTypes.STRING(255), allowNull: false },
   isVerified: { type: DataTypes.BOOLEAN, defaultValue: true },
+   dashboardLayout: { type: DataTypes.TEXT, allowNull: true }, 
 }, { sequelize, tableName: 'admins', timestamps: true });
 
 

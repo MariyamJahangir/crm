@@ -29,6 +29,7 @@ const dealsRouter = require('./routes/deals.sql');
 const reportRouter = require('./routes/reports')
 const dashboardRouter= require('./routes/dashboard.sql')
 const targetRoutes = require('./routes/targets');
+const layoutRoutes= require('./routes/layout')
 // CORS for API
 const allowedOrigins = [
   process.env.FRONTEND_ORIGIN,      
@@ -142,6 +143,7 @@ async function seedAdmins() {
     app.use('/api/notifications', notificationsRoutes);
     app.use('/api', chatRoutes);
     app.use('/api/deals', dealsRouter);
+        app.use('/api/layout', layoutRoutes);
     app.use('/api/contacts', contactsRouter);
     app.use('/api/targets', targetRoutes);
     app.get('/api/health', (req, res) => res.json({ message: 'Server is up and running!' }));

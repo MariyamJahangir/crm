@@ -1,6 +1,6 @@
-import { api } from './api';
+import {api } from './api';
 
-// --- Base Interfaces ---
+// --- Base Interfaces for Chart Data ---
 export interface ChartData {
     labels: string[];
     values: number[];
@@ -11,11 +11,10 @@ export interface AdminChartData {
     datasets: {
         label: string;
         data: number[];
-        backgroundColor?: string;
-        borderColor?: string;
     }[];
 }
 
+// --- Data-Specific Interfaces ---
 export interface LeadStagesData {
     labels: string[];
     values: number[];
@@ -28,43 +27,30 @@ export interface OverallStats {
     completed: number;
 }
 
-// --- NEW: Interface for mixed-type charts (Bar + Line) ---
-export interface MixedChartData {
-    labels: string[];
-    datasets: ({
-        type: 'bar';
-        label: string;
-        data: number[];
-        backgroundColor: string;
-        order: number;
-    } | {
-        type: 'line';
-        label: string;
-        data: (number | null)[];
-        borderColor: string;
-        fill: boolean;
-        tension: number;
-        order: number;
-    })[];
-}
-
-// NEW: Interface for member target achievement
 export interface MemberTargetAchievement {
     name: string;
     target: number;
     achieved: number;
+    isAchieved: boolean;
 }
 
-// --- Main Dashboard Data Interface ---
+// --- Main Dashboard Data Interface (Final) ---
 export interface DashboardData {
     isAdmin: boolean;
     overallStats: OverallStats;
-    totalSalesComparison: ChartData | AdminChartData;
     leadPipeline: LeadStagesData;
-    revenueLastSixMonths: MixedChartData;
-    memberTargetAchievements: MemberTargetAchievement[]; // NEW
+    memberTargetAchievements: MemberTargetAchievement[];
+    
+    // Charts for Admin
+    teamSalesTrend?: AdminChartData;
+    monthlySales?: ChartData;
+    
+    // Charts for Member
+    memberDailySales?: ChartData;
+    memberMonthlySales?: { year: number, month: number, totalSales: number }[];
 }
 
+// --- API Response Interface ---
 export interface DashboardResponse {
     success: boolean;
     data?: DashboardData;

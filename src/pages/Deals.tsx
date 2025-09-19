@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { dealsService, DealDetailsType } from '../services/dealsService';
 import DataTable from '../components/DataTable';
+import { Eye } from 'lucide-react';
 
 const Deals: React.FC = () => {
   const { token, user } = useAuth();
@@ -36,9 +37,18 @@ const Deals: React.FC = () => {
         header: 'Actions',
         sortable: false,
         render: (r: DealDetailsType) => (
-          <Button size="sm" variant="secondary" onClick={() => navigate(`/deals/${r.id}`)}>
-            View Details
-          </Button>
+          <div
+            className="hidden sm:inline-flex items-center justify-center 
+                                  w-8 h-8 rounded-full
+                                  bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md 
+                                  hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
+                                  shadow-md transition"
+            title="View Deals"
+            onClick={() => navigate(`/deals/${r.id}`)}
+          >
+            <Eye className="w-4 h-4 text-midnight-500" size={18} />
+          </div>
+
         )
       }
     ];
@@ -51,20 +61,47 @@ const Deals: React.FC = () => {
   }, [isAdmin, navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
       <Sidebar />
-      <div className="pl-64">
+      <div className="flex-1 overflow-y-auto min-h-screen">
         <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Closed Deals</h1>
-          {loading && <div className="mt-4">Loading deals...</div>}
-          {err && <div className="text-red-600 p-3 bg-red-50 rounded mt-4">{err}</div>}
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-ivory-200">
+                Closed Deals
+              </h1>
+              <p className="text-gray-600 dark:text-midnight-400">
+                View and manage all closed deals.
+              </p>
+            </div>
+          </div>
+
+          {/* Loading / Error states */}
+          {loading && (
+            <div className="text-midnight-700 dark:text-ivory-300">Loading deals...</div>
+          )}
+          {err && (
+            <div className="text-red-600 p-3 bg-red-50 rounded mt-4">{err}</div>
+          )}
+
+          {/* Data Table */}
           {!loading && !err && (
-            <div className="mt-6">
+            <div className="mt-4">
               <DataTable
                 rows={deals}
                 columns={columns}
                 initialSort={{ key: 'updatedAt', dir: 'DESC' }}
-                filterKeys={['uniqueNumber', 'customer.companyName', 'quote.invoice.invoiceNumber', 'salesman.name']}
+                filterKeys={[
+                  'uniqueNumber',
+                  'customer.companyName',
+                  'quote.invoice.invoiceNumber',
+                  'salesman.name',
+                ]}
+                searchPlaceholder="Filter deals..."
+                className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                         border border-cloud-300/30 dark:border-midnight-700/30 
+                         rounded-2xl p-3"
               />
             </div>
           )}
@@ -72,6 +109,7 @@ const Deals: React.FC = () => {
       </div>
     </div>
   );
+
 };
 
 export default Deals;

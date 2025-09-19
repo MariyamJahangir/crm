@@ -35,102 +35,127 @@ const DealDetails: React.FC = () => {
   const invoice = quote?.invoice;
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <Sidebar />
-      <main className="flex-1 pl-64  ">
-        <div className="max-w-4xl mx-auto">
-          {loading && <p>Loading deal details...</p>}
-          {err && <p className="text-red-600">{err}</p>}
-          {!loading && !deal && <p>Deal not found.</p>}
+    <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+    <Sidebar />
+    <div className="flex-1 overflow-y-auto h-screen">
+      <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {loading && <div>Loading deal details...</div>}
+        {err && <div className="text-red-600">{err}</div>}
+        {!loading && !deal && <div className="text-red-500">Deal not found.</div>}
 
-          {deal && (
-            <>
-              <div className="mb-6">
-                <Button onClick={() => navigate(-1)} variant="secondary">&larr; Back to Deals</Button>
-                <h1 className="text-3xl font-bold text-gray-900 mt-2">Deal: {deal.uniqueNumber}</h1>
-                <p className="text-gray-500">Closed on {new Date(deal.updatedAt!).toLocaleDateString()}</p>
+        {deal && (
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-3xl font-bold text-midnight-900 dark:text-ivory-100 drop-shadow-lg">
+                  Deal #{deal.uniqueNumber}
+                </h1>
+                <p className="text-midnight-800 dark:text-ivory-400 text-sm mt-1">
+                  Closed on {new Date(deal.updatedAt!).toLocaleDateString()}
+                </p>
               </div>
+            </div>
 
-              {/* Lead Information Card */}
-              <div className="bg-white shadow-sm overflow-hidden sm:rounded-lg mb-6">
-                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">Lead Information</h3>
+            {/* Lead Information Card */}
+            <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                            border border-cloud-300/30 dark:border-midnight-700/30 
+                            rounded-2xl p-5 shadow-lg mb-6">
+              <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">
+                Lead Information
+              </div>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-midnight-700 dark:text-ivory-200">
+                <DetailItem label="Company" value={deal.customer?.companyName} />
+                <DetailItem label="Contact Person" value={deal.contactPerson} />
+                <DetailItem
+                  label="Email"
+                  value={<a href={`mailto:${deal.email}`} className="text-sky-600 hover:underline">{deal.email}</a>}
+                />
+                <DetailItem label="Mobile" value={deal.mobile} />
+                <div className="sm:col-span-2">
+                  <DetailItem label="Address" value={deal.customer?.address} />
                 </div>
-                <div className="px-4 py-5 sm:p-6">
-                  <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                    <DetailItem label="Company" value={deal.customer?.companyName} />
-                    <DetailItem label="Contact Person" value={deal.contactPerson} />
-                    <DetailItem label="Email" value={<a href={`mailto:${deal.email}`} className="text-blue-600 hover:underline">{deal.email}</a>} />
-                    <DetailItem label="Mobile" value={deal.mobile} />
-                    <div className="sm:col-span-2">
-                      <DetailItem label="Address" value={deal.customer?.address} />
-                    </div>
-                    {deal.description && (
-                      <div className="sm:col-span-2">
-                        <DetailItem label="Description" value={<p className="whitespace-pre-wrap">{deal.description}</p>} />
-                      </div>
-                    )}
+                {deal.description && (
+                  <div className="sm:col-span-2 text-sm italic text-midnight-600 dark:text-ivory-400">
+                    {deal.description}
+                  </div>
+                )}
+              </dl>
+            </div>
+
+            {/* Accepted Quote Card */}
+            <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                            border border-cloud-300/30 dark:border-midnight-700/30 
+                            rounded-2xl p-5 shadow-lg mb-6">
+              <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">
+                Accepted Quote
+              </div>
+              {quote ? (
+                <div>
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-midnight-700 dark:text-ivory-200 mb-6">
+                    <DetailItem label="Quote Number" value={quote.quoteNumber} />
+                    <DetailItem
+                      label="Quote Value"
+                      value={<span className="font-semibold text-lg">${Number(quote.grandTotal).toFixed(2)}</span>}
+                    />
                   </dl>
-                </div>
-              </div>
-
-              {/* Accepted Quote Card */}
-              <div className="bg-white shadow-sm overflow-hidden sm:rounded-lg mb-6">
-                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">Accepted Quote</h3>
-                </div>
-                {quote ? (
-                  <div className="p-6">
-                    <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 mb-6">
-                      <DetailItem label="Quote Number" value={quote.quoteNumber} />
-                      <DetailItem label="Quote Value" value={<span className="font-semibold text-lg">${Number(quote.grandTotal).toFixed(2)}</span>} />
-                    </dl>
-                    <h4 className="font-medium text-gray-800 mb-2">Quote Items</h4>
-                    <div className="overflow-x-auto ring-1 ring-black ring-opacity-5 rounded-lg">
-                      <table className="min-w-full divide-y divide-gray-300">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-sm font-semibold text-gray-900">Product</th>
-                            <th className="px-3 py-2 text-right text-sm font-semibold text-gray-900">Qty</th>
-                            <th className="px-3 py-2 text-right text-sm font-semibold text-gray-900">Rate</th>
-                            <th className="px-3 py-2 text-right text-sm font-semibold text-gray-900">Total</th>
+                  <h4 className="font-medium text-midnight-800 dark:text-ivory-200 mb-2">Quote Items</h4>
+                  <div className="overflow-x-auto ring-1 ring-black/10 rounded-lg">
+                    <table className="min-w-full divide-y divide-cloud-300 dark:divide-midnight-700 text-sm">
+                      <thead className="bg-cloud-100/40 dark:bg-midnight-800/40">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold">Product</th>
+                          <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                          <th className="px-3 py-2 text-right font-semibold">Rate</th>
+                          <th className="px-3 py-2 text-right font-semibold">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-cloud-200 dark:divide-midnight-700">
+                        {quote.items.map(item => (
+                          <tr key={item.id}>
+                            <td className="px-3 py-2">{item.product}</td>
+                            <td className="px-3 py-2 text-right">{item.quantity}</td>
+                            <td className="px-3 py-2 text-right">${Number(item.itemRate).toFixed(2)}</td>
+                            <td className="px-3 py-2 text-right font-medium">${Number(item.lineGross).toFixed(2)}</td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 bg-white">
-                          {quote.items.map(item => (
-                            <tr key={item.id}>
-                              <td className="px-3 py-2 whitespace-nowrap">{item.product}</td>
-                              <td className="px-3 py-2 text-right">{item.quantity}</td>
-                              <td className="px-3 py-2 text-right">${Number(item.itemRate).toFixed(2)}</td>
-                              <td className="px-3 py-2 text-right font-medium">${Number(item.lineGross).toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ) : <div className="px-6 py-5 text-gray-500">No accepted quote found for this deal.</div>}
-              </div>
-
-              {/* Final Invoice Card */}
-              <div className="bg-white shadow-sm overflow-hidden sm:rounded-lg">
-                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">Final Invoice</h3>
                 </div>
-                {invoice ? (
-                  <div className="p-6">
-                    <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                      <DetailItem label="Invoice Number" value={invoice.invoiceNumber} />
-                      <DetailItem label="Invoice Value" value={<span className="font-semibold text-lg text-green-600">${Number(invoice.grandTotal).toFixed(2)}</span>} />
-                    </dl>
-                  </div>
-                ) : <div className="px-6 py-5 text-gray-500">Invoice has not been generated for this deal yet.</div>}
+              ) : (
+                <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">
+                  No accepted quote found for this deal.
+                </div>
+              )}
+            </div>
+
+            {/* Final Invoice Card */}
+            <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                            border border-cloud-300/30 dark:border-midnight-700/30 
+                            rounded-2xl p-5 shadow-lg mb-6">
+              <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">
+                Final Invoice
               </div>
-            </>
-          )}
-        </div>
+              {invoice ? (
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-midnight-700 dark:text-ivory-200">
+                  <DetailItem label="Invoice Number" value={invoice.invoiceNumber} />
+                  <DetailItem
+                    label="Invoice Value"
+                    value={<span className="font-semibold text-lg text-green-600">${Number(invoice.grandTotal).toFixed(2)}</span>}
+                  />
+                </dl>
+              ) : (
+                <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">
+                  Invoice has not been generated for this deal yet.
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </main>
     </div>
+  </div>
   );
 };
 

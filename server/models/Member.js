@@ -18,6 +18,7 @@ Member.init(
     designation: { type: DataTypes.STRING(120) },
     isBlocked: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     parentAdmin: { type: DataTypes.UUID, allowNull: true },
+     dashboardLayout: { type: DataTypes.TEXT, allowNull: true },
   },
   {
     sequelize,

@@ -8,9 +8,9 @@ const Member = require('../models/Member');
 router.get('/members', authenticateToken, async (req, res) => {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
     try {
-        const members = await Member.findAll({ 
-            attributes: ['id', 'name'], 
-            where: { isBlocked: false } 
+        const members = await Member.findAll({
+            attributes: ['id', 'name'],
+            where: { isBlocked: false }
         });
         res.json({ success: true, data: members });
     } catch (error) {
@@ -21,10 +21,14 @@ router.get('/members', authenticateToken, async (req, res) => {
 // POST to set or update a sales target
 router.post('/', authenticateToken, async (req, res) => {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
-    const { memberId, year, month, targetAmount } = req.body;
+    const { memberId, targetAmount } = req.body;
 
-    if (!memberId || !year || !month || targetAmount === undefined) {
-        return res.status(400).json({ success: false, message: 'All fields are required.' });
+    // Autofill year and month on the backend
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth() + 1;
+
+    if (!memberId || targetAmount === undefined) {
+        return res.status(400).json({ success: false, message: 'Member ID and Target Amount are required.' });
     }
 
     try {
@@ -39,17 +43,22 @@ router.post('/', authenticateToken, async (req, res) => {
         }
         res.json({ success: true, message: `Target successfully ${created ? 'set' : 'updated'}.` });
     } catch (error) {
+        console.error('Failed to set sales target:', error);
         res.status(500).json({ success: false, message: 'Failed to set sales target.' });
     }
 });
 
-// NEW: POST to set a target for all members
+// POST to set a target for all members
 router.post('/bulk', authenticateToken, async (req, res) => {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
+    const { targetAmount } = req.body;
 
-    const { year, month, targetAmount } = req.body;
-    if (!year || !month || targetAmount === undefined) {
-        return res.status(400).json({ success: false, message: 'Year, month, and target amount are required.' });
+    // Autofill year and month on the backend
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth() + 1;
+
+    if (targetAmount === undefined) {
+        return res.status(400).json({ success: false, message: 'Target amount is required.' });
     }
 
     try {
@@ -69,6 +78,7 @@ router.post('/bulk', authenticateToken, async (req, res) => {
         await Promise.all(promises);
         res.json({ success: true, message: `Targets successfully set/updated for all ${members.length} members.` });
     } catch (error) {
+        console.error('Failed to set bulk sales targets:', error);
         res.status(500).json({ success: false, message: 'Failed to set bulk sales targets.' });
     }
 });

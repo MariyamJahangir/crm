@@ -23,7 +23,6 @@ interface FormErrors {
 }
 
 const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => {
-
   const { login } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({ email: '', password: '' });
@@ -51,7 +50,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
 
     try {
       const data = await authService.login(formData);
-      console.log(data)
+      console.log(data);
       if (data.success && data.token && data.user) {
         login(data.token, data.user);
         navigate('/dashboard', { replace: true });
@@ -67,22 +66,28 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+    <div
+      className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
+      
+    >
+
+      <div className="absolute inset-0 bg-midnight-900/20"></div>
+
+      <div className="bg-cloud-800/30 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20">
         <div className="text-center mb-8">
-          <div className="bg-blue-100 p-3 rounded-full w-fit mx-auto mb-4">
-            <LogIn className="h-8 w-8 text-blue-600" />
+          <div className="bg-sky-700/30 p-3 rounded-full w-fit mx-auto mb-4 shadow-md">
+            <LogIn className="h-8 w-8 text-sky-400" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-          <p className="text-gray-600 mt-2">Sign in to your account</p>
+          <h1 className="text-3xl font-bold text-ivory-100">Welcome Back</h1>
+          <p className="text-cloud-200 mt-2">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -108,8 +113,8 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
             />
             <button
               type="button"
-              onClick={() => setShowPassword(p => !p)}
-              className="absolute right-3 top-9 text-gray-500 hover:text-gray-700"
+              onClick={() => setShowPassword((p) => !p)}
+              className="absolute right-3 top-9 text-cloud-300 hover:text-sky-400 transition"
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
@@ -117,45 +122,45 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
 
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <input id="remember-me" name="remember-me" type="checkbox" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">Remember me</label>
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 text-sky-500 focus:ring-sky-500 border-midnight-600 rounded bg-midnight-700/50"
+              />
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-ivory-200"
+              >
+                Remember me
+              </label>
             </div>
 
             {onForgotPassword && (
-              <button type="button" onClick={onForgotPassword} className="text-sm text-blue-600 hover:text-blue-700">
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-sm text-sky-400 hover:text-sky-300 transition"
+              >
                 Forgot password?
               </button>
             )}
           </div>
 
           {errors.general && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+            <div className="bg-midnight-700/50 border border-sky-700/40 text-sky-300 px-4 py-3 rounded-lg">
               {errors.general}
             </div>
           )}
 
-          <Button type="submit" loading={loading} className="w-full">
+          <Button
+            type="submit"
+            loading={loading}
+            className="w-full bg-sky-600 hover:bg-sky-500 text-midnight-900 font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-md"
+          >
             Sign In
           </Button>
         </form>
-
-        {/* {onSwitchToSignup ? (
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Don&apos;t have an account?{' '}
-              <button onClick={onSwitchToSignup} className="text-blue-600 hover:text-blue-700 font-medium">
-                Sign up
-              </button>
-            </p>
-          </div>
-        ) : (
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Don&apos;t have an account?{' '}
-              <a href="/auth" className="text-blue-600 hover:text-blue-700 font-medium">Sign up</a>
-            </p>
-          </div>
-        )} */}
       </div>
     </div>
   );

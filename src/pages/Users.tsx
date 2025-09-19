@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { teamService, TeamUser } from '../services/teamService';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { Pencil, Trash2, ListRestart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 type SortKey = 'name' | 'email' | 'designation' | 'createdAt' | 'status';
 type SortDir = 'asc' | 'desc';
@@ -184,7 +185,8 @@ const Users: React.FC = () => {
       <button
         type="button"
         onClick={() => onSort(k)}
-        className={`inline-flex items-center gap-1 text-left ${active ? 'text-gray-900' : 'text-gray-600'} ${className || ''} focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500`}
+        className={`inline-flex items-center gap-1 text-left ${active ? 'text-midnight-700 dark:text-midnight-300' : 'text-midnight-500 dark:text-midnight-400'
+          } ${className || ''} focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:focus-visible:ring-sky-600`}
         title={`Sort by ${label}`}
       >
         <span>{label}</span>
@@ -206,9 +208,12 @@ const Users: React.FC = () => {
       disabled={disabled || loading}
       title={title}
       className={`inline-flex items-center justify-center h-8 w-8 rounded-full border transition
-        ${blocked ? 'border-red-300 text-red-600 bg-red-50 hover:bg-red-100' : 'border-green-300 text-green-600 bg-green-50 hover:bg-green-100'}
-        ${disabled || loading ? 'opacity-50 cursor-not-allowed' : ''}
-        focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500`}
+        ${blocked
+          ? 'border-red-300 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900 dark:text-red-400 dark:border-red-600'
+          : 'border-green-300 text-green-600 bg-green-50 hover:bg-green-100 dark:bg-green-900 dark:text-green-400 dark:border-green-600'
+        }
+        ${disabled || loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:focus-visible:ring-sky-600`}
       aria-label={title}
     >
       {loading ? (
@@ -229,40 +234,73 @@ const Users: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen">
-      <Sidebar />
-      <div className="pl-64">
-        <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-midnight-800/50 transition-colors duration-300">
+
+      <div className="flex z-10 min-h-screen">
+        <Sidebar />
+        <main className="flex-1 transition-all duration-300 
+               ml-2 group-hover:ml-56 max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Users</h1>
-              <p className="text-gray-600">
+              <h1 className="text-3xl font-extrabold text-midnight-900 dark:text-ivory-100 drop-shadow-lg">
+                Users
+              </h1>
+              <p className="text-sky-600 mt-1 select-none">
                 {isAdmin ? 'Manage users under your account.' : 'Your profile'}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {isAdmin && (
-                <Button onClick={() => navigate('/users/create')}>Create User</Button>
+                <Button className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl"
+                  onClick={() => navigate('/users/create')}>
+                  Create User
+                </Button>
               )}
-              <Button variant="secondary" onClick={load}>Refresh</Button>
-              <Button variant="secondary" onClick={exportCsv}>Export CSV</Button>
+              
+              <Button
+                variant="secondary"
+                onClick={load}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
+              >
+                <ListRestart /> Refresh
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={exportCsv}
+                className="bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
+              >
+                Export CSV
+              </Button>
+
+              {isAdmin && (
+                <Button className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl"
+                  onClick={() => navigate('/sales-report')}>
+                   Sales Report
+                </Button>
+              )}
             </div>
           </div>
 
           {/* Controls */}
-          <div className="bg-white border rounded-lg p-4 mb-4">
+          <div className="bg-cloud-100/30 dark:bg-midnight-800/30 backdrop-blur-xl border border-cloud-300/40 dark:border-midnight-600/40 rounded-2xl p-5 mb-6 shadow-lg">
             <div className="flex flex-col md:flex-row md:items-center gap-3">
               <input
                 type="text"
                 value={query}
-                onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search name, email, designation..."
-                className="w-full md:flex-1 border rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full md:flex-1 border border-cloud-400/40 dark:border-midnight-600/40 rounded-xl px-4 py-2 bg-ivory-50/40 dark:bg-midnight-900/40 backdrop-blur-md text-midnight-900 dark:text-ivory-200 placeholder-midnight-400 dark:placeholder-ivory-600 focus:ring-sky-400 focus:border-sky-400 dark:focus:ring-sky-600 dark:focus:border-sky-600 transition"
               />
               <select
                 value={status}
-                onChange={(e) => { setStatus(e.target.value as any); setPage(1); }}
-                className="border rounded-md px-3 py-2"
+                onChange={(e) => {
+                  setStatus(e.target.value as any);
+                  setPage(1);
+                }}
+                className="border border-cloud-400/40 dark:border-midnight-600/40 rounded-xl px-4 py-2 bg-ivory-50/40 dark:bg-midnight-900/40 backdrop-blur-md text-midnight-900 dark:text-ivory-200 focus:ring-sky-400 focus:border-sky-400 dark:focus:ring-sky-600 dark:focus:border-sky-600 transition"
               >
                 <option value="ALL">All status</option>
                 <option value="ACTIVE">Active</option>
@@ -270,8 +308,11 @@ const Users: React.FC = () => {
               </select>
               <select
                 value={pageSize}
-                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                className="border rounded-md px-3 py-2"
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="border border-cloud-400/40 dark:border-midnight-600/40 rounded-xl px-4 py-2 bg-ivory-50/40 dark:bg-midnight-900/40 backdrop-blur-md text-midnight-900 dark:text-ivory-200 focus:ring-sky-400 focus:border-sky-400 dark:focus:ring-sky-600 dark:focus:border-sky-600 transition"
               >
                 <option value={10}>10 / page</option>
                 <option value={20}>20 / page</option>
@@ -280,54 +321,64 @@ const Users: React.FC = () => {
             </div>
           </div>
 
-          {loading && <div>Loading...</div>}
+          {loading && (
+            <div className="text-midnight-700 dark:text-ivory-300 font-semibold select-none animate-pulse">
+              Loading...
+            </div>
+          )}
           {error && (
-            <div className="flex items-center justify-between bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-3">
+            <div className="flex items-center justify-between bg-red-200/40 dark:bg-red-900/40 backdrop-blur-md border border-red-400/50 dark:border-red-700/50 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl mb-4 shadow-lg">
               <div className="truncate">{error}</div>
               <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => setError(null)}>Dismiss</Button>
-                <Button variant="secondary" onClick={load}>Retry</Button>
+                <Button variant="secondary" onClick={() => setError(null)}>
+                  Dismiss
+                </Button>
+                <Button variant="secondary" onClick={load}>
+                  Retry
+                </Button>
               </div>
             </div>
           )}
 
           {/* Table */}
           {!loading && !error && (
-            <div className="bg-white border rounded-lg overflow-hidden">
+            <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-0">
+                <table className="min-w-full divide-y divide-cloud-300/40 dark:divide-midnight-700/40">
+                  <thead className="bg-cloud-100/40 dark:bg-midnight-800/40 backdrop-blur-md sticky top-0">
                     <tr>
-                      <th aria-sort={sortKey==='name' ? (sortDir==='asc' ? 'ascending' : 'descending') : 'none'} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 select-none">
                         <SortButton label="Name" k="name" />
                       </th>
-                      <th aria-sort={sortKey==='email' ? (sortDir==='asc' ? 'ascending' : 'descending') : 'none'} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 select-none">
                         <SortButton label="Email" k="email" />
                       </th>
-                      <th aria-sort={sortKey==='designation' ? (sortDir==='asc' ? 'ascending' : 'descending') : 'none'} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 select-none">
                         <SortButton label="Designation" k="designation" />
                       </th>
-                      <th aria-sort={sortKey==='status' ? (sortDir==='asc' ? 'ascending' : 'descending') : 'none'} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 select-none">
                         <SortButton label="Status" k="status" />
                       </th>
-                      <th aria-sort={sortKey==='createdAt' ? (sortDir==='asc' ? 'ascending' : 'descending') : 'none'} className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 select-none">
                         <SortButton label="Created" k="createdAt" />
                       </th>
                       {isAdmin && (
-                        <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500 text-right">
+                        <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 text-center select-none">
                           Actions
                         </th>
                       )}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-cloud-200/40 dark:divide-midnight-700/40">
                     {paged.map((u) => (
-                      <tr key={u.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">{u.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{u.email}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{u.designation || '-'}</td>
-                        <td className="px-4 py-3 text-sm">
-                          {/* Status pill also acts as mobile toggle */}
+                      <tr
+                        key={u.id}
+                        className="hover:bg-cloud-200/40 dark:hover:bg-midnight-800/40 transition-colors cursor-pointer select-text"
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-midnight-900 dark:text-ivory-100 text-center align-middle">{u.name}</td>
+                        <td className="px-4 py-3 text-sm text-midnight-700 dark:text-ivory-200 text-center align-middle">{u.email}</td>
+                        <td className="px-4 py-3 text-sm text-midnight-700 dark:text-ivory-200 text-center align-middle">{u.designation || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-center align-middle">
                           <button
                             type="button"
                             disabled={!isAdmin || u.id === user?.id || busyId === u.id}
@@ -336,46 +387,85 @@ const Users: React.FC = () => {
                               if (busyId) return;
                               setBusyId(u.id);
                               const prev = u.isBlocked;
-                              setItems(prevItems => prevItems.map(p => p.id === u.id ? { ...p, isBlocked: !prev } : p));
+                              setItems((prevItems) =>
+                                prevItems.map((p) => (p.id === u.id ? { ...p, isBlocked: !prev } : p))
+                              );
                               try {
                                 if (prev) await teamService.unblock(u.id, token);
                                 else await teamService.block(u.id, token);
                               } catch (e: any) {
                                 console.error(e?.data?.message || 'Failed to toggle block');
-                                setItems(prevItems => prevItems.map(p => p.id === u.id ? { ...p, isBlocked: prev } : p));
+                                setItems((prevItems) =>
+                                  prevItems.map((p) => (p.id === u.id ? { ...p, isBlocked: prev } : p))
+                                );
                               } finally {
                                 setBusyId(null);
                               }
                             }}
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                              ${u.isBlocked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}
-                              ${(!isAdmin || u.id === user?.id) ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
-                              focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500`}
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md transition
+                      ${u.isBlocked
+                                ? 'bg-red-200/50 text-red-800 dark:bg-red-900/50 dark:text-red-400'
+                                : 'bg-green-200/50 text-green-800 dark:bg-green-900/50 dark:text-green-400'
+                              }
+                      ${!isAdmin || u.id === user?.id
+                                ? 'opacity-60 cursor-not-allowed'
+                                : 'cursor-pointer hover:scale-105'
+                              }
+                      focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 dark:focus-visible:ring-sky-600`}
                             title={u.isBlocked ? 'Tap to unblock' : 'Tap to block'}
                             aria-disabled={!isAdmin || u.id === user?.id}
                           >
                             {busyId === u.id && (
-                              <svg className="animate-spin h-3 w-3 mr-1" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3A5 5 0 007 12H4z" />
+                              <svg
+                                className="animate-spin h-3 w-3 mr-1"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="3"
+                                  fill="none"
+                                />
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8v3A5 5 0 007 12H4z"
+                                />
                               </svg>
                             )}
                             {u.isBlocked ? 'Blocked' : 'Active'}
                           </button>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700 tabular-nums">
+                        <td className="px-4 py-3 text-sm text-midnight-700 dark:text-ivory-200 tabular-nums text-center align-middle">
                           {new Date(u.createdAt || '').toLocaleString()}
                         </td>
                         {isAdmin && (
-                          <td className="px-4 py-3 text-sm">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="secondary"
-                                className="px-3 py-1 hidden sm:inline-flex"
+                          <td className="px-4 py-3 text-sm text-center align-middle">
+                            <div className="flex items-center justify-center gap-2">
+
+                              <div className="hidden sm:inline-flex items-center justify-center 
+                                  w-8 h-8 rounded-full
+                                  bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md 
+                                  hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
+                                  shadow-md transition"
+                                onClick={() => navigate(`/users/${u.id}/sales-report`)}
+                              >
+                                <Eye className="w-4 h-4 text-midnight-500" />
+                              </div>
+
+
+                              <div className="hidden sm:inline-flex items-center justify-center 
+                                  w-8 h-8 rounded-full
+                                  bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md 
+                                  hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
+                                  shadow-md transition"
                                 onClick={() => navigate(`/users/${u.id}/edit`)}
                               >
-                                Edit
-                              </Button>
+                                <Pencil className="w-4 h-4 text-sky-500" />
+                              </div>
 
                               <ToggleIconButton
                                 blocked={u.isBlocked}
@@ -386,7 +476,9 @@ const Users: React.FC = () => {
                                   if (busyId) return;
                                   setBusyId(u.id);
                                   const prev = u.isBlocked;
-                                  setItems(prevItems => prevItems.map(p => p.id === u.id ? { ...p, isBlocked: !prev } : p));
+                                  setItems((prevItems) =>
+                                    prevItems.map((p) => (p.id === u.id ? { ...p, isBlocked: !prev } : p))
+                                  );
                                   try {
                                     if (prev) {
                                       await teamService.unblock(u.id, token);
@@ -395,40 +487,29 @@ const Users: React.FC = () => {
                                     }
                                   } catch (e: any) {
                                     console.error(e?.data?.message || 'Failed to toggle block');
-                                    setItems(prevItems => prevItems.map(p => p.id === u.id ? { ...p, isBlocked: prev } : p));
+                                    setItems((prevItems) =>
+                                      prevItems.map((p) => (p.id === u.id ? { ...p, isBlocked: prev } : p))
+                                    );
                                   } finally {
                                     setBusyId(null);
                                   }
                                 }}
                               />
 
-                              <Button
-                                variant="danger"
-                                className="px-3 py-1 hidden sm:inline-flex"
-                                onClick={() => askDelete(u.id)}
-                                disabled={u.id === user?.id}
+                              <div
+                                className={`hidden sm:inline-flex items-center justify-center 
+                                        w-8 h-8 rounded-full
+                                        bg-red-200/40 dark:bg-red-700/40 backdrop-blur-md
+                                        hover:bg-red-300/60 dark:hover:bg-red-600/60 
+                                        shadow-md transition cursor-pointer
+                                        ${u.id === user?.id ? 'opacity-50 pointer-events-none' : ''}`}
+                                onClick={() => {
+                                  if (u.id !== user?.id) askDelete(u.id);
+                                }}
                               >
-                                Delete
-                              </Button>
-                            </div>
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </div>
 
-                            {/* Mobile actions */}
-                            <div className="mt-2 flex items-center justify-end gap-2 sm:hidden">
-                              <Button
-                                variant="secondary"
-                                className="px-2 py-1"
-                                onClick={() => navigate(`/users/${u.id}/edit`)}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                variant="danger"
-                                className="px-2 py-1"
-                                onClick={() => askDelete(u.id)}
-                                disabled={u.id === user?.id}
-                              >
-                                Delete
-                              </Button>
                             </div>
                           </td>
                         )}
@@ -439,31 +520,40 @@ const Users: React.FC = () => {
               </div>
 
               {/* Footer: pagination info */}
-              <div className="px-4 py-3 bg-gray-50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="text-sm text-gray-600">
-                  Showing <span className="font-medium">{Math.min((currentPage - 1) * pageSize + 1, total)}</span> to{' '}
-                  <span className="font-medium">{Math.min(currentPage * pageSize, total)}</span> of{' '}
-                  <span className="font-medium">{total}</span> results
+              <div className="px-4 py-3 bg-cloud-100/30 dark:bg-midnight-800/30 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 text-midnight-700 dark:text-ivory-300 select-none rounded-b-2xl">
+                <div className="text-sm">
+                  Showing{" "}
+                  <span className="font-semibold">
+                    {Math.min((currentPage - 1) * pageSize + 1, total)}
+                  </span>{" "}
+                  to{" "}
+                  <span className="font-semibold">
+                    {Math.min(currentPage * pageSize, total)}
+                  </span>{" "}
+                  of <span className="font-semibold">{total}</span> results
                 </div>
+
                 <div className="flex items-center gap-2">
                   <Button
                     variant="secondary"
-                    className="px-3 py-1"
+                    className="p-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                   >
-                    Prev
+                    <ChevronLeft className="h-5 w-5" />
                   </Button>
-                  <span className="text-sm text-gray-700 tabular-nums">
+
+                  <span className="text-sm tabular-nums">
                     Page {currentPage} / {totalPages}
                   </span>
+
                   <Button
                     variant="secondary"
-                    className="px-3 py-1"
+                    className="p-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage >= totalPages}
                   >
-                    Next
+                    <ChevronRight className="h-5 w-5" />
                   </Button>
                 </div>
               </div>
@@ -471,15 +561,29 @@ const Users: React.FC = () => {
           )}
 
           {!loading && !error && filtered.length === 0 && (
-            <div className="flex items-center justify-between bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded mt-4">
+            <div className="flex items-center justify-between bg-ivory-200/40 dark:bg-midnight-700/40 backdrop-blur-md border border-ivory-300/40 dark:border-midnight-600/40 text-midnight-700 dark:text-ivory-300 px-4 py-3 rounded-xl mt-4 shadow-lg select-none">
               <div>{isAdmin ? 'No users match the current filters.' : 'No data available.'}</div>
               <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => { setQuery(''); setStatus('ALL'); setPage(1); }}>Clear filters</Button>
-                <Button variant="secondary" onClick={load}>Refresh</Button>
+                <Button
+                  variant="secondary"
+                  className="bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-lg transition"
+                  onClick={() => {
+                    setQuery('');
+                    setStatus('ALL');
+                    setPage(1);
+                  }}
+                >
+                  Clear filters
+                </Button>
+                <Button variant="secondary" onClick={load}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition">
+                  <ListRestart /> Refresh
+                </Button>
               </div>
             </div>
           )}
         </main>
+
       </div>
 
       <ConfirmDialog

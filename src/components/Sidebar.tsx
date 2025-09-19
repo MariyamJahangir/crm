@@ -1,89 +1,175 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   LayoutDashboard,
-  Users as UsersIcon,
-  Briefcase,
-  Building2,
-  FileText,
-  Contact,
+  UserCircle,
+  UserPlus,
+  Handshake,
   Receipt,
-  ShoppingCart,
+  FileText,
+  Settings,
+  Store,
+  Contact,
+  Bell,
   LogOut,
-  User as UserIconLucide // Renamed to avoid conflict
+  Users,
+  Building2,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import Button from './Button';
 import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const [hovered, setHovered] = useState<string | null>(null);
 
   const handleLogout = () => {
     logout();
     navigate('/auth', { replace: true });
   };
 
-  // Navigation items based on the routes in your original code
-  const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
-    { to: '/users', icon: UserIconLucide, label: 'Users' },
-    { to: '/leads', icon: UsersIcon, label: 'Leads' },
-    { to: '/deals', icon: Briefcase, label: 'Deals' },
-    { to: '/customers', icon: Building2, label: 'Customers' },
-    { to: '/quote', icon: FileText, label: 'Quote' },
-    { to: '/contacts', icon: Contact, label: 'Contacts' },
-    { to: '/invoices', icon: Receipt, label: 'Invoices' },
-    { to: '/vendors', icon: ShoppingCart, label: 'Vendors' },
-  ];
+  const linkBase =
+    'flex items-center px-3 py-2 rounded-lg text-sm transition-all duration-300 whitespace-nowrap overflow-hidden';
+  const linkInactive =
+    'text-ivory-400 hover:bg-midnight-700/40 hover:text-ivory-100 backdrop-blur-md';
+  const linkActive =
+    'bg-midnight-600/50 text-ivory-100 font-medium shadow-inner backdrop-blur-md';
 
   return (
     <aside
-      className="fixed left-4 top-1/2 -translate-y-1/2 h-auto w-16 bg-[#1e293b] rounded-full flex flex-col items-center py-5 shadow-2xl z-50"
-      style={{
-        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
-        height: 'calc(100vh - 60px)',
-        maxHeight: '800px' // Increased maxHeight to fit all items
-      }}
+      className="group inset-y-0 left-0 z-40 
+                 w-16 hover:w-56 
+                 bg-midnight-900/60 backdrop-blur-xl 
+                 border-r border-midnight-700/40 
+                 flex flex-col shadow-2xl 
+                 transition-all duration-300 overflow-hidden"
     >
-      <nav className="flex flex-col items-center justify-center flex-1 space-y-3">
-        {navItems.map(({ to, icon: Icon, label }) => (
-          <div
-            key={to}
-            className="relative"
-            onMouseEnter={() => setHovered(label)}
-            onMouseLeave={() => setHovered(null)}
-          >
-            <NavLink
-              to={to}
-              className={({ isActive }) =>
-                `w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 ease-in-out ${
-                  isActive
-                    ? 'bg-white text-gray-900 scale-110 shadow-md'
-                    : 'bg-transparent text-gray-400 hover:bg-gray-700 hover:text-white'
-                }`
-              }
-              title={label}
-            >
-              <Icon size={18} strokeWidth={1.5} />
-            </NavLink>
-            {hovered === label && (
-              <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 whitespace-nowrap rounded-md bg-gray-800 px-3 py-1.5 text-sm font-semibold text-white shadow-lg z-50">
-                {label}
-              </div>
-            )}
+      {/* Brand */}
+      <div className="h-16 px-4 border-b border-midnight-700/40 flex items-center transition-all duration-300">
+        <div className="flex items-center space-x-3">
+          <div className="bg-sky-500/40 p-2 rounded-lg backdrop-blur-md shadow-md">
+            <LayoutDashboard className="h-6 w-6 text-ivory-100" />
           </div>
-        ))}
+          <span className="text-lg font-semibold text-ivory-100 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Aieera's CRM
+          </span>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <NavLink
+          to="/dashboard"
+          end
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <LayoutDashboard size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Dashboard
+          </span>
+        </NavLink>
+        <NavLink
+          to="/users"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <UserCircle size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Users
+          </span>
+        </NavLink>
+        <NavLink
+          to="/leads"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <UserPlus size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Leads
+          </span>
+        </NavLink>
+        <NavLink
+          to="/deals"
+          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
+        >
+          <Handshake size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          Deals
+          </span>
+        </NavLink>
+
+        {/* --- CHANGE: Added Building2 icon for consistency --- */}
+        <NavLink
+          to="/customers"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <Building2 size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Customers
+          </span>
+        </NavLink>
+        <NavLink
+          to="/quote"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <FileText size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Quote
+          </span>
+        </NavLink>
+        <NavLink
+          to="/contacts"
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <Contact size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Contacts
+          </span>
+        </NavLink>
+        <NavLink
+          to="/invoices"
+          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
+        >
+          <Receipt size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          invoice
+          </span>
+        </NavLink>
+        <NavLink
+          to="/vendors"
+          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
+        >
+          <Store size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          vendors
+          </span>
+        </NavLink>
       </nav>
 
-      <div className="mt-auto pt-4">
-        <button
+      {/* Footer actions */}
+      <div className="p-3 border-t border-midnight-700/40">
+        <Button
+          variant="secondary"
+          className="w-full flex items-center justify-start px-3
+                     bg-sky-500/70 text-ivory-50 hover:bg-sky-600/80 
+                     backdrop-blur-md border border-sky-400/30
+                     transition-all duration-300 rounded-lg shadow-md"
           onClick={handleLogout}
-          className="w-10 h-10 rounded-full bg-transparent text-gray-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors duration-300"
-          title="Logout"
         >
-          <LogOut size={20} strokeWidth={1.5} />
-        </button>
+          <LogOut size={16} className="flex-shrink-0" />
+          <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            Logout
+          </span>
+        </Button>
       </div>
     </aside>
   );

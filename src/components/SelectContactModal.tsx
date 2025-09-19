@@ -26,7 +26,7 @@ interface SelectContactModalProps {
 const SelectContactModal: React.FC<SelectContactModalProps> = ({ open, onClose, onSelect }) => {
   const { token } = useAuth();
   const [query, setQuery] = useState('');
-  const debouncedQuery = useDebounced(query, 300);
+  const debouncedQuery = useDebounced(query, 300); // 300ms debounce delay
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -37,9 +37,11 @@ const SelectContactModal: React.FC<SelectContactModalProps> = ({ open, onClose, 
     }
 
     setLoading(true);
+    // Use the correct service function
     contactsService.searchCompanies(token, debouncedQuery)
       .then(res => {
         if (res.success) {
+          // The API returns the list under the 'contacts' key, which we map to companies
           setCompanies(res.contacts);
         }
       })
@@ -52,8 +54,8 @@ const SelectContactModal: React.FC<SelectContactModalProps> = ({ open, onClose, 
     <Modal open={open} onClose={onClose} title="Select Company" size="lg">
       <input
         type="text"
-        className="w-full form-input mb-4"
-        placeholder="Search by company, contact, or lead number..."
+        className="w-full h-10 rounded-lg form-input mb-4 p-2"
+        placeholder="Search by company name or contact..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -68,16 +70,7 @@ const SelectContactModal: React.FC<SelectContactModalProps> = ({ open, onClose, 
               onClose();
             }}
           >
-            {/* --- MODIFIED SECTION TO DISPLAY LEAD NUMBER --- */}
-            <div>
-              <div className="font-semibold text-indigo-700">{company.companyName}</div>
-              {company.entityType === 'Lead' && company.uniqueNumber && (
-                <div className="text-xs text-gray-500 mt-1">
-                  Lead #: {company.uniqueNumber}
-                </div>
-              )}
-            </div>
-            
+            <div className="font-semibold text-midnght-700">{company.companyName}</div>
             <div className="text-right">
               <span className={`px-2 py-1 text-xs font-bold rounded-full ${
                 company.entityType === 'Vendor' ? 'bg-green-100 text-green-800' 

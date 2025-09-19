@@ -81,63 +81,161 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Add New Contact</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Customer</label>
-            <select
-              value={selectedCustomerId}
-              onChange={handleCustomerChange}
-              required
-              className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2"
-            >
-              <option value="" disabled>-- Select a Customer --</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>{c.companyName}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Name</label>
-            <input type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Designation</label>
-            <input type="text" name="designation" value={formData.designation} onChange={handleChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Department</label>
-            <input type="text" name="department" value={formData.department} onChange={handleChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
-            <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Mobile</label>
-            <input type="text" name="mobile" value={formData.mobile} onChange={handleChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Fax</label>
-            <input type="text" name="fax" value={formData.fax} onChange={handleChange} className="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" />
-          </div>
+return (
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+    <div className="bg-white/30 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30
+                    w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-white/20 dark:border-midnight-700/30 flex items-center justify-between backdrop-blur-sm">
+        <h2 className="text-lg font-bold text-midnight-800 dark:text-ivory-100">Add New Contact</h2>
+        <button
+          className="p-2 rounded-full text-gray-500 hover:text-gray-800 dark:hover:text-ivory-200 hover:bg-white/20 dark:hover:bg-midnight-700/30 transition"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Save Contact'}
-            </Button>
+      {/* Body */}
+      <div className="px-6 py-6 space-y-4 backdrop-blur-sm overflow-auto flex-1">
+        {error && (
+          <div className="bg-red-50/30 dark:bg-red-900/30 border border-red-200/30 dark:border-red-700/30 
+                          text-red-700 dark:text-red-400 px-4 py-2 rounded-xl text-sm shadow-sm backdrop-blur-sm">
+            {error}
           </div>
-        </form>
+        )}
+
+        {/* Customer */}
+        <div>
+          <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Customer</label>
+          <select
+            value={selectedCustomerId}
+            onChange={handleCustomerChange}
+            required
+            className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                       bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                       shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition backdrop-blur-sm"
+          >
+            <option value="" disabled>-- Select a Customer --</option>
+            {customers.map(c => (
+              <option key={c.id} value={c.id}>{c.companyName}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Name</label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+            className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                       bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                       shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition backdrop-blur-sm"
+          />
+        </div>
+
+        {/* Designation */}
+        <div>
+          <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Designation</label>
+          <input
+            type="text"
+            name="designation"
+            value={formData.designation}
+            onChange={handleChange}
+            className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                       bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                       shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition backdrop-blur-sm"
+          />
+        </div>
+
+        {/* Department */}
+        <div>
+          <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Department</label>
+          <input
+            type="text"
+            name="department"
+            value={formData.department}
+            onChange={handleChange}
+            className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                       bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                       shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition backdrop-blur-sm"
+          />
+        </div>
+
+        {/* Email */}
+        <div>
+          <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Email</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                       bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                       shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition backdrop-blur-sm"
+          />
+        </div>
+
+        {/* Mobile */}
+        <div>
+          <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Mobile</label>
+          <input
+            type="text"
+            name="mobile"
+            value={formData.mobile}
+            onChange={handleChange}
+            className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                       bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                       shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition backdrop-blur-sm"
+          />
+        </div>
+
+        {/* Fax */}
+        <div>
+          <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Fax</label>
+          <input
+            type="text"
+            name="fax"
+            value={formData.fax}
+            onChange={handleChange}
+            className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                       bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                       shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition backdrop-blur-sm"
+          />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-4 border-t border-white/20 dark:border-midnight-700/30 flex justify-end gap-4 backdrop-blur-sm">
+        <Button
+          variant="secondary"
+          type="button"
+          onClick={onClose}
+          className="px-5 py-2 rounded-2xl bg-cloud-100/60 dark:bg-midnight-700/60 
+                     border border-cloud-300/40 dark:border-midnight-600/40 
+                     text-midnight-700 dark:text-ivory-200 
+                     hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 shadow-md transition"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={submitting}
+          className="px-5 py-2 rounded-2xl bg-sky-500/90 hover:bg-sky-600 text-white shadow-lg transition disabled:opacity-50"
+        >
+          {submitting ? 'Saving...' : 'Save Contact'}
+        </Button>
       </div>
     </div>
-  );
+  </div>
+);
+
 };
 
 export default AddContactModal;
