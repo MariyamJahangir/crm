@@ -115,7 +115,9 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
           <div className="sm:col-span-2">
             <label className="text-sm font-medium text-gray-700">Name</label>
             <input
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2
+              bg-white/50 border border-white/20 text-midnight-900/90
+                      placeholder-slate-900 backdrop-blur-sm"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="e.g., Priya Menon*"
@@ -125,7 +127,9 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
           <div>
             <label className="text-sm font-medium text-gray-700">Designation</label>
             <input
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2
+              bg-white/50 border border-white/20 text-midnight-900/90
+                      placeholder-slate-900 backdrop-blur-sm"
               value={designation}
               onChange={e => setDesignation(e.target.value)}
               placeholder="Procurement Head*"
@@ -135,7 +139,9 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
           <div>
             <label className="text-sm font-medium text-gray-700">Department</label>
             <input
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2
+              bg-white/50 border border-white/20 text-midnight-900/90
+                      placeholder-slate-900 backdrop-blur-sm"
               value={department}
               onChange={e => setDepartment(e.target.value)}
               placeholder="Purchasing"
@@ -144,7 +150,9 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
           <div>
             <label className="text-sm font-medium text-gray-700">Mobile</label>
             <input
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2
+              bg-white/50 border border-white/20 text-midnight-900/90
+                      placeholder-slate-900 backdrop-blur-sm"
               value={mobile}
               onChange={e => setMobile(e.target.value)}
               placeholder="+91 98xxxxxxx*"
@@ -154,7 +162,9 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
           <div>
             <label className="text-sm font-medium text-gray-700">Fax</label>
             <input
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2
+              bg-white/50 border border-white/20 text-midnight-900/90
+                      placeholder-slate-900 backdrop-blur-sm"
               value={fax}
               onChange={e => setFax(e.target.value)}
             />
@@ -163,7 +173,9 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
             <label className="text-sm font-medium text-gray-700">Email</label>
             <input
               type="email"
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2
+              bg-white/50 border border-white/20 text-midnight-900/90
+                      placeholder-slate-900 backdrop-blur-sm"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="name@company.com"
@@ -172,7 +184,9 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
           <div className="sm:col-span-2">
             <label className="text-sm font-medium text-gray-700">LinkedIn / Social</label>
             <input
-              className="w-full border rounded px-3 py-2"
+              className="w-full border rounded px-3 py-2
+              bg-white/50 border border-white/20 text-midnight-900/90
+                      placeholder-slate-900 backdrop-blur-sm"
               value={social}
               onChange={e => setSocial(e.target.value)}
               placeholder="https://linkedin.com/in/..."

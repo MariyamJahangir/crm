@@ -245,9 +245,9 @@ const Users: React.FC = () => {
               <h1 className="text-3xl font-extrabold text-midnight-900 dark:text-ivory-100 drop-shadow-lg">
                 Users
               </h1>
-              <p className="text-sky-600 mt-1 select-none">
-                {isAdmin ? 'Manage users under your account.' : 'Your profile'}
-              </p>
+              {/* <p className="text-sky-600 mt-1 select-none">
+                {isAdmin ? 'Users Data' : 'Your profile'}
+              </p> */}
             </div>
             <div className="flex items-center gap-3">
               {isAdmin && (
@@ -262,26 +262,26 @@ const Users: React.FC = () => {
                 onClick={load}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
               >
-                <ListRestart /> Refresh
+                <ListRestart /> 
               </Button>
-              <Button
+              {/* <Button
                 variant="secondary"
                 onClick={exportCsv}
                 className="bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
               >
                 Export CSV
-              </Button>
-
+              </Button> */}
+{/* 
               {isAdmin && (
                 <Button className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl"
                   onClick={() => navigate('/sales-report')}>
                    Sales Report
                 </Button>
-              )}
+              )} */}
             </div>
           </div>
 
-          {/* Controls */}
+          {/* Controls
           <div className="bg-cloud-100/30 dark:bg-midnight-800/30 backdrop-blur-xl border border-cloud-300/40 dark:border-midnight-600/40 rounded-2xl p-5 mb-6 shadow-lg">
             <div className="flex flex-col md:flex-row md:items-center gap-3">
               <input
@@ -319,7 +319,7 @@ const Users: React.FC = () => {
                 <option value={50}>50 / page</option>
               </select>
             </div>
-          </div>
+          </div> */}
 
           {loading && (
             <div className="text-midnight-700 dark:text-ivory-300 font-semibold select-none animate-pulse">

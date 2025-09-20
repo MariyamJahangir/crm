@@ -193,7 +193,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
                 type={field.type || 'text'}
                 className="w-full rounded-lg px-3 py-2 
                        bg-white/50 border border-white/20 text-midnight-900/90
-                       placeholder-midnight-700/40 backdrop-blur-sm
+                       placeholder-slate-900 backdrop-blur-sm
                        focus:outline-none focus:border-white/50
                        hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
                        transition-all"
@@ -210,7 +210,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
             <textarea
               className="w-full rounded-lg px-3 py-2 
                      bg-white/50 border border-white/20 text-midnight-900/90
-                     placeholder-midnight-700/40 backdrop-blur-sm
+                      placeholder-slate-900 backdrop-blur-sm
                      focus:outline-none focus:border-white/50
                      hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
                      transition-all"
@@ -226,7 +226,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
             <input
               className="w-full rounded-lg px-3 py-2 
                      bg-white/50 border border-white/20 text-midnight-900/90
-                     placeholder-midnight-700/40 backdrop-blur-sm
+                     placeholder-slate-900 backdrop-blur-sm
                      focus:outline-none focus:border-white/50
                      hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
                      transition-all"
@@ -241,7 +241,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
             <input
               className="w-full rounded-lg px-3 py-2 
                      bg-white/50 border border-white/20 text-midnight-900/90
-                     placeholder-midnight-700/40 backdrop-blur-sm
+                      placeholder-slate-900 backdrop-blur-sm
                      focus:outline-none focus:border-white/50
                      hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
                      transition-all"

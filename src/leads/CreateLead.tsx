@@ -1,5 +1,5 @@
 // pages/CreateLead.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect,useRef, useLayoutEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +24,9 @@ const CreateLead: React.FC = () => {
   const { token, user } = useAuth();
   const isAdmin = user?.type === 'ADMIN';
 
+  const [indicatorStyle, setIndicatorStyle] = useState({});
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
@@ -85,7 +88,20 @@ const CreateLead: React.FC = () => {
     })();
   }, [token, user?.id, isAdmin]);
 
-
+  useLayoutEffect(() => {
+    const activeIndex = STAGES.indexOf(stage);
+    const activeButton = buttonRefs.current[activeIndex];
+    
+    if (activeButton && containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const buttonRect = activeButton.getBoundingClientRect();
+      
+      setIndicatorStyle({
+        left: buttonRect.left - containerRect.left,
+        width: buttonRect.width,
+      });
+    }
+  }, [stage]);
   // When customer changes, fetch its contacts
   useEffect(() => {
     if (!customerId || !token) {
@@ -215,25 +231,38 @@ const CreateLead: React.FC = () => {
            p-6 rounded-2xl shadow-xl border border-cloud-300/30 dark:border-midnight-700/30"
         >
           {/* Stage */}
-          <div>
-            <div className="text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Stage</div>
-            <div className="flex flex-wrap gap-2">
-              {STAGES.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`px-3 py-1.5 rounded-xl border transition shadow-sm 
-                    ${stage === s 
-                      ? 'bg-sky-500/90 text-white border-sky-500 hover:bg-sky-600' 
-                      : 'bg-white/60 dark:bg-midnight-800/60 text-midnight-700 dark:text-ivory-200 border-cloud-200/50 dark:border-midnight-600/50 hover:bg-cloud-100/70 dark:hover:bg-midnight-700/60'
-                    }`}
-                  onClick={() => setStage(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+           <div>
+      <div className="text-sm font-bold text-midnight-800 dark:text-ivory-200 mb-3 tracking-wide">
+        Lead Stage
+      </div>
+      <div
+        ref={containerRef}
+        className="relative flex w-full items-center p-1 rounded-full bg-cloud-200/60 dark:bg-midnight-800/60 backdrop-blur-sm border border-cloud-300/40 dark:border-midnight-700/40"
+      >
+        {/* Sliding Indicator */}
+        <span
+          className="absolute top-1 bottom-1 h-auto rounded-full bg-sky-500 shadow-lg transition-all duration-300 ease-in-out"
+          style={indicatorStyle}
+        />
+        
+        {/* Buttons */}
+        {STAGES.map((s, index) => (
+          <button
+            key={s}
+            ref={(el) => (buttonRefs.current[index] = el)}
+            type="button"
+            className={`relative z-10 flex-1 px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500 focus-visible:ring-offset-cloud-100 dark:focus-visible:ring-offset-midnight-800 ${
+              stage === s
+                ? 'text-white'
+                : 'text-midnight-600 dark:text-ivory-300 hover:text-midnight-900 dark:hover:text-ivory-100'
+            }`}
+            onClick={() => setStage(s)}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+    </div>
 
           {/* Forecast */}
           <div>

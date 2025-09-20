@@ -465,10 +465,10 @@ const LeadDetail: React.FC = () => {
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Source:</span> {lead.source || '-'}</div>
 
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Company:</span> {lead.companyName || '-'}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Division:</span> {lead.division || '-'}</div>
+                  {/* <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Division:</span> {lead.division || '-'}</div> */}
 
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Quote #:</span> {lead.quoteNumber || '-'}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Preview URL:</span> {lead.previewUrl || '-'}</div>
+                  {/* <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Preview URL:</span> {lead.previewUrl || '-'}</div> */}
 
                   {lead?.nextFollowupAt && (
                     <div>
@@ -485,7 +485,7 @@ const LeadDetail: React.FC = () => {
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Mobile:</span> {lead.mobile || '-'} {lead.mobileAlt ? `/ ${lead.mobileAlt}` : ''}</div>
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Email:</span> {lead.email || '-'}</div>
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">City:</span> {lead.city || '-'}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Creator:</span> {lead.creatorType ? `${lead.creatorType}` : '-'}</div>
+                  {/* <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Creator:</span> {lead.creatorType ? `${lead.creatorType}` : '-'}</div> */}
                 </div>
                 {lead.previewUrl && (
                   <img

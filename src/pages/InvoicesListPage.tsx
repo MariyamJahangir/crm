@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-// NEW: Import the Download icon from lucide-react
-import { Eye, Download } from 'lucide-react';
+import { Eye, Download, Plus } from 'lucide-react';
 
 // Component Imports
 import Sidebar from '../components/Sidebar';
@@ -10,185 +9,209 @@ import Button from '../components/Button';
 import DataTable from '../components/DataTable';
 import StatusDropdown from '../components/StatusDropdown';
 import PreviewModal from '../components/PreviewModal';
+import { Filter } from '../components/FilterDropdown'; // Ensure this path is correct
 
 // Service and Type Imports
 import { invoiceService, Invoice } from '../services/invoiceService';
 
 const customerTypeStyles: Record<string, string> = {
-  Customer: 'bg-blue-100 text-blue-800',
-  Vendor: 'bg-green-100 text-green-800',
+    Customer: 'bg-blue-100 text-blue-800',
+    Vendor: 'bg-green-100 text-green-800',
 };
 
 const InvoicesListPage: React.FC = () => {
-  const { token } = useAuth();
-  const navigate = useNavigate();
+    const { token, user } = useAuth();
+    const isAdmin = user?.type === 'ADMIN';
+    const navigate = useNavigate();
 
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // State for the preview modal
-  const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
-  
-  // NEW: State to track which invoice is currently being downloaded
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+    // State for master list (unfiltered) and displayed list (filtered)
+    const [masterInvoices, setMasterInvoices] = useState<Invoice[]>([]);
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    
+    // State for the filters
+    const [appliedFilters, setAppliedFilters] = useState<Filter[]>([]);
 
-  useEffect(() => {
-    if (!token) return;
-    setLoading(true);
-    invoiceService.list(token)
-      .then(res => {
-        console.log(res)
-        if (res.success) {
-          setInvoices(res.invoices);
-        } else {
-          setError('Failed to load invoices.');
-        }
-      })
-      .catch(e => setError(e?.data?.message || 'An error occurred.'))
-      .finally(() => setLoading(false));
-  }, [token]);
+    // Other states
+    const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
+    const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const showPreview = async (invoice: Invoice) => {
-    if (!token) return;
-    setPreview({ open: true, html: '<div>Loading preview...</div>' });
-    try {
-      const res = await invoiceService.previewHtml(invoice.id, token);
-      if (res.success) {
-        setPreview({ open: true, html: res.html });
-      } else {
-        throw new Error('Failed to load preview content.');
-      }
-    } catch (e: any) {
-      const errorMessage = e?.message || 'Failed to load preview.';
-      setPreview({ open: true, html: `<div style="color:red;padding:20px;">${errorMessage}</div>` });
-    }
-  };
-
-  const handleStatusChange = (updatedInvoice: Invoice) => {
-    setInvoices(prevInvoices =>
-      prevInvoices.map(inv => (inv.id === updatedInvoice.id ? updatedInvoice : inv))
-    );
-  };
-  
-  /**
-   * NEW: Handler for the download PDF action.
-   */
- const handleDownload = async (invoice: Invoice) => {
-    if (!token) return;
-    setDownloadingId(invoice.id);
-    setError(null);
-
-    try {
-      const pdfBlob = await invoiceService.downloadPdf(invoice.id, token);
-      const url = window.URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${invoice.invoiceNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      a.remove();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to download invoice.');
-    } finally {
-      setDownloadingId(null);
-    }
-  };
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="pl-64">
-        <main className="max-w-screen-xl mx-auto py-8 px-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Invoices</h1>
-              <p className="text-gray-600">Manage, create, and track all your invoices.</p>
-            </div>
-            <Button onClick={() => navigate('/invoices/create')}>Create Invoice</Button>
-          </div>
-          
-          {loading && <div className="text-center p-4">Loading invoices...</div>}
-          {error && <div className="text-red-600 bg-red-50 p-3 rounded-md">{error}</div>}
-
-          {!loading && !error && (
-            <DataTable
-              rows={invoices}
-              columns={[
-                { key: 'invoiceNumber', header: 'Invoice #' },
-                { 
-                  key: 'customerName', 
-                  header: 'Billed To',
-                  render: (r) => (
-                    <div>
-                      <div>{r.customerName}</div>
-                      {/* Note: 'customerType' is not on the Invoice model, this will only render if added */}
-                      {r.customerType && (
-                        <span className={`mt-1 inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${customerTypeStyles[r.customerType] || 'bg-gray-100'}`}>
-                          {r.customerType}
-                        </span>
-                      )}
-                    </div>
-                  )
-                },
-                { 
-                  key: 'invoiceDate', 
-                  header: 'Date', 
-                  render: (r) => new Date(r.invoiceDate).toLocaleDateString()
-                },
-                { 
-                  key: 'grandTotal', 
-                  header: 'Amount',
-                  render: (r) => `$${Number(r.grandTotal || 0).toFixed(2)}`
-                },
-                { 
-                  key: 'status', 
-                  header: 'Status',
-                  render: (r) => <StatusDropdown invoice={r} onStatusChange={handleStatusChange} />
-                },
-                {
-                  key: 'action',
-                  header: 'Actions',
-                  sortable: false,
-                  render: (r) => (
-                    <div className="flex items-center gap-2">
-                      <Button variant="icon" title="Preview" onClick={() => showPreview(r)}>
-                        <Eye size={18} />
-                      </Button>
-                      
-                      {/* NEW: Download Button */}
-                      <Button
-                        variant="icon"
-                        title="Download PDF"
-                        onClick={() => handleDownload(r)}
-                        disabled={downloadingId === r.id} // Disable button while downloading this item
-                      >
-                        {/* Show a spinner or the icon */}
-                        {downloadingId === r.id ? (
-                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                        ) : (
-                           <Download size={18} />
-                        )}
-                      </Button>
-                    </div>
-                  )
+    // Initial data fetching
+    useEffect(() => {
+        if (!token) return;
+        setLoading(true);
+        invoiceService.list(token)
+            .then(res => {
+                if (res.success) {
+                  console.log(res)
+                    setMasterInvoices(res.invoices);
+                    setInvoices(res.invoices);
+                } else {
+                    setError('Failed to load invoices.');
                 }
-              ]}
-              filterKeys={['invoiceNumber', 'customerName', 'status']}
-              searchPlaceholder="Filter invoices..."
+            })
+            .catch(e => setError(e?.data?.message || 'An error occurred.'))
+            .finally(() => setLoading(false));
+    }, [token]);
+
+    // Apply filters whenever the master list or the filters themselves change
+    useEffect(() => {
+        let filtered = [...masterInvoices];
+
+        appliedFilters.forEach(filter => {
+            if (filter.values.length > 0) {
+                const key = filter.type;
+                filtered = filtered.filter(invoice => {
+                    const value = 
+                        key === 'Billed To' ? invoice.customerName :
+                        key === 'Status' ? invoice.status :
+                        key === 'Salesman' ? invoice.salesmanName :
+                        null;
+                    return value && filter.values.includes(value);
+                });
+            }
+        });
+
+        setInvoices(filtered);
+    }, [appliedFilters, masterInvoices]);
+
+    // Generate filter options from the master list to ensure they are always available
+    const filterOptions = useMemo(() => ({
+        'Billed To': [...new Set(masterInvoices.map(inv => inv.customerName).filter(Boolean))],
+        Status: [...new Set(masterInvoices.map(inv => inv.status).filter(Boolean))],
+        ...(isAdmin && { Salesman: [...new Set(masterInvoices.map(inv => inv.salesmanName).filter(Boolean))] }),
+    }), [masterInvoices, isAdmin]);
+
+    const showPreview = async (invoice: Invoice) => {
+        if (!token) return;
+        setPreview({ open: true, html: '<div>Loading preview...</div>' });
+        try {
+            const res = await invoiceService.previewHtml(invoice.id, token);
+            if (res.success) {
+                setPreview({ open: true, html: res.html });
+            } else {
+                throw new Error('Failed to load preview content.');
+            }
+        } catch (e: any) {
+            const errorMessage = e?.message || 'Failed to load preview.';
+            setPreview({ open: true, html: `<div style="color:red;padding:20px;">${errorMessage}</div>` });
+        }
+    };
+
+    const handleStatusChange = (updatedInvoice: Invoice) => {
+        const updatedMasterList = masterInvoices.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv);
+        setMasterInvoices(updatedMasterList);
+    };
+
+    const handleDownload = async (invoice: Invoice) => {
+        if (!token) return;
+        setDownloadingId(invoice.id);
+        setError(null);
+        try {
+            const pdfBlob = await invoiceService.downloadPdf(invoice.id, token);
+            const url = window.URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${invoice.invoiceNumber}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } catch (e: any) {
+            setError(e?.message || 'Failed to download invoice.');
+        } finally {
+            setDownloadingId(null);
+        }
+    };
+
+    return (
+        <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+            <Sidebar />
+            <div className="flex-1 overflow-y-auto min-h-screen">
+                <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+                        <div>
+                            <h1 className="text-2xl font-semibold text-gray-900 dark:text-ivory-200">Invoices</h1>
+                            <p className="text-gray-600 dark:text-midnight-400">
+                                Manage, create, and track all your invoices.
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => navigate('/invoices/create')}
+                            className="flex items-center px-4 py-2 bg-sky-500/80 text-white hover:bg-sky-600 shadow-lg rounded-xl transition"
+                        >
+                            <Plus size={18} className="mr-2" />
+                            Create Invoice
+                        </Button>
+                    </div>
+
+                    {loading && <div className="text-midnight-700 dark:text-ivory-300">Loading invoices...</div>}
+                    {error && <div className="text-red-600">{error}</div>}
+
+                    {!loading && !error && (
+                        <DataTable
+                            rows={invoices}
+                            columns={[
+                                { key: 'invoiceNumber', header: 'Invoice #' },
+                                { 
+                                    key: 'customerName', 
+                                    header: 'Billed To',
+                                    render: (r) => (
+                                        <div>
+                                            <div>{r.customerName}</div>
+                                            {r.customerType && (
+                                                <span className={`mt-1 inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${customerTypeStyles[r.customerType] || 'bg-gray-100'}`}>
+                                                    {r.customerType}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )
+                                },
+                                { key: 'salesmanName', header: 'Salesman' },
+                                { key: 'invoiceDate', header: 'Date', render: (r) => new Date(r.invoiceDate).toLocaleDateString() },
+                                { key: 'grandTotal', header: 'Amount', render: (r) => `$${Number(r.grandTotal || 0).toFixed(2)}` },
+                                { key: 'status', header: 'Status', render: (r) => <StatusDropdown invoice={r} onStatusChange={handleStatusChange} /> },
+                                {
+                                    key: 'action',
+                                    header: 'Actions',
+                                    sortable: false,
+                                    render: (r) => (
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="icon" title="Preview" onClick={() => showPreview(r)}>
+                                                <Eye size={18} />
+                                            </Button>
+                                            <Button variant="icon" title="Download PDF" onClick={() => handleDownload(r)} disabled={downloadingId === r.id}>
+                                                {downloadingId === r.id ? (
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                                                ) : (
+                                                    <Download size={18} />
+                                                )}
+                                            </Button>
+                                        </div>
+                                    )
+                                }
+                            ]}
+                            filterKeys={['invoiceNumber', 'customerName', 'status', 'salesmanName']}
+                            searchPlaceholder="Search invoices..."
+                            // Add these props to enable the filters
+                            filterOptions={filterOptions}
+                            appliedFilters={appliedFilters}
+                            onApplyFilters={setAppliedFilters}
+                        />
+                    )}
+                </main>
+            </div>
+
+            <PreviewModal
+                open={preview.open}
+                onClose={() => setPreview({ open: false, html: undefined })}
+                html={preview.html}
+                title="Invoice Preview"
             />
-          )}
-        </main>
-      </div>
-      
-      <PreviewModal
-        open={preview.open}
-        onClose={() => setPreview({ open: false, html: undefined })}
-        html={preview.html}
-        title="Invoice Preview"
-      />
-    </div>
-  );
+        </div>
+    );
 };
 
 export default InvoicesListPage;

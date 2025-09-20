@@ -39,31 +39,51 @@ async function resolveContactedByNames(ids) {
 // GET /customers - list customers with optional search
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const search = String(req.query.search || '').trim();
+    const { search, Industry, Category, Salesman } = req.query;
     const where = {};
+    const include = [
+        { model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] },
+        { model: CustomerContact, as: 'contacts' }
+    ];
 
+    // --- General Search Filter ---
     if (search) {
+      const searchTerm = `%${String(search).trim()}%`;
+      // Use iLike for case-insensitive search in PostgreSQL
       where[Op.or] = [
-        { companyName: { [Op.like]: `%${search}%` } },
-        { email: { [Op.like]: `%${search}%` } },
-        { vatNo: { [Op.like]: `%${search}%` } },
-        { address: { [Op.like]: `%${search}%` } },
-        { industry: { [Op.like]: `%${search}%` } },
-        { website: { [Op.like]: `%${search}%` } },
-        { category: { [Op.like]: `%${search}%` } },
+        { companyName: { [Op.iLike]: searchTerm } },
+        { email: { [Op.iLike]: searchTerm } },
+        { vatNo: { [Op.iLike]: searchTerm } },
+        { address: { [Op.iLike]: searchTerm } },
+        { industry: { [Op.iLike]: searchTerm } },
+        { website: { [Op.iLike]: searchTerm } },
+        { category: { [Op.iLike]: searchTerm } },
       ];
+    }
+
+    // --- Dropdown Filters ---
+    if (Industry) where.industry = Industry;
+    if (Category) where.category = Category;
+    
+    // --- Role-Based Permissions & Salesman Filter ---
+    if (isAdmin(req)) {
+      // Admins can filter by salesman name
+      if (Salesman) {
+        include[0].where = { name: Salesman };
+        include[0].required = true; // Makes it an INNER JOIN
+      }
+    } else {
+      // Non-admins can ONLY see their own assigned customers
+      where.salesmanId = req.subjectId;
     }
 
     const customers = await Customer.findAll({
       where,
-      include: [
-        { model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] },
-        { model: CustomerContact, as: 'contacts' }
-      ],
+      include,
       order: [['createdAt', 'DESC']]
     });
 
-    // Enrich each customer with resolved contactedByNames
+    // --- Data Enrichment (same as your original code) ---
     const result = await Promise.all(customers.map(async c => {
       const contactedBy = Array.isArray(c.contactedBy) ? c.contactedBy : [];
       const contactedByNames = await resolveContactedByNames(contactedBy);

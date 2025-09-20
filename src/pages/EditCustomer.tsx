@@ -377,7 +377,7 @@ const EditCustomer: React.FC = () => {
                          text-midnight-900 dark:text-ivory-100 
                          placeholder-midnight-400 dark:placeholder-ivory-500 
                          shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
-                        placeholder="GST/VAT number"
+                        placeholder="VAT number"
                       />
                     </div>
 

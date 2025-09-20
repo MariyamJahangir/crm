@@ -1,383 +1,186 @@
-// import React, { useEffect, useState, useMemo } from 'react';
-// import Sidebar from '../components/Sidebar';
-// import Button from '../components/Button';
-// import { useAuth } from '../contexts/AuthContext';
-// import { customerService, Customer } from '../services/customerService';
-// import { useNavigate } from 'react-router-dom';
-// import ConfirmDialog from '../components/ConfirmDialog';
-// import DataTable from '../components/DataTable';
-// import FilterDropdown, { Filter } from '../components/FilterDropdown';
-// // --- CORRECTED IMPORT ---
-// import FormattedDateTime from '../components/FormattedDateTime'; 
-// // --- END CORRECTION ---
-
-// const Customers: React.FC = () => {
-//   const { token, user } = useAuth();
-//   const isAdmin = user?.type === 'ADMIN';
-//   const navigate = useNavigate();
-
-//   const [items, setItems] = useState<Customer[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [search, setSearch] = useState('');
-//   const [error, setError] = useState<string | null>(null);
-
-//   const [confirmOpen, setConfirmOpen] = useState(false);
-//   const [targetId, setTargetId] = useState<string | null>(null);
-//   const [deleting, setDeleting] = useState(false);
-
-//   const [appliedFilters, setAppliedFilters] = useState<Filter[]>([]);
-
-//   const load = async () => {
-//     if (!token) return;
-//     setError(null);
-//     setLoading(true);
-//     try {
-//       const res = await customerService.list(token);
-//       setItems(res.customers);
-//     } catch (e: any) {
-//       setError(e?.data?.message || 'Failed to load customers');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     load();
-//   }, [token]);
-
-//   const filterOptions = useMemo(() => ({
-//     Industry: [...new Set(items.map(item => item.industry).filter(Boolean))],
-//     Category: [...new Set(items.map(item => item.category).filter(Boolean))],
-//     Salesman: [...new Set(items.map(item => item.salesman?.name).filter(Boolean))],
-//   }), [items]);
-
-//   const filteredItems = useMemo(() => {
-//     return items.filter(item => {
-//       const searchLower = search.toLowerCase();
-//       const matchesSearch = !searchLower || (
-//         item.companyName.toLowerCase().includes(searchLower) ||
-//         (item.email && item.email.toLowerCase().includes(searchLower)) ||
-//         (item.vatNo && item.vatNo.toLowerCase().includes(searchLower)) ||
-//         (item.address && item.address.toLowerCase().includes(searchLower))
-//       );
-
-//       const matchesFilters = appliedFilters.every(filter => {
-//         if (filter.values.length === 0) return true;
-        
-//         switch (filter.type) {
-//           case 'Industry':
-//             return item.industry && filter.values.includes(item.industry);
-//           case 'Category':
-//             return item.category && filter.values.includes(item.category);
-//           case 'Salesman':
-//             return item.salesman && filter.values.includes(item.salesman.name);
-//           default:
-//             return true;
-//         }
-//       });
-
-//       return matchesSearch && matchesFilters;
-//     });
-//   }, [items, search, appliedFilters]);
-
-//   const onSearch = (e: React.FormEvent) => e.preventDefault();
-//   const askDelete = (id: string) => { setTargetId(id); setConfirmOpen(true); };
-//   const onCancelDelete = () => { setConfirmOpen(false); setTargetId(null); };
-
-//   const onConfirmDelete = async () => {
-//     if (!targetId || !token) return;
-//     setDeleting(true);
-//     try {
-//       await customerService.remove(targetId, token);
-//       setItems(prev => prev.filter(c => c.id !== targetId));
-//     } catch (e: any) {
-//       console.error(e?.data?.message || 'Failed to delete customer');
-//     } finally {
-//       setDeleting(false);
-//       setConfirmOpen(false);
-//       setTargetId(null);
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen">
-//       <Sidebar />
-//       <div className="pl-20">
-//         <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-//           <div className="flex items-center justify-between mb-6">
-//             <div>
-//               <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
-//               <p className="text-gray-600">Manage your customers and contacts.</p>
-//             </div>
-//             <Button onClick={() => navigate('/customers/create')}>Create Customer</Button>
-//           </div>
-
-//           <div className="bg-white/30 backdrop-blur-md rounded-xl shadow-lg p-6">
-//             <div className="flex justify-between items-start mb-4">
-//               <FilterDropdown
-//                 options={filterOptions}
-//                 appliedFilters={appliedFilters}
-//                 onApplyFilters={setAppliedFilters}
-//               />
-//               <form onSubmit={onSearch} className="flex gap-2">
-//                 <input
-//                   className="border rounded-lg px-3 py-2 shadow-sm"
-//                   placeholder="Search..."
-//                   value={search}
-//                   onChange={e => setSearch(e.target.value)}
-//                 />
-//                 <Button type="submit">Search</Button>
-//               </form>
-//             </div>
-
-//             {loading && <div>Loading...</div>}
-//             {error && <div className="text-red-600">{error}</div>}
-
-//             <DataTable
-//               rows={filteredItems}
-//               columns={[
-//                 { key: 'companyName', header: 'Company' },
-//                 { key: 'industry', header: 'Industry' },
-//                 { key: 'category', header: 'Category' },
-//                 { key: 'website', header: 'Website' },
-//                 { key: 'email', header: 'Email' },
-//                 { key: 'contactNumber', header: 'Contact' },
-//                 { key: 'salesman', header: 'Salesman', render: r => r.salesman?.name || '-' },
-//                 {
-//                   key: 'createdAt',
-//                   header: 'Created At',
-//                   sortable: true,
-//                   render: (row) => <FormattedDateTime isoString={row.createdAt} />
-//                 },
-//                 {
-//                   key: 'action',
-//                   header: 'Actions',
-//                   sortable: false,
-//                   render: r => {
-//                     const canModify = isAdmin || String(user?.id) === String(r.salesman?.id);
-//                     return canModify ? (
-//                       <div className="flex gap-2">
-//                         <Button variant="secondary" className="px-3 py-1" onClick={() => navigate(`/customers/${r.id}/edit`)}>Edit</Button>
-//                         <Button variant="danger" className="px-3 py-1" onClick={() => askDelete(r.id)}>Delete</Button>
-//                       </div>
-//                     ) : (
-//                       <Button variant="secondary" className="px-3 py-1" onClick={() => navigate(`/customers/${r.id}/edit`)} disabled>View</Button>
-//                     );
-//                   },
-//                   width: '160px',
-//                 },
-//               ]}
-//               initialSort={{ key: 'createdAt', dir: 'DESC' }}
-//             />
-//           </div>
-//         </main>
-//       </div>
-
-//       <ConfirmDialog
-//         open={confirmOpen}
-//         title="Delete Customer"
-//         message="Are you sure you want to delete this customer? This action cannot be undone."
-//         confirmText={deleting ? 'Deleting...' : 'Yes, Delete'}
-//         cancelText="Cancel"
-//         onConfirm={onConfirmDelete}
-//         onCancel={onCancelDelete}
-//       />
-//     </div>
-//   );
-// };
-
-// export default Customers;
 import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Pencil, Trash2 } from 'lucide-react';
+
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
+import DataTable from '../components/DataTable';
+import ConfirmDialog from '../components/ConfirmDialog';
+import FormattedDateTime from '../components/FormattedDateTime';
+import { Filter } from '../components/FilterDropdown'; // Make sure this path is correct
+
 import { useAuth } from '../contexts/AuthContext';
 import { customerService, Customer } from '../services/customerService';
-import { useNavigate } from 'react-router-dom';
-import ConfirmDialog from '../components/ConfirmDialog';
-import DataTable from '../components/DataTable';
-import {Pencil,Trash2 } from 'lucide-react'
-import FilterDropdown, { Filter } from '../components/FilterDropdown'; // Import Filter type
-import FormattedDateTime from '../components/FormattedDateTime.tsx';
+
 const Customers: React.FC = () => {
-  const { token, user } = useAuth();
-  const isAdmin = user?.type === 'ADMIN';
-  const navigate = useNavigate();
+    const { token, user } = useAuth();
+    const isAdmin = user?.type === 'ADMIN';
+    const navigate = useNavigate();
 
-  const [items, setItems] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [error, setError] = useState<string | null>(null);
+    // State for the full, unfiltered list of customers
+    const [masterItems, setMasterItems] = useState<Customer[]>([]);
+    // State for the items to be displayed in the table (after filtering)
+    const [items, setItems] = useState<Customer[]>([]);
+    
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    
+    // State for delete confirmation
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [targetId, setTargetId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [targetId, setTargetId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+    // Single state to hold all applied filters
+    const [appliedFilters, setAppliedFilters] = useState<Filter[]>([]);
 
-  // A single state to hold all applied filters
-  const [appliedFilters, setAppliedFilters] = useState<Filter[]>([]);
+    // This effect handles the initial fetching of all customer data.
+    useEffect(() => {
+        if (!token) return;
 
-  // Function to load customer data from the service
-  const load = async () => {
-    if (!token) return;
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await customerService.list(token);
-      console.log(res.customers)
-      setItems(res.customers);
-    } catch (e: any) {
-      setError(e?.data?.message || 'Failed to load customers');
-    } finally {
-      setLoading(false);
-    }
-  };
+        const controller = new AbortController();
+        const signal = controller.signal;
 
-  useEffect(() => {
-    load();
-  }, [token]);
+        const loadAllCustomers = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                // Initial fetch gets ALL customers without any filters
+                const res = await customerService.list(token, [], signal);
+                if (!signal.aborted) {
+                    setMasterItems(res.customers);
+                    setItems(res.customers); // Initially, displayed items are all items
+                }
+            } catch (e: any) {
+                if (!signal.aborted) {
+                    setError(e?.data?.message || 'Failed to load customers');
+                }
+            } finally {
+                if (!signal.aborted) {
+                    setLoading(false);
+                }
+            }
+        };
 
-  // Dynamically generate options for the filter dropdown from the customer data
-  const filterOptions = useMemo(() => ({
-    Industry: [...new Set(items.map(item => item.industry).filter(Boolean))],
-    Category: [...new Set(items.map(item => item.category).filter(Boolean))],
-    Salesman: [...new Set(items.map(item => item.salesman?.name).filter(Boolean))],
-  }), [items]);
+        loadAllCustomers();
 
-  // Memoized logic to filter items based on search term and applied dropdown filters
-  const filteredItems = useMemo(() => {
-    return items.filter(item => {
-      // First, check if the item matches the search term
-      const searchLower = search.toLowerCase();
-      const matchesSearch = !searchLower || (
-        item.companyName.toLowerCase().includes(searchLower) ||
-        (item.email && item.email.toLowerCase().includes(searchLower)) ||
-        (item.vatNo && item.vatNo.toLowerCase().includes(searchLower)) ||
-        (item.address && item.address.toLowerCase().includes(searchLower))
-      );
+        return () => controller.abort();
+    }, [token]);
 
-      // Then, check if the item matches all applied filters
-      const matchesFilters = appliedFilters.every(filter => {
-        if (filter.values.length === 0) return true;
-        
-        switch (filter.type) {
-          case 'Industry':
-            return item.industry && filter.values.includes(item.industry);
-          case 'Category':
-            return item.category && filter.values.includes(item.category);
-          case 'Salesman':
-            return item.salesman && filter.values.includes(item.salesman.name);
-          default:
-            return true;
+    // This effect applies the filters to the master list whenever `appliedFilters` changes.
+    useEffect(() => {
+        let filtered = [...masterItems];
+
+        appliedFilters.forEach(filter => {
+            if (filter.values.length > 0) {
+                filtered = filtered.filter(item => {
+                    const key = filter.type.toLowerCase(); // 'Industry' -> 'industry'
+                    const itemValue = key === 'salesman' ? item.salesman?.name : (item as any)[key];
+                    return itemValue && filter.values.includes(itemValue);
+                });
+            }
+        });
+
+        setItems(filtered);
+    }, [appliedFilters, masterItems]);
+
+
+    // Dynamically generate options from the MASTER list, so they never disappear.
+    const filterOptions = useMemo(() => ({
+        Industry: [...new Set(masterItems.map(item => item.industry).filter(Boolean))],
+        Category: [...new Set(masterItems.map(item => item.category).filter(Boolean))],
+        ...(isAdmin && { Salesman: [...new Set(masterItems.map(item => item.salesman?.name).filter(Boolean))] }),
+    }), [masterItems, isAdmin]);
+
+    // Handlers for delete actions
+    const askDelete = (id: string) => { setTargetId(id); setConfirmOpen(true); };
+    const onCancelDelete = () => { setConfirmOpen(false); setTargetId(null); };
+
+    const onConfirmDelete = async () => {
+        if (!targetId || !token) return;
+        setDeleting(true);
+        try {
+            await customerService.remove(targetId, token);
+            // Remove from both master and displayed lists
+            setMasterItems(prev => prev.filter(c => c.id !== targetId));
+            setItems(prev => prev.filter(c => c.id !== targetId));
+        } catch (e: any) {
+            console.error(e?.data?.message || 'Failed to delete customer');
+        } finally {
+            setDeleting(false);
+            setConfirmOpen(false);
+            setTargetId(null);
         }
-      });
+    };
 
-      return matchesSearch && matchesFilters;
-    });
-  }, [items, search, appliedFilters]);
+    return (
+        <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+            <Sidebar />
+            <div className="flex-1 overflow-y-auto min-h-screen">
+                <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+                        <div>
+                            <h1 className="text-2xl font-semibold text-gray-900 dark:text-ivory-200">Customers</h1>
+                            <p className="text-gray-600 dark:text-midnight-400">Manage your customers and contacts.</p>
+                        </div>
+                        <Button
+                            className="flex items-center px-4 py-2 bg-sky-500/80 text-white hover:bg-sky-600 shadow-lg rounded-xl transition"
+                            onClick={() => navigate('/customers/create')}
+                        >
+                            Create Customer
+                        </Button>
+                    </div>
 
-  // Handlers for search and delete actions
-  const onSearch = (e: React.FormEvent) => e.preventDefault();
-  const askDelete = (id: string) => { setTargetId(id); setConfirmOpen(true); };
-  const onCancelDelete = () => { setConfirmOpen(false); setTargetId(null); };
+                    {loading && <div className="text-center py-4 text-midnight-700 dark:text-ivory-300">Loading...</div>}
+                    {error && <div className="text-center py-4 text-red-600">{error}</div>}
 
-  const onConfirmDelete = async () => {
-    if (!targetId || !token) return;
-    setDeleting(true);
-    try {
-      await customerService.remove(targetId, token);
-      setItems(prev => prev.filter(c => c.id !== targetId));
-    } catch (e: any) {
-      console.error(e?.data?.message || 'Failed to delete customer');
-    } finally {
-      setDeleting(false);
-      setConfirmOpen(false);
-      setTargetId(null);
-    }
-  };
+                    {!loading && !error && (
+                        <DataTable
+                            rows={items} // Display the filtered items
+                            columns={[
+                                { key: 'companyName', header: 'Company' },
+                                { key: 'industry', header: 'Industry' },
+                                { key: 'category', header: 'Category' },
+                                { key: 'email', header: 'Email' },
+                                { key: 'salesman.name', header: 'Salesman' },
+                                { key: 'createdAt', header: 'Created', render: (row) => <FormattedDateTime isoString={row.createdAt} /> },
+                                {
+                                    key: 'action',
+                                    header: 'Actions',
+                                    sortable: false,
+                                    render: (r) => (
+                                        <div className="flex justify-center gap-2">
+                                            <button onClick={() => navigate(`/customers/${r.id}/edit`)} className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition" title="Edit Customer">
+                                                <Pencil className="w-5 h-5 text-sky-500" />
+                                            </button>
+                                            <button onClick={() => askDelete(r.id)} className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition" title="Delete Customer">
+                                                <Trash2 className="w-5 h-5 text-red-500" />
+                                            </button>
+                                        </div>
+                                    ),
+                                },
+                            ]}
+                            initialSort={{ key: 'createdAt', dir: 'DESC' }}
+                            filterKeys={['companyName', 'email', 'vatNo', 'address', 'salesman.name']}
+                            searchPlaceholder="Search customers..."
+                            filterOptions={filterOptions}
+                            appliedFilters={appliedFilters}
+                            onApplyFilters={setAppliedFilters}
+                        />
+                    )}
+                </main>
+            </div>
 
-  return (
-      <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
-    <Sidebar />
-    <div className="flex-1 overflow-y-auto min-h-screen">
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-ivory-200">Customers</h1>
-            <p className="text-gray-600 dark:text-midnight-400">
-              Manage your customers and contacts.
-            </p>
-          </div>
-          <Button
-            className="flex items-center px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 
-                       backdrop-blur-md text-midnight-700 dark:text-ivory-300 
-                       hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
-                       shadow-md rounded-xl transition"
-            onClick={() => navigate('/customers/create')}
-          >
-            Create Customer
-          </Button>
+            <ConfirmDialog
+                open={confirmOpen}
+                title="Delete Customer"
+                message="Are you sure you want to delete this customer? This action cannot be undone."
+                confirmText={deleting ? 'Deleting...' : 'Yes, Delete'}
+                onConfirm={onConfirmDelete}
+                onCancel={onCancelDelete}
+            />
         </div>
-
-        {/* Loading & Errors */}
-        {loading && <div className="text-midnight-700 dark:text-ivory-300">Loading...</div>}
-        {error && <div className="text-red-600">{error}</div>}
-
-        {/* Table */}
-        {!loading && !error && (
-          <DataTable
-            rows={filteredItems}
-            columns={[
-              { key: 'companyName', header: 'Company' },
-              { key: 'industry', header: 'Industry' },
-              { key: 'category', header: 'Category' },
-              { key: 'website', header: 'Website' },
-              { key: 'email', header: 'Email' },
-              { key: 'contactNumber', header: 'Contact' },
-              { key: 'salesman', header: 'Salesman', render: (r) => r.salesman?.name || '-' },
-              {
-                key: 'createdAt',
-                header: 'Created',
-                render: (row) => <FormattedDateTime isoString={row.createdAt} />,
-              },
-              {
-                key: 'action',
-                header: 'Actions',
-                render: (r) => (
-                  <div className="flex gap-2">
-                    <Pencil
-                      className="w-5 h-5 text-sky-500 cursor-pointer"
-                      onClick={() => navigate(`/customers/${r.id}/edit`)}
-                    />
-                    <Trash2
-                      className="w-5 h-5 text-red-500 cursor-pointer"
-                      onClick={() => askDelete(r.id)}
-                    />
-                  </div>
-                ),
-              },
-            ]}
-            initialSort={{ key: 'createdAt', dir: 'DESC' }}
-            searchPlaceholder="Filter customers..."
-            className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
-                       border border-cloud-300/30 dark:border-midnight-700/30 
-                       rounded-2xl p-3"
-          />
-        )}
-      </main>
-    </div>
-
-    {/* Delete Confirmation */}
-    <ConfirmDialog
-      open={confirmOpen}
-      title="Delete Customer"
-      message="Are you sure you want to delete this customer?"
-      confirmText={deleting ? 'Deleting...' : 'Yes, Delete'}
-      cancelText="Cancel"
-      onConfirm={onConfirmDelete}
-      onCancel={onCancelDelete}
-    />
-  </div>
-  );
+    );
 };
 
 export default Customers;

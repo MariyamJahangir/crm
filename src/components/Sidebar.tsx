@@ -17,7 +17,8 @@ import {
 import { NavLink, useNavigate } from 'react-router-dom';
 import Button from './Button';
 import { useAuth } from '../contexts/AuthContext';
-
+import Emblem from '../../public/artiflex emblem.png'
+import Logo from '../../public/artiflex logo.png'
 const Sidebar: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -44,16 +45,29 @@ const Sidebar: React.FC = () => {
                  transition-all duration-300 overflow-hidden"
     >
       {/* Brand */}
-      <div className="h-16 px-4 border-b border-midnight-700/40 flex items-center transition-all duration-300">
-        <div className="flex items-center space-x-3">
-          <div className="bg-sky-500/40 p-2 rounded-lg backdrop-blur-md shadow-md">
-            <LayoutDashboard className="h-6 w-6 text-ivory-100" />
-          </div>
-          <span className="text-lg font-semibold text-ivory-100 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            Aieera's CRM
-          </span>
-        </div>
-      </div>
+    <div className="h-16 px-3 border-b border-midnight-700/40 flex items-center transition-all duration-300">
+    <div className="flex items-center space-x-2">
+        
+        {/* Emblem - Always Visible */}
+        {/* The size h-12 w-12 was working well, so we keep it. */}
+        <img 
+            src={Emblem} 
+            className="h-14 w-14 flex-shrink-0" 
+            alt="Artiflex Emblem" 
+        />
+        
+        {/* Logo - Visible on Hover */}
+        {/* We set a fixed height and let the width adjust automatically, with a max-width to prevent it from getting too large. */}
+        <img 
+            src={Logo} 
+            className="h-17 w-auto max-w-[120px] opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+            alt="Artiflex Logo" 
+        />
+
+    </div>
+</div>
+
+
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
@@ -141,7 +155,7 @@ const Sidebar: React.FC = () => {
         >
           <Receipt size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          invoice
+          Invoice
           </span>
         </NavLink>
         <NavLink
@@ -150,7 +164,7 @@ const Sidebar: React.FC = () => {
         >
           <Store size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          vendors
+          Vendors
           </span>
         </NavLink>
       </nav>

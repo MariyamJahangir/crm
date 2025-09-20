@@ -50,10 +50,11 @@ function applyAssociations() {
     QuoteItem.belongsTo(Quote, { foreignKey: 'quoteId' });
 Member.hasMany(SalesTarget, { foreignKey: 'memberId', as: 'salesTargets' });
 SalesTarget.belongsTo(Member, { foreignKey: 'memberId', as: 'member' });
+Quote.belongsTo(Member, { as: 'salesman', foreignKey: 'salesmanId' });
     // --- Invoice & InvoiceItem Associations ---
     Invoice.hasMany(InvoiceItem, { foreignKey: 'invoiceId', as: 'items', onDelete: 'CASCADE' });
     InvoiceItem.belongsTo(Invoice, { foreignKey: 'invoiceId' });
-
+Invoice.belongsTo(Member, { as: 'salesman', foreignKey: 'salesmanId' });
     // --- FIX: Add the missing association between Invoice and Member ---
     Invoice.belongsTo(Member, { foreignKey: 'createdById', as: 'creator' });
     Member.hasMany(Invoice, { foreignKey: 'createdById', as: 'createdInvoices' });

@@ -1,5 +1,5 @@
 // pages/EditLead.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,useRef, useLayoutEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { teamService, TeamUser } from '../services/teamService';
 const STAGES = ['Discover', 'Solution Validation', 'Quote', 'Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'] as const;
 const FORECASTS = ['Pipeline', 'BestCase', 'Commit'] as const;
 const SOURCES = ['Website', 'Referral', 'Advertisement', 'Event', 'Cold Call', 'Other'] as const;
+type Stage = typeof STAGES[number];
 
 const EditLead: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,7 +39,9 @@ const EditLead: React.FC = () => {
   const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
   const [description, setDescription] = useState('');
   const [lostReason, setLostReason] = useState<string>('');
-
+  const [indicatorStyle, setIndicatorStyle] = useState({});
+  const stageContainerRef = useRef<HTMLDivElement>(null);
+  const stageButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
   useEffect(() => {
     if (!id || !token) return;
 
@@ -113,6 +116,19 @@ const EditLead: React.FC = () => {
       setSaving(false);
     }
   };
+useLayoutEffect(() => {
+    const activeIndex = STAGES.indexOf(stage);
+    const activeButton = stageButtonRefs.current[activeIndex];
+    
+    if (activeButton) {
+      setIndicatorStyle({
+        left: activeButton.offsetLeft,
+        width: activeButton.offsetWidth,
+        top: activeButton.offsetTop,
+        height: activeButton.offsetHeight,
+      });
+    }
+  }, [stage]); 
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="text-gray-600">Loading...</div></div>;
@@ -143,30 +159,39 @@ const EditLead: React.FC = () => {
         )}
 
         {!loading && lead && (
-          <form
-            onSubmit={save}
-            className="space-y-6 bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
-             p-6 rounded-2xl shadow-xl border border-cloud-300/30 dark:border-midnight-700/30"
-          >
-            {/* Stage */}
-            <div>
-              <div className="text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Stage</div>
-              <div className="flex flex-wrap gap-2">
-                {STAGES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`px-3 py-1.5 rounded-xl border transition shadow-sm 
-                      ${stage === s 
-                        ? 'bg-sky-500 text-white border-sky-500 shadow-md' 
-                        : 'bg-white/60 dark:bg-midnight-800/60 text-midnight-700 dark:text-ivory-200 border-cloud-200/50 dark:border-midnight-600/50 hover:bg-cloud-100/70 dark:hover:bg-midnight-700/70'}`}
-                    onClick={() => setStage(s)}
-                  >
-                    {s}
-                  </button>
-                ))}
+           <form
+              onSubmit={save}
+              className="space-y-8 bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                         p-6 rounded-2xl shadow-xl border border-cloud-300/30 dark:border-midnight-700/30"
+            >
+              {/* --- New Integrated Stage Selector --- */}
+              
+                 <div>
+              <div
+  ref={stageContainerRef}
+  className="relative flex w-full flex-wrap items-center p-1 rounded-full bg-cloud-200/60 dark:bg-midnight-800/60 backdrop-blur-sm border border-cloud-300/40 dark:border-midnight-700/40"
+>
+  <span
+    className="absolute rounded-full bg-sky-500 shadow-lg transition-all duration-300 ease-in-out"
+    style={indicatorStyle}
+  />
+  {STAGES.map((s, index) => (
+    <button
+      key={s}
+      ref={(el) => (stageButtonRefs.current[index] = el)}
+      type="button"
+      className={`relative z-10 flex-1 h-11 flex items-center justify-center px-3 text-sm font-semibold rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500 focus-visible:ring-offset-cloud-100 dark:focus-visible:ring-offset-midnight-800 ${
+        stage === s
+          ? 'text-white'
+          : 'text-midnight-600 dark:text-ivory-300 hover:text-midnight-900 dark:hover:text-ivory-100'
+      }`}
+      onClick={() => setStage(s)}
+    >
+      {s}
+    </button>
+  ))}
+</div>
               </div>
-            </div>
 
             {/* Forecast */}
             <div>

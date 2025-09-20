@@ -198,40 +198,56 @@ function buildInvoiceHTML({ invoice, items, creator }) {
  * Retrieves a list of all invoices.
  */
 router.get('/', authenticateToken, async (req, res) => {
-  try {
-    // 1. Determine the user's role and ID from the authentication token.
-    const isUserAdmin = isAdmin(req);
-    const userId = req.subjectId; // Assuming your token middleware provides this ID
+    try {
+        const isUserAdmin = isAdmin(req);
+        const userId = req.subjectId;
 
-    // 2. Create a dynamic 'where' clause for the database query.
-    const whereClause = {};
-    if (!isUserAdmin) {
-      // If the user is NOT an admin, restrict the query to their own invoices.
-      whereClause.createdById = userId;
-    }
-
-    // 3. Execute the query using the dynamic where clause.
-    const invoices = await Invoice.findAll({
-      where: whereClause, // This applies the role-based filter.
-      order: [['invoiceDate', 'DESC']],
-      include: [
-        { model: InvoiceItem, as: 'items' },
-        {
-          model: Quote,
-          as: 'quote',
-          attributes: ['id', 'quoteNumber'],
-          required: false
+        // Base 'where' clause to filter invoices based on user role
+        const whereClause = {};
+        if (!isUserAdmin) {
+            // This assumes non-admins should only see invoices they created.
+            // Adjust 'createdById' to the actual field in your Invoice model.
+            whereClause.createdById = userId;
         }
-      ]
-    });
 
-    res.json({ success: true, invoices });
+        const invoices = await Invoice.findAll({
+            where: whereClause,
+            order: [['invoiceDate', 'DESC']],
+            include: [
+                { model: InvoiceItem, as: 'items' },
+                {
+                    model: Quote,
+                    as: 'quote',
+                    attributes: ['id', 'quoteNumber'],
+                    required: false,
+                    // --- NESTED INCLUDE TO FETCH THE SALESMAN ---
+                    include: [{
+                        model: Member,
+                        as: 'salesman', // This alias must match the association in your Quote model
+                        attributes: ['id', 'name', 'email'] // Specify only the fields you need
+                    }]
+                }
+            ]
+        });
 
-  } catch (error) {
-    console.error('List Invoices Error:', error); // Good practice to log the error
-    res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
-  }
+        // Map the results to hoist salesmanName to the top level for easy frontend access
+        const results = invoices.map(invoice => {
+            const plainInvoice = invoice.get({ plain: true });
+            return {
+                ...plainInvoice,
+                // Add salesmanName from the nested include, defaulting to null if not found
+                salesmanName: plainInvoice.quote?.salesman?.name || null 
+            };
+        });
+
+        res.json({ success: true, invoices: results });
+
+    } catch (error) {
+        console.error('List Invoices Error:', error);
+        res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
+    }
 });
+
 
 
 // router.get('/:id/download', authenticateToken, async (req, res) => {

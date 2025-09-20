@@ -1,186 +1,5 @@
-// import React, { useEffect, useMemo, useState } from 'react';
-// import { Pencil } from 'lucide-react'; // Icon for editing
-// import Sidebar from '../components/Sidebar';
-// import Button from '../components/Button';
-// import { useAuth } from '../contexts/AuthContext';
-// import { contactsService, ContactRow } from '../services/contactsService';
-// import ConfirmDialog from '../components/ConfirmDialog';
-// import DataTable from '../components/DataTable';
-// import AddContactModal from '../components/AddContactModal';
-// import EditContactModal from '../components/EditContactModal'; // --- NEW ---
-
-// const Contacts: React.FC = () => {
-//   const { token } = useAuth();
-//   const [rows, setRows] = useState<ContactRow[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const [search, setSearch] = useState('');
-//   const [error, setError] = useState<string | null>(null);
-//   const [isAddModalOpen, setAddModalOpen] = useState(false);
-
-//   // --- NEW --- States for edit modal
-//   const [isEditModalOpen, setEditModalOpen] = useState(false);
-//   const [editingContactId, setEditingContactId] = useState<string | null>(null);
-
-//   const [selected, setSelected] = useState<Record<string, boolean>>({});
-//   const [confirmOpen, setConfirmOpen] = useState(false);
-//   const [deleting, setDeleting] = useState(false);
-
-//   const selectedIds = useMemo(() => Object.keys(selected).filter(k => selected[k]), [selected]);
-
-//   const load = async (q?: string) => {
-//     if (!token) return;
-//     setError(null);
-//     setLoading(true);
-//     try {
-//       const res = await contactsService.list(token, q);
-//       setRows(res.contacts);
-//     } catch (e: any) {
-//       setError(e?.data?.message || 'Failed to load contacts');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-  
-//   const handleAddSuccess = () => {
-//     setAddModalOpen(false);
-//     load(search);
-//   };
-  
-//   // --- NEW ---
-//   const handleEditSuccess = () => {
-//     setEditModalOpen(false);
-//     setEditingContactId(null);
-//     load(search);
-//   };
-  
-//   // --- NEW ---
-//   const openEditModal = (contactId: string) => {
-//     setEditingContactId(contactId);
-//     setEditModalOpen(true);
-//   };
-
-//   useEffect(() => { load(); }, [token]);
-
-//   const onSearch = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     await load(search);
-//   };
-
-//   const toggle = (id: string) => setSelected(prev => ({ ...prev, [id]: !prev[id] }));
-
-//   const onBulkDelete = async () => {
-//     if (selectedIds.length === 0) return;
-//     setDeleting(true);
-//     try {
-//       await contactsService.bulkDelete(selectedIds, token);
-//       await load(search);
-//       setSelected({});
-//       setConfirmOpen(false);
-//     } catch { /* ignore */ }
-//     finally { setDeleting(false); }
-//   };
-
-//   return (
-//     <div className="min-h-screen bg-gray-50">
-//       <Sidebar />
-//       <div className="pl-64">
-//         <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-//           {/* Header remains the same */}
-//           <div className="flex items-center justify-between mb-6">
-//             <div>
-//               <h1 className="text-2xl font-semibold text-gray-900">Contacts</h1>
-//               <p className="text-gray-600">All customer contacts in one place.</p>
-//             </div>
-//             <div className="flex gap-2">
-//               <Button variant="danger" disabled={selectedIds.length === 0} onClick={() => setConfirmOpen(true)}>
-//                 Delete Selected ({selectedIds.length})
-//               </Button>
-//               <Button variant="primary" onClick={() => setAddModalOpen(true)}>
-//                 Add Contact
-//               </Button>
-//             </div>
-//           </div>
-
-//           {/* Search form remains the same */}
-//           <form onSubmit={onSearch} className="mb-4 flex gap-2">
-//             <input
-//               className="flex-1 border rounded-lg px-3 py-2"
-//               placeholder="Search name, department, email, mobile, company..."
-//               value={search}
-//               onChange={(e) => setSearch(e.target.value)}
-//             />
-//             <Button type="submit">Search</Button>
-//             <Button type="button" variant="secondary" onClick={() => { setSearch(''); load(); }}>
-//               Reset
-//             </Button>
-//           </form>
-
-//           {loading && <div>Loading...</div>}
-//           {error && <div className="text-red-600">{error}</div>}
-
-//           <div className="bg-white border rounded shadow-sm">
-//             <div className="hidden sm:block">
-//               <DataTable
-//                 rows={rows}
-//                 columns={[
-//                   { key: 'sel', header: '', width: '40px', sortable: false, render: (r: ContactRow) => (
-//                     <input type="checkbox" className="h-4 w-4" checked={!!selected[r.id]} onChange={() => toggle(r.id)} />
-//                   )},
-//                   { key: 'name', header: 'Name' },
-//                   { key: 'designation', header: 'Designation' },
-//                   { key: 'department', header: 'Department' },
-//                   { key: 'email', header: 'Email' },
-//                   { key: 'mobile', header: 'Mobile' },
-//                   { key: 'customer', header: 'Company', render: (r: ContactRow) => r.customer?.companyName || '-' },
-//                   // --- NEW --- Edit Action Column
-//                   { key: 'actions', header: 'Actions', width: '80px', sortable: false, render: (r: ContactRow) => (
-//                     <button onClick={() => openEditModal(r.id)} className="text-gray-500 hover:text-indigo-600">
-//                       <Pencil size={18} />
-//                     </button>
-//                   )},
-//                 ]}
-//                 filterKeys={['name','designation','department','email','mobile','customer.companyName']}
-//                 initialSort={{ key: 'createdAt', dir: 'DESC' }}
-//                 searchPlaceholder="Filter contacts..."
-//               />
-//             </div>
-//             {/* Mobile list needs update too if used */}
-//           </div>
-//         </main>
-//       </div>
-
-//       <ConfirmDialog
-//         open={confirmOpen}
-//         title="Delete Contacts"
-//         message={`Are you sure you want to delete ${selectedIds.length} selected contact(s)?`}
-//         confirmText={deleting ? 'Deleting...' : 'Yes, Delete'}
-//         cancelText="Cancel"
-//         onConfirm={onBulkDelete}
-//         onCancel={() => setConfirmOpen(false)}
-//       />
-      
-//       <AddContactModal
-//         open={isAddModalOpen}
-//         onClose={() => setAddModalOpen(false)}
-//         onSuccess={handleAddSuccess}
-//       />
-
-//       {/* --- NEW --- Render the Edit Modal */}
-//       <EditContactModal
-//         open={isEditModalOpen}
-//         contactId={editingContactId}
-//         onClose={() => setEditModalOpen(false)}
-//         onSuccess={handleEditSuccess}
-//       />
-//     </div>
-//   );
-// };
-
-// export default Contacts;
-// src/pages/Contacts.tsx
-// src/pages/Contacts.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
 import { useAuth } from '../contexts/AuthContext';
@@ -188,212 +7,182 @@ import { contactsService, ContactRow } from '../services/contactsService';
 import ConfirmDialog from '../components/ConfirmDialog';
 import DataTable from '../components/DataTable';
 import AddContactModal from '../components/AddContactModal';
+import EditContactModal from '../components/EditContactModal';
+import { Filter } from '../components/FilterDropdown'; // Make sure this path is correct
 
 const Contacts: React.FC = () => {
-  const { token } = useAuth();
-  const [rows, setRows] = useState<ContactRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [isAddModalOpen, setAddModalOpen] = useState(false);
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+    const { token, user } = useAuth();
+    const isAdmin = user?.type === 'ADMIN';
 
-  const selectedIds = useMemo(
-    () => Object.keys(selected).filter((k) => selected[k]),
-    [selected]
-  );
+    // State for the master (unfiltered) list and the displayed (filtered) list
+    const [masterRows, setMasterRows] = useState<ContactRow[]>([]);
+    const [rows, setRows] = useState<ContactRow[]>([]);
+    
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [appliedFilters, setAppliedFilters] = useState<Filter[]>([]);
 
-  const handleAddSuccess = () => {
-    setAddModalOpen(false);
-    load(search);
-  };
+    // Modals and selection states
+    const [isAddModalOpen, setAddModalOpen] = useState(false);
+    const [isEditModalOpen, setEditModalOpen] = useState(false);
+    const [editingContactId, setEditingContactId] = useState<string | null>(null);
+    const [selected, setSelected] = useState<Record<string, boolean>>({});
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
-  const load = async (q?: string) => {
-    if (!token) return;
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await contactsService.list(token, q);
-      setRows(res.contacts);
-    } catch (e: any) {
-      setError(e?.data?.message || 'Failed to load contacts');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const selectedIds = useMemo(() => Object.keys(selected).filter((k) => selected[k]), [selected]);
 
-  useEffect(() => {
-    load();
-  }, [token]);
+    // Initial data load
+    const load = async () => {
+        if (!token) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await contactsService.list(token);
+            setMasterRows(res.contacts);
+            setRows(res.contacts);
+        } catch (e: any) {
+            setError(e?.data?.message || 'Failed to load contacts');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const onSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await load(search);
-  };
+    useEffect(() => {
+        load();
+    }, [token]);
 
-  const toggle = (id: string) =>
-    setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
+    // Apply filters whenever the master list or filters change
+    useEffect(() => {
+        let filtered = [...masterRows];
 
-  const onBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
-    setDeleting(true);
-    try {
-      await contactsService.bulkDelete(selectedIds, token);
-      await load(search);
-      setSelected({});
-      setConfirmOpen(false);
-    } catch {
-      /* ignore */
-    } finally {
-      setDeleting(false);
-    }
-  };
+        appliedFilters.forEach(filter => {
+            if (filter.values.length > 0) {
+                const key = filter.type;
+                filtered = filtered.filter(contact => {
+                    const value = 
+                        key === 'Designation' ? contact.designation :
+                        key === 'Department' ? contact.department :
+                        key === 'Salesman' ? contact.customer?.salesman?.name :
+                        null;
+                    return value && filter.values.includes(value);
+                });
+            }
+        });
 
-  return (
-    <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
-      <Sidebar />
-      <div className="flex-1 overflow-y-auto h-screen">
-        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-ivory-200">
-                Contacts
-              </h1>
-              <p className="text-gray-600 dark:text-midnight-400">
-                All customer contacts in one place.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="danger"
-                disabled={selectedIds.length === 0}
+        setRows(filtered);
+    }, [appliedFilters, masterRows]);
+
+    // Generate filter options from the master list
+    const filterOptions = useMemo(() => ({
+        Designation: [...new Set(masterRows.map(c => c.designation).filter(Boolean))],
+        Department: [...new Set(masterRows.map(c => c.department).filter(Boolean))],
+        ...(isAdmin && { Salesman: [...new Set(masterRows.map(c => c.customer?.salesman?.name).filter(Boolean))] }),
+    }), [masterRows, isAdmin]);
+
+    // Handlers for modals and actions
+    const handleAddSuccess = () => { setAddModalOpen(false); load(); };
+    const handleEditSuccess = () => { setEditModalOpen(false); setEditingContactId(null); load(); };
+    const openEditModal = (contactId: string) => { setEditingContactId(contactId); setEditModalOpen(true); };
+    const toggle = (id: string) => setSelected(prev => ({ ...prev, [id]: !prev[id] }));
+
+    const onBulkDelete = async () => {
+        if (selectedIds.length === 0) return;
+        setDeleting(true);
+        try {
+            await contactsService.bulkDelete(selectedIds, token);
+            await load();
+            setSelected({});
+            setConfirmOpen(false);
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    return (
+        <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+            <Sidebar />
+            <div className="flex-1 overflow-y-auto h-screen">
+                <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+                        <div>
+                            <h1 className="text-2xl font-semibold text-gray-900 dark:text-ivory-200">Contacts</h1>
+                            <p className="text-gray-600 dark:text-midnight-400">All customer contacts in one place.</p>
+                        </div>
+                        <div className="flex gap-2">
+                            {isAdmin && (
+            <Button 
+                variant="danger" 
+                disabled={selectedIds.length === 0} 
                 onClick={() => setConfirmOpen(true)}
-                className="flex items-center px-4 py-2 bg-red-200/50 dark:bg-red-800/50 backdrop-blur-md text-red-800 dark:text-ivory-300 hover:bg-red-300/70 dark:hover:bg-red-700/70 shadow-md rounded-xl transition"
-              >
-                <Trash2 size={18} className="mr-2" />
-                Delete Selected ({selectedIds.length})
-              </Button>
-              <Button
-                onClick={() => setAddModalOpen(true)}
-                className="flex items-center px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
-              >
-                <Plus size={18} className="mr-2" />
-                Add Contact
-              </Button>
-            </div>
-          </div>
-
-          {/* Search Bar */}
-          {/* <form onSubmit={onSearch} className="mb-4 flex gap-2">
-            <input
-              className="flex-1 border rounded-lg px-3 py-2 bg-cloud-50/30 dark:bg-midnight-900/30 text-midnight-700 dark:text-ivory-300 placeholder-gray-500"
-              placeholder="Search name, department, email, mobile, company..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Button type="submit">Search</Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setSearch('');
-                load();
-              }}
             >
-              Reset
+                <Trash2 size={18} className="mr-2" /> Delete ({selectedIds.length})
             </Button>
-          </form> */}
+        )}
+                            <Button onClick={() => setAddModalOpen(true)}>
+                                <Plus size={18} className="mr-2" /> 
+                            </Button>
+                        </div>
+                    </div>
 
-          {/* Status */}
-          {loading && (
-            <div className="text-midnight-700 dark:text-ivory-300">Loading...</div>
-          )}
-          {error && <div className="text-red-600">{error}</div>}
+                    {loading && <div className="text-midnight-700 dark:text-ivory-300">Loading...</div>}
+                    {error && <div className="text-red-600">{error}</div>}
 
-          {/* DataTable */}
-          {!loading && !error && (
-            <DataTable
-              rows={rows}
-              columns={[
-                {
-                  key: 'sel',
-                  header: '',
-                  width: '40px',
-                  sortable: false,
-                  render: (r: ContactRow) => (
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={!!selected[r.id]}
-                      onChange={() => toggle(r.id)}
-                    />
-                  ),
-                },
-                { key: 'name', header: 'Name' },
-                { key: 'designation', header: 'Designation' },
-                { key: 'department', header: 'Department' },
-                { key: 'email', header: 'Email' },
-                { key: 'mobile', header: 'Mobile' },
-                { key: 'fax', header: 'Fax' },
-                { key: 'social', header: 'Social' },
-                {
-                  key: 'customer',
-                  header: 'Company',
-                  render: (r: ContactRow) => r.customer?.companyName || '-',
-                },
-                {
-                  key: 'industry',
-                  header: 'Industry',
-                  render: (r: ContactRow) => r.customer?.industry || '-',
-                },
-                {
-                  key: 'category',
-                  header: 'Category',
-                  render: (r: ContactRow) => r.customer?.category || '-',
-                },
-              ]}
-              filterKeys={[
-                'name',
-                'designation',
-                'department',
-                'email',
-                'mobile',
-                'fax',
-                'social',
-                'customer.companyName',
-                'industry',
-                'category',
-              ]}
-              initialSort={{ key: 'createdAt', dir: 'DESC' }}
-              searchPlaceholder="Filter contacts..."
-              className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl p-3"
+                    {!loading && !error && (
+                        <DataTable
+                            rows={rows}
+                            columns={[
+                                ...(isAdmin ? [{ 
+        key: 'sel', 
+        header: '', 
+        width: '40px', 
+        sortable: false, 
+        render: (r: ContactRow) => (
+            <input 
+                type="checkbox" 
+                className="h-4 w-4" 
+                checked={!!selected[r.id]} 
+                onChange={() => toggle(r.id)} 
             />
-          )}
-        </main>
-      </div>
+        )
+    }] : []),
+                                { key: 'name', header: 'Name' },
+                                { key: 'designation', header: 'Designation' },
+                                { key: 'department', header: 'Department' },
+                                { key: 'email', header: 'Email' },
+                                { key: 'mobile', header: 'Mobile' },
+                                { key: 'customer.companyName', header: 'Company' },
+                                { key: 'customer.salesman.name', header: 'Salesman' },
+                                { key: 'actions', header: 'Actions', width: '80px', sortable: false, render: (r: ContactRow) => (
+                                    <button onClick={() => openEditModal(r.id)} className="p-2 text-gray-500 hover:text-sky-500">
+                                        <Pencil size={18} />
+                                    </button>
+                                )},
+                            ]}
+                            filterKeys={['name', 'designation', 'department', 'email', 'mobile', 'customer.companyName', 'customer.salesman.name']}
+                            initialSort={{ key: 'name', dir: 'ASC' }}
+                            searchPlaceholder="Search contacts..."
+                            // Props to enable the filter dropdown
+                            filterOptions={filterOptions}
+                            appliedFilters={appliedFilters}
+                            onApplyFilters={setAppliedFilters}
+                        />
+                    )}
+                </main>
+            </div>
 
-      {/* Delete Confirm */}
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Delete Contacts"
-        message={`Are you sure you want to delete ${selectedIds.length} selected contact(s)?`}
-        confirmText={deleting ? 'Deleting...' : 'Yes, Delete'}
-        cancelText="Cancel"
-        onConfirm={onBulkDelete}
-        onCancel={() => setConfirmOpen(false)}
-      />
-
-      {/* Add Contact */}
-      <AddContactModal
-        open={isAddModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onSuccess={handleAddSuccess}
-      />
-    </div>
-  );
+            <ConfirmDialog
+                open={confirmOpen}
+                title="Delete Contacts"
+                message={`Delete ${selectedIds.length} selected contact(s)?`}
+                onConfirm={onBulkDelete}
+                onCancel={() => setConfirmOpen(false)}
+            />
+            <AddContactModal open={isAddModalOpen} onClose={() => setAddModalOpen(false)} onSuccess={handleAddSuccess} />
+            <EditContactModal open={isEditModalOpen} contactId={editingContactId} onClose={() => setEditModalOpen(false)} onSuccess={handleEditSuccess} />
+        </div>
+    );
 };
 
 export default Contacts;

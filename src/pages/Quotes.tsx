@@ -8,7 +8,7 @@ import { invoiceService } from '../services/invoiceService';
 import DataTable from '../components/DataTable';
 import PreviewModal from '../components/PreviewModal';
 import { Eye, Download } from 'lucide-react'; // 👈 added icons
-
+import { Filter } from '../components/FilterDropdown';
 
 // --- Rejection Dialog Sub-component ---
 const RejectDialog: React.FC<{
@@ -73,37 +73,55 @@ const Quotes: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+      const [masterQuotes, setMasterQuotes] = useState<Quote[]>([]);
   const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [rejectFor, setRejectFor] = useState<Quote | null>(null);
+    const [appliedFilters, setAppliedFilters] = useState<Filter[]>([]);
 
   // --- Data Fetching ---
-  useEffect(() => {
-    if (!token) return;
-    (async () => {
-      setLoading(true);
-      setErr(null);
-      try {
-        const res = await quotesService.listAll(token);
-        console.log(res.quotes)
-        setQuotes(res.quotes);
-      } catch (e: any) {
-        setErr(e?.data?.message || 'Failed to load quotes');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [token]);
+useEffect(() => {
+        if (!token) return;
+        (async () => {
+            setLoading(true);
+            setErr(null);
+            try {
+                const res = await quotesService.listAll(token);
+                setMasterQuotes(res.quotes);
+                setQuotes(res.quotes); // Initially display all quotes
+            } catch (e: any) {
+                setErr(e?.data?.message || 'Failed to load quotes');
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, [token]);
 
-  // --- Memoized Search Filter ---
-  const filteredQuotes = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return quotes;
-    return quotes.filter(x =>
-      (x.quoteNumber || '').toLowerCase().includes(q) ||
-      (x.customerName || '').toLowerCase().includes(q)
-    );
-  }, [quotes, search]);
+    // --- Client-Side Filtering ---
+    useEffect(() => {
+        let filtered = [...masterQuotes];
+
+        appliedFilters.forEach(filter => {
+            if (filter.values.length > 0) {
+                const key = filter.type.toLowerCase();
+                filtered = filtered.filter(quote => {
+                    const value = key === 'company' ? quote.customerName :
+                                  key === 'salesman' ? quote.salesmanName :
+                                  (quote as any)[key];
+                    return value && filter.values.includes(value);
+                });
+            }
+        });
+        
+        setQuotes(filtered);
+    }, [appliedFilters, masterQuotes]);
+
+    // --- Memoized Filter Options ---
+    const filterOptions = useMemo(() => ({
+        Company: [...new Set(masterQuotes.map(q => q.customerName).filter(Boolean))],
+        Status: [...new Set(masterQuotes.map(q => q.status).filter(Boolean))],
+        ...(isAdmin && { Salesman: [...new Set(masterQuotes.map(q => q.salesmanName).filter(Boolean))] }),
+    }), [masterQuotes, isAdmin]);
   
   // --- PDF Download Handler ---
   const handleDownload = async (quote: Quote) => {
@@ -290,7 +308,7 @@ return (
         )}
 
         <DataTable
-          rows={filteredQuotes}
+          rows={quotes}
           columns={[
             { key: 'quoteNumber', header: 'Quote #' },
             { key: 'customerName', header: 'Company' },
@@ -338,6 +356,11 @@ return (
             },
           ]}
           initialSort={{ key: 'quoteDate', dir: 'DESC' }}
+           filterKeys={['quoteNumber', 'customerName', 'salesmanName']}
+                        searchPlaceholder="Search quotes..."
+                        filterOptions={filterOptions}
+                        appliedFilters={appliedFilters}
+                        onApplyFilters={setAppliedFilters}
           className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl p-3"
         />
       </main>
