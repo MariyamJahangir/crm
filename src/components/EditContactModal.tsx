@@ -1,8 +1,8 @@
+// src/components/EditContactModal.tsx
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { contactsService, UpdateContactPayload } from '../services/contactsService';
 import Button from './Button';
-import Modal from './Modal'; // Assuming you have a generic Modal component
 
 interface Props {
   open: boolean;
@@ -73,6 +73,7 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
     try {
       await contactsService.update(contactId, form, token);
       onSuccess(); // This will trigger a reload on the parent page
+      onClose(); // Close modal on success
     } catch (e: any) {
       setError(e?.data?.message || 'Failed to save changes.');
     } finally {
@@ -80,28 +81,94 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
     }
   };
 
+  if (!open) return null;
+
   return (
-    <Modal open={open} onClose={onClose} title="Edit Contact">
-      {loading ? (
-        <div>Loading...</div>
-      ) : error ? (
-        <div className="text-red-600 p-4">{error}</div>
-      ) : (
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          <input value={form.name} onChange={handleChange('name')} placeholder="Name*" required className="w-full border rounded px-3 py-2" />
-          <input value={form.designation} onChange={handleChange('designation')} placeholder="Designation*" required className="w-full border rounded px-3 py-2" />
-          <input value={form.department} onChange={handleChange('department')} placeholder="Department" className="w-full border rounded px-3 py-2" />
-          <input value={form.mobile} onChange={handleChange('mobile')} placeholder="Mobile*" required className="w-full border rounded px-3 py-2" />
-          <input value={form.email} type="email" onChange={handleChange('email')} placeholder="Email" className="w-full border rounded px-3 py-2" />
-          <input value={form.fax} onChange={handleChange('fax')} placeholder="Fax" className="w-full border rounded px-3 py-2" />
-          <input value={form.social} onChange={handleChange('social')} placeholder="LinkedIn/Social" className="w-full border rounded px-3 py-2" />
-          <div className="flex justify-end gap-3 pt-4">
-            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
-          </div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+      <div className="bg-white/30 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30
+                      w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-white/20 dark:border-midnight-700/30 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-midnight-800 dark:text-ivory-100">Edit Contact</h2>
+          <button
+            className="p-2 rounded-full text-gray-500 hover:text-gray-800 dark:hover:text-ivory-200 hover:bg-white/20 dark:hover:bg-midnight-700/30 transition"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Form and Content Area */}
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          {loading ? (
+            <div className="p-10 text-center text-midnight-700 dark:text-ivory-300">Loading...</div>
+          ) : (
+            <>
+              {/* Body */}
+              <div className="px-6 py-6 space-y-4 overflow-auto flex-1">
+                {error && (
+                  <div className="bg-red-50/30 dark:bg-red-900/30 border border-red-200/30 dark:border-red-700/30
+                                  text-red-700 dark:text-red-400 px-4 py-2 rounded-xl text-sm shadow-sm">
+                    {error}
+                  </div>
+                )}
+                
+                {/* Reusable Input Style */}
+                {[
+                  { key: 'name', label: 'Name', required: true },
+                  { key: 'designation', label: 'Designation', required: true },
+                  { key: 'department', label: 'Department' },
+                  { key: 'mobile', label: 'Mobile', required: true },
+                  { key: 'email', label: 'Email', type: 'email' },
+                  { key: 'fax', label: 'Fax' },
+                  { key: 'social', label: 'LinkedIn/Social' },
+                ].map(field => (
+                  <div key={field.key}>
+                    <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                      {field.label}{field.required && '*'}
+                    </label>
+                    <input
+                      value={form[field.key as keyof UpdateContactPayload]}
+                      onChange={handleChange(field.key as keyof UpdateContactPayload)}
+                      placeholder={`${field.label}${field.required ? '*' : ''}`}
+                      type={field.type || 'text'}
+                      required={field.required}
+                      className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
+                                 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100
+                                 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-white/20 dark:border-midnight-700/30 flex justify-end gap-4">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={onClose}
+                  className="px-5 py-2 rounded-2xl bg-cloud-100/60 dark:bg-midnight-700/60
+                             border border-cloud-300/40 dark:border-midnight-600/40
+                             text-midnight-700 dark:text-ivory-200
+                             hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 shadow-md transition"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2 rounded-2xl bg-sky-500/90 hover:bg-sky-600 text-white shadow-lg transition disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </>
+          )}
         </form>
-      )}
-    </Modal>
+      </div>
+    </div>
   );
 };
 

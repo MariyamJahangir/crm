@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { teamService, TeamUser } from '../services/teamService';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { Pencil, Trash2, ListRestart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, RefreshCw, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 type SortKey = 'name' | 'email' | 'designation' | 'createdAt' | 'status';
 type SortDir = 'asc' | 'desc';
@@ -262,7 +262,7 @@ const Users: React.FC = () => {
                 onClick={load}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
               >
-                <ListRestart /> 
+                <RefreshCw /> 
               </Button>
               {/* <Button
                 variant="secondary"

@@ -158,7 +158,7 @@ const selectMain = async (q: Quote) => {
                   checked={isMain}
                   onChange={() => selectMain(q)}
                   disabled={busy === q.id}
-                  className="h-4 w-4 text-sky-500 focus:ring-sky-400 border-gray-300"
+                  className="h-4 w-4 text-gray-500 focus:ring-sky-400 border-gray-300"
                 />
                 <span className={isMain ? "font-semibold text-sky-600 dark:text-sky-400" : ""}>
                   {isMain ? "Main" : "Set main"}

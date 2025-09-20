@@ -20,7 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Emblem from '../../public/artiflex emblem.png'
 import Logo from '../../public/artiflex logo.png'
 const Sidebar: React.FC = () => {
-  const { logout } = useAuth();
+  const {user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -83,17 +83,19 @@ const Sidebar: React.FC = () => {
             Dashboard
           </span>
         </NavLink>
-        <NavLink
-          to="/users"
-          className={({ isActive }) =>
-            `${linkBase} ${isActive ? linkActive : linkInactive}`
-          }
-        >
-          <UserCircle size={18} className="mr-3 flex-shrink-0" />
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            Users
-          </span>
-        </NavLink>
+       {user?.type === 'ADMIN' && (
+          <NavLink
+            to="/users"
+            className={({ isActive }) =>
+              `${linkBase} ${isActive ? linkActive : linkInactive}`
+            }
+          >
+            <UserCircle size={18} className="mr-3 flex-shrink-0" />
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              Users
+            </span>
+          </NavLink>
+        )}
         <NavLink
           to="/leads"
           className={({ isActive }) =>

@@ -60,7 +60,7 @@ const MemberTargetGauge: React.FC<MemberTargetGaugeProps> = ({ name, achieved, t
                  <p className="mt-2 text-sm font-bold text-green-600 animate-pulse">Target Achieved!</p>
             ) : (
                 <p className="mt-2 text-xs text-gray-500">
-                    Achieved: ${achieved.toLocaleString()} / Target: ${target.toLocaleString()}
+                    Achieved: AED {achieved.toLocaleString()} / Target: AED {target.toLocaleString()}
                 </p>
             )}
         </div>

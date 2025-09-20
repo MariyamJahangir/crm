@@ -12,7 +12,7 @@ export interface VendorContact {
 }
 
 export type VendorStatus = 'Active' | 'Inactive' | 'OnHold' | 'Blacklisted';
-export type VendorCategory = 'Manufacturer' | 'Distributor' | 'ServiceProvider' | 'Other';
+export type VendorCategory = 'Manufacturer' | 'Distributor' | 'Service Provider' | 'Other';
 export type PaymentTerms = 'Advance' | 'Net15' | 'Net30' | 'Net60';
 
 export interface Vendor {
