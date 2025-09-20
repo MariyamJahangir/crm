@@ -54,7 +54,7 @@ const SelectContactModal: React.FC<SelectContactModalProps> = ({ open, onClose, 
     <Modal open={open} onClose={onClose} title="Select Company" size="lg">
       <input
         type="text"
-        className="w-full form-input mb-4"
+        className="w-full h-10 rounded-lg form-input mb-4 p-2"
         placeholder="Search by company name or contact..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -70,7 +70,7 @@ const SelectContactModal: React.FC<SelectContactModalProps> = ({ open, onClose, 
               onClose();
             }}
           >
-            <div className="font-semibold text-indigo-700">{company.companyName}</div>
+            <div className="font-semibold text-midnght-700">{company.companyName}</div>
             <div className="text-right">
               <span className={`px-2 py-1 text-xs font-bold rounded-full ${
                 company.entityType === 'Vendor' ? 'bg-green-100 text-green-800' 

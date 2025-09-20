@@ -14,11 +14,7 @@ const fs = require('fs/promises');
 const { Op } = require('sequelize');
 const pdf = require('html-pdf');
 const router = express.Router();
-<<<<<<< HEAD
-
-=======
 const  { notifyAdminsOfApprovalRequest, notifyMemberOfQuoteDecision, notifyAdminsOfSuccess }= require('../utils/emailService')
->>>>>>> origin/main
 // --- Constants ---
 const APPROVAL_LIMIT = 500; // Quotes with a grand total LESS than this require admin approval for non-admins
 const FINAL_STATES = new Set(['Accepted', 'Rejected', 'Expired']);
@@ -39,10 +35,6 @@ async function canModifyLead(req, lead) {
 
   return isCreator || isSalesman;
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 async function resolveActorName(req) {
   if (req.subjectType === 'ADMIN') return 'Admin';
   if (req.subjectType === 'MEMBER') {
@@ -80,105 +72,6 @@ async function writeLeadLog(req, leadId, action, message) {
 // --- Puppeteer & PDF Generation ---
 function esc(v) { return (v ?? '').toString(); }
 
-<<<<<<< HEAD
-function buildQuoteHTML({ quote, items, lead, customer }) {
-  const q = quote || {};
-  const it = Array.isArray(items) ? items : [];
-  const l = lead || {};
-  const c = customer || {};
-
-  const title = esc(q.quoteNumber) || 'Quote';
-  const customerName = esc(q.customerName || c.companyName);
-  const contact = esc(q.contactPerson || l.contactPerson);
-  const address = esc(q.address || c.address);
-  const phone = esc(q.phone || l.mobile);
-  const email = esc(q.email || l.email);
-  const salesman = esc(q.salesmanName || (l.salesman && l.salesman.name));
-  const dateStr = q.quoteDate ? new Date(q.quoteDate).toLocaleDateString() : '';
-
-
-   const rows = it.map((row, idx) => {
-    const qty = Number(row.quantity || 0);
-    const rate = Number(row.itemRate || 0);
-    const disc = Number(row.lineDiscountAmount || 0);
-    const lineTotal = Number(row.lineGross !== undefined ? row.lineGross : Math.max(0, qty * rate - disc));
-    return `
-      <tr>
-        <td>${esc(row.slNo ?? idx + 1)}</td>
-        <td>${esc(row.product)}</td>
-        <td>${esc(row.description || '')}</td>
-        <td>${esc(row.unit || '')}</td>
-        <td style="text-align:right">${qty.toFixed(3)}</td>
-        <td style="text-align:right">${rate.toFixed(2)}</td>
-        <td style="text-align:right">${disc.toFixed(2)}</td>
-        <td style="text-align:right">${lineTotal.toFixed(2)}</td>
-      </tr>`;
-  }).join('');
-
-  const subtotal = Number(q.subtotal || 0).toFixed(2);
-  const discount = Number(q.discountAmount || 0).toFixed(2);
-  const vat = Number(q.vatAmount || 0).toFixed(2);
-  const grand = Number(q.grandTotal || 0).toFixed(2);
-
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${title}</title>
-  <style>
-    :root { color-scheme: light; }
-    html, body { margin:0; padding:16px; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    h2 { margin: 0 0 12px 0; }
-    .grid { display:flex; justify-content:space-between; gap:16px; font-size:12px; }
-    .grid > div > div { margin: 2px 0; }
-    .mt { margin-top:12px; }
-    table { width:100%; border-collapse: collapse; }
-    th, td { border:1px solid #ddd; padding:6px; font-size:12px; }
-    th { background:#f5f5f5; text-align:left; }
-    .totals { display:flex; justify-content:flex-end; }
-    .totals table { width:auto; }
-    .right { text-align:right; }
-  </style>
-</head>
-<body>
-  <h2>Quote ${esc(q.quoteNumber) || ''}</h2>
-  <div class="grid">
-    <div>
-      <div><b>Customer:</b> ${customerName}</div>
-      <div><b>Contact:</b> ${contact}</div>
-      <div><b>Address:</b> ${address}</div>
-    </div>
-    <div>
-      <div><b>Date:</b> ${dateStr}</div>
-      <div><b>Salesman:</b> ${salesman}</div>
-      <div><b>Phone:</b> ${esc(phone)}</div>
-      <div><b>Email:</b> ${esc(email)}</div>
-    </div>
-  </div>
-  <div class="mt">
-    <table>
-      <thead>
-        <tr>
-          <th>Sl</th><th>Product</th><th>Description</th><th>Unit</th>
-          <th class="right">Qty</th><th class="right">Rate</th><th class="right">Disc Amt</th><th class="right">Line Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows}
-      </tbody>
-    </table>
-  </div>
-  <div class="mt totals">
-    <table>
-      <tbody>
-        <tr><td>Subtotal</td><td class="right">${subtotal}</td></tr>
-        <tr><td>Discount</td><td class="right">${discount}</td></tr>
-        <tr><td>VAT</td><td class="right">${vat}</td></tr>
-        <tr><td><b>Grand Total</b></td><td class="right"><b>${grand}</b></td></tr>
-      </tbody>
-    </table>
-  </div>
-=======
 function buildQuoteInternalPreviewHTML({ quote, items, customer }) {
     const q = quote || {};
     const c = customer || {};
@@ -600,7 +493,6 @@ function buildQuoteHTML({ quote, items, lead, customer }) {
         <div><b>Payment Terms</b></div>
         <div>100% advance payment</div>
     </div>
->>>>>>> origin/main
 </body>
 </html>`;
 }
@@ -700,157 +592,6 @@ router.get('/', authenticateToken, async (req, res) => {
 
 // Create quote with approval logic
 router.post('/leads/:leadId/quotes', authenticateToken, [
-<<<<<<< HEAD
-  body('quoteDate').optional().isISO8601(),
-  body('validityUntil').optional().isISO8601(),
-  body('salesmanId').optional().isString(),
-  body('customerName').trim().notEmpty(),
-  body('discountMode').isIn(['PERCENT', 'AMOUNT']),
-  body('discountValue').isFloat({ min: 0 }),
-  body('vatPercent').isFloat({ min: 0 }),
-  body('items').isArray({ min: 1 }),
-  body('items.*.product').trim().notEmpty(),
-  body('items.*.quantity').isFloat({ gt: 0 }),
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
-  }
-  try {
-    const lead = await Lead.findByPk(req.params.leadId);
-    if (!lead) {
-      return res.status(404).json({ success: false, message: 'Lead not found' });
-    }
-    if (!(await canSeeLead(req, lead))) {
-      return res.status(403).json({ success: false, message: 'Forbidden' });
-    }
-
-    const { items, discountMode, discountValue, vatPercent } = req.body;
-    let subtotal = 0;
-    const computedItems = items.map(it => {
-      const qty = Number(it.quantity || 0);
-      const rate = Number(it.itemRate || 0);
-      const grossBefore = qty * rate;
-      let ldAmt = (it.lineDiscountMode || 'PERCENT') === 'AMOUNT'
-        ? Number(it.lineDiscountAmount || 0)
-        : (grossBefore * Number(it.lineDiscountPercent || 0)) / 100;
-      ldAmt = Math.min(ldAmt, grossBefore);
-      subtotal += grossBefore - ldAmt;
-      return { ...it, lineGross: grossBefore - ldAmt };
-    });
-    const overallDiscAmt = discountMode === 'PERCENT'
-      ? (subtotal * Number(discountValue || 0)) / 100
-      : Math.min(Number(discountValue || 0), subtotal);
-    const netAfterDiscount = subtotal - overallDiscAmt;
-    const vatAmount = netAfterDiscount * (Number(vatPercent || 0) / 100);
-    const grandTotal = netAfterDiscount + vatAmount;
-
-    // Approval Logic: if user is not admin and total is less than the limit, require approval
-    let isApproved = true;
-    let initialStatus = 'Draft';
-    if (!isAdmin(req) && grandTotal < APPROVAL_LIMIT) {
-      isApproved = false;
-      initialStatus = 'PendingApproval';
-    }
-
-    const quoteNumber = `Q-${new Date().getFullYear()}-${Date.now()}`;
-    const created = await Quote.create({
-      ...req.body,
-      quoteNumber,
-      leadId: lead.id,
-      isApproved,
-      status: initialStatus,
-      grandTotal: grandTotal.toFixed(2),
-      subtotal: subtotal.toFixed(2),
-      discountAmount: overallDiscAmt.toFixed(2),
-      vatAmount: vatAmount.toFixed(2),
-      rejectNote: null,
-      approvedBy: isApproved ? 'Auto-approved' : null,
-    });
-
-    await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: created.id })));
-
-    // **EDIT: Update the lead's stage to 'Quote'**
-    if (lead.stage !== 'Quote') {
-        await lead.update({ stage: 'Quote' });
-    }
-
-    await writeLeadLog(req, lead.id, 'QUOTE_CREATED', `Created quote #${quoteNumber}. Status: ${initialStatus}`);
-    
-    res.status(201).json({
-      success: true,
-      quoteId: created.id,
-      quoteNumber: created.quoteNumber,
-      isApproved: created.isApproved,
-      status: created.status,
-    });
-  } catch (e) {
-    console.error('Create Quote Error:', e);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-
-
-// ADMIN APPROVE QUOTE
-router.post('/:leadId/:quoteId/approve', authenticateToken,  async (req, res) => {
-  try {
-    const quote = await Quote.findByPk(req.params.quoteId);
-    
-    if (!quote || String(quote.leadId) !== req.params.leadId) {
-      return res.status(404).json({ success: false, message: 'Quote not found.' });
-    }
-    if (FINAL_STATES.has(quote.status)) {
-      return res.status(409).json({ success: false, message: 'Decision is already final.' });
-    }
-
-    await quote.update({
-      isApproved: true,
-      status: 'Draft',
-      approvedBy: await resolveActorName(req),
-      rejectNote: null,
-    });
-    
-    await writeLeadLog(req, quote.leadId, 'QUOTE_APPROVED', `Approved quote #${quote.quoteNumber}`);
-    res.json({ success: true, quote });
-  } catch (e) {
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-
-router.post('/:leadId/:quoteId/reject', authenticateToken,  [
-  body('note').trim().notEmpty().withMessage('Rejection reason is required.')
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, errors: errors.array() });
-  }
-  try {
-    const quote = await Quote.findByPk(req.params.quoteId);
-    if (!quote || String(quote.leadId) !== req.params.leadId) {
-      return res.status(404).json({ success: false, message: 'Quote not found.' });
-    }
-    if (FINAL_STATES.has(quote.status)) {
-      return res.status(409).json({ success: false, message: 'Decision is already final.' });
-    }
-
-    const note = req.body.note.slice(0, 500);
-    await quote.update({
-      isApproved: false,
-      status: 'Rejected', // Correctly set status to 'Rejected'
-      approvedBy: null,
-      rejectNote: note,
-    });
-
-    await writeLeadLog(req, quote.leadId, 'QUOTE_REJECTED', `Rejected quote #${quote.quoteNumber} with reason: ${note}`);
-    res.json({ success: true, quote });
-  } catch (e) {
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-=======
     // Validation rules are correct and enforce data integrity
     body('items.*.itemCost').isFloat({ min: 0 }).withMessage('Item cost must be a non-negative number.'),
     body('items.*.itemRate').isFloat({ gt: 0 }).withMessage('Item rate must be a positive number.'),
@@ -1077,15 +818,11 @@ router.post('/:leadId/:quoteId/reject', authenticateToken, [
 });
 
 
->>>>>>> origin/main
 // GET Quote as HTML for preview
 router.get('/leads/:leadId/quotes/:quoteId/preview', authenticateToken, async (req, res) => {
   try {
     const quote = await Quote.findByPk(req.params.quoteId, { include: [{ model: QuoteItem, as: 'items' }] });
-<<<<<<< HEAD
-=======
   
->>>>>>> origin/main
     if (!quote || String(quote.leadId) !== String(req.params.leadId)) {
       return res.status(404).json({ success: false, message: 'Quote not found' });
     }
@@ -1097,16 +834,9 @@ router.get('/leads/:leadId/quotes/:quoteId/preview', authenticateToken, async (r
       ]
     });
 
-<<<<<<< HEAD
-    const html = buildQuoteHTML({
-      quote: quote.toJSON(),
-      items: (quote.items || []).map(i => i.toJSON()),
-      lead: lead ? lead.toJSON() : null,
-=======
   const html = buildQuoteInternalPreviewHTML({
       quote: quote.toJSON(),
       items: (quote.items || []).map(i => i.toJSON()),
->>>>>>> origin/main
       customer: (lead && lead.customer) ? lead.customer.toJSON() : null
     });
 
@@ -1180,24 +910,17 @@ router.put('/leads/:leadId/quotes/:quoteId', authenticateToken, [
    if (newStatus) {
      const isMember = !isAdmin(req);
      // Members cannot change status if it's pending, nor can they set a final status
-<<<<<<< HEAD
-     const memberAllowed = new Set(['Draft', 'Sent']);
-=======
      const memberAllowed = new Set(['Draft', 'Sent' ,'Accepted', 'Rejected', 'Expired']);
->>>>>>> origin/main
      if (isMember && (quote.status === 'PendingApproval' || !memberAllowed.has(newStatus))) {
        return res.status(403).json({ success: false, message: 'Not allowed to set this status' });
      }
      await quote.update({ status: newStatus });
-<<<<<<< HEAD
-=======
       if (newStatus === 'Accepted') {
                 await notifyAdminsOfSuccess(
                     `Quote Accepted: #${quote.quoteNumber}`,
                     `The quote for lead '${quote.lead.companyName}' has been accepted by the customer.`
                 );
             }
->>>>>>> origin/main
      await writeLeadLog(req, quote.leadId, 'QUOTE_UPDATED', `${actorLabel(req)} updated quote #${quote.quoteNumber} status to ${newStatus}`);
    }
    

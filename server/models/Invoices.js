@@ -152,8 +152,6 @@ Invoice.init({
     type: DataTypes.TEXT,
     allowNull: true
   },
-<<<<<<< HEAD
-=======
    paidAt: {
     type: DataTypes.DATE,
     allowNull: true // It's null until the invoice is paid
@@ -162,7 +160,6 @@ Invoice.init({
     type: DataTypes.TEXT,
     allowNull: true
   },
->>>>>>> origin/main
    quoteId: { // This field is the foreign key for the Quote
     type: DataTypes.UUID,
     allowNull: true,

@@ -234,11 +234,11 @@ const Users: React.FC = () => {
   );
 
   return (
-    <div className="relative min-h-screen bg-midnight-800/50 transition-colors duration-300">
-
-      <div className="flex z-10 min-h-screen">
-        <Sidebar />
-        <main className="flex-1 transition-all duration-300 
+    <div className="flex min-h-screen bg-midnight-800/50 transition-colors duration-300">
+ <Sidebar />
+      <div className="flex-1  overflow-y-auto h-screen">
+       
+        <main className=" transition-all duration-300 
                ml-2 group-hover:ml-56 max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -446,7 +446,7 @@ const Users: React.FC = () => {
                           <td className="px-4 py-3 text-sm text-center align-middle">
                             <div className="flex items-center justify-center gap-2">
 
-                              <div className="hidden sm:inline-flex items-center justify-center 
+                              {/* <div className="hidden sm:inline-flex items-center justify-center 
                                   w-8 h-8 rounded-full
                                   bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md 
                                   hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
@@ -454,7 +454,7 @@ const Users: React.FC = () => {
                                 onClick={() => navigate(`/users/${u.id}/sales-report`)}
                               >
                                 <Eye className="w-4 h-4 text-midnight-500" />
-                              </div>
+                              </div> */}
 
 
                               <div className="hidden sm:inline-flex items-center justify-center 

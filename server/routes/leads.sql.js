@@ -14,14 +14,6 @@ const fs = require('fs/promises');
 const path = require('path');
 const router = express.Router();
 const { createNotification, notifyAdmins } = require('../utils/notify');
-<<<<<<< HEAD
-
-const BASE_DIR = path.resolve(process.cwd());
-const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
-
-const STAGES = Lead.STAGES;
-const FORECASTS = Lead.FORECASTS;
-=======
 const {  notifyAssignment ,notifyLeadUpdate  } = require('../utils/emailService')
 const BASE_DIR = path.resolve(process.cwd());
 const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
@@ -29,7 +21,6 @@ const STAGES = Lead.STAGES;
 const FORECASTS = Lead.FORECASTS;
 const { sequelize } = require('../config/database');
 const Counter = require('../models/Counter');
->>>>>>> origin/main
 
 function canViewLead(req, lead) {
   if (isAdmin(req)) return true;
@@ -45,9 +36,6 @@ function canModifyLead(req, lead) {
 
 const { upload, toPublicUrl } = makeUploader('lead_attachments');
 
-<<<<<<< HEAD
-async function generateUniqueLeadNumber() { return `L-${Date.now()}`; }
-=======
 async function generateUniqueLeadNumber() {
   const result = await sequelize.transaction(async (t) => {
     // Find the counter and lock the row to prevent race conditions
@@ -69,7 +57,6 @@ async function generateUniqueLeadNumber() {
 
   return result;
 }
->>>>>>> origin/main
 
 // Logging helpers
 function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
@@ -108,14 +95,6 @@ async function writeLeadLog(req, leadId, action, message) {
 
 // Compute nearest future follow-up (returns Date or null)
 function nearestFutureFollowup(rows) {
-<<<<<<< HEAD
-  const now = new Date();
-  const flat = rows.map(r => (typeof r.get === 'function' ? r.get({ plain: true }) : r));
-  const future = flat
-    .filter(r => r.scheduledAt && new Date(r.scheduledAt) > now)
-    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-  return future?.scheduledAt || null;
-=======
     const now = new Date();
     // Ensure all items are plain objects
     const flat = rows.map(r => (typeof r.get === 'function' ? r.get({ plain: true }) : r));
@@ -127,7 +106,6 @@ function nearestFutureFollowup(rows) {
   
     // CORRECTED: Return the 'scheduledAt' property of the first item in the sorted array
     return future.length > 0 ? future[0].scheduledAt : null;
->>>>>>> origin/main
 }
 
 // Delete attachment (DELETE)
@@ -216,49 +194,6 @@ router.post('/:id/attachments/delete', authenticateToken, async (req, res) => {
 
 // Upload attachments
 router.post('/:id/attachments', authenticateToken, upload.array('files', 10), async (req, res) => {
-<<<<<<< HEAD
-  try {
-    const lead = await Lead.findByPk(req.params.id);
-    if (!lead) return res.status(404).json({ success: false, message: 'Not found' });
-    if (!canModifyLead(req, lead)) return res.status(403).json({ success: false, message: 'Forbidden' });
-
-    const files = req.files || [];
-    if (!files.length) return res.status(400).json({ success: false, message: 'No files uploaded' });
-
-    const now = new Date();
-    const newAttachments = files.map(f => ({
-      filename: f.originalname,
-      url: toPublicUrl(f.path),
-      createdAt: now.toISOString(),
-      uploadedBy: req.subjectId,
-    }));
-
-    const current = Array.isArray(lead.attachmentsJson) ? lead.attachmentsJson : [];
-    const added = [];
-    for (const att of newAttachments) {
-      if (!current.some(x => x.url === att.url && x.filename === att.filename)) {
-        current.push(att);
-        added.push(att);
-      }
-    }
-    lead.attachmentsJson = current;
-    await lead.save();
-
-    const io = req.app.get('io');
-    added.forEach(att => {
-      io?.to(`lead:${lead.id}`).emit('attachment:new', { leadId: String(lead.id), attachment: att });
-    });
-
-    if (added.length) {
-      await writeLeadLog(req, lead.id, 'ATTACHMENT_ADDED', `${actorLabel(req)} added ${added.length} attachment(s)`);
-    }
-
-    res.json({ success: true, attachments: added });
-  } catch (e) {
-    console.error('Upload attachments error:', e);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-=======
     try {
         // Include the salesman details in the initial query
         const lead = await Lead.findByPk(req.params.id, {
@@ -311,85 +246,10 @@ router.post('/:id/attachments', authenticateToken, upload.array('files', 10), as
         console.error('Upload attachments error:', e);
         res.status(500).json({ success: false, message: 'Server error' });
     }
->>>>>>> origin/main
 });
 
 // List leads
 router.get('/', authenticateToken, async (req, res) => {
-<<<<<<< HEAD
-  try {
-    const where = isAdmin(req) ? {} : { [Op.or]: [{ salesmanId: req.subjectId }] };
-    const search = String(req.query.search || '').trim();
-    if (search) {
-      where[Op.or] = [
-        ...(where[Op.or] || []),
-        { uniqueNumber: { [Op.like]: `%${search}%` } },
-        { companyName:  { [Op.like]: `%${search}%` } },
-        { contactPerson:{ [Op.like]: `%${search}%` } },
-        { email:        { [Op.like]: `%${search}%` } },
-        { mobile:       { [Op.like]: `%${search}%` } },
-        { city:         { [Op.like]: `%${search}%` } },
-      ];
-    }
-    const sortBy = String(req.query.sortBy || 'createdAt');
-    const sortDir = String(req.query.sortDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-
-    const leads = await Lead.findAll({
-      where,
-      include: [
-        { model: Member, as: 'salesman', attributes: ['id','name','email'] },
-        { model: Customer, as: 'customer', attributes: ['id','companyName'] },
-      ],
-      order: [[sortBy, sortDir]],
-    });
-
-    // Compute next followup per lead
-    const leadIds = leads.map(l => l.id);
-    const nextByLead = new Map();
-    if (leadIds.length) {
-      const fus = await LeadFollowup.findAll({
-        where: { leadId: { [Op.in]: leadIds } },
-        attributes: ['leadId','scheduledAt','createdAt']
-      });
-      const grouped = new Map();
-      for (const f of fus) {
-        if (!grouped.has(f.leadId)) grouped.set(f.leadId, []);
-        grouped.get(f.leadId).push(f);
-      }
-      for (const [lid, rows] of grouped.entries()) {
-        nextByLead.set(lid, nearestFutureFollowup(rows));
-      }
-    }
-
-    res.json({ success:true, leads: leads.map(l => ({
-      id: l.id,
-      stage: l.stage,
-      forecastCategory: l.forecastCategory,
-      division: l.customer ? l.customer.companyName : '',
-      companyName: l.companyName || (l.customer ? l.customer.companyName : ''),
-      source: l.source,
-      uniqueNumber: l.uniqueNumber,
-      quoteNumber: l.quoteNumber,
-      previewUrl: l.previewUrl,
-      actualDate: l.actualDate,
-      contactPerson: l.contactPerson,
-      mobile: l.mobile,
-      mobileAlt: l.mobileAlt,
-      email: l.email,
-      city: l.city,
-      salesman: l.salesman ? { id: l.salesman.id, name: l.salesman.name, email: l.salesman.email } : null,
-      description: l.description,
-      attachments: Array.isArray(l.attachmentsJson) ? l.attachmentsJson : [],
-      nextFollowupAt: nextByLead.get(l.id) || null,
-      createdAt: l.createdAt,
-      updatedAt: l.updatedAt
-    }))});
-  } catch (e) {
-    console.error('List Leads Error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
-  }
-});
-=======
     try {
         const { search, sortBy = 'createdAt', sortDir = 'DESC' } = req.query;
         // Destructure the new filter query parameters
@@ -527,7 +387,6 @@ router.get('/', authenticateToken, async (req, res) => {
 
 
 
->>>>>>> origin/main
 router.get('/my-leads', authenticateToken, async (req, res) => {
   if (isAdmin(req)) {
     // Admins can see all leads, so we can redirect to the main list route
@@ -650,119 +509,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // Create lead
 router.post('/', authenticateToken, [
-<<<<<<< HEAD
-  body('customerId').trim().notEmpty(),
-  body('stage').optional().isIn(STAGES),
-  body('forecastCategory').optional().isIn(FORECASTS),
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty())
-      return res.status(400).json({ success:false, message:'Validation failed', errors: errors.array() });
-
-    let resolvedSalesmanId = null;
-
-    if (isAdmin(req)) {
-      const requested = String(req.body.salesmanId || '').trim();
-      if (!requested) {
-        return res.status(400).json({ success:false, message:'Salesman is required for admin-created leads' });
-      }
-      const sm = await Member.findByPk(requested, { attributes: ['id'] });
-      if (!sm) {
-        return res.status(400).json({ success:false, message:'Invalid salesman (not found in members)' });
-      }
-      resolvedSalesmanId = sm.id;
-    } else {
-      const self = await Member.findByPk(String(req.subjectId), { attributes: ['id'] });
-      if (!self) {
-        return res.status(400).json({ success:false, message:'Current member not found in system' });
-      }
-      if (req.body.salesmanId && String(req.body.salesmanId) !== String(self.id)) {
-        return res.status(403).json({ success:false, message:'Members can only assign themselves as salesman' });
-      }
-      resolvedSalesmanId = self.id;
-    }
-
-    const customer = await Customer.findByPk(req.body.customerId);
-    if (!customer) return res.status(400).json({ success:false, message:'Invalid customer' });
-
-    const snap = {
-      contactPerson: req.body.contactPerson || '',
-      mobile: req.body.mobile || '',
-      mobileAlt: req.body.mobileAlt || '',
-      email: req.body.email || '',
-      city: req.body.city || '',
-    };
-
-    if (!req.body.contactPerson) {
-      let selected = null;
-      if (req.body.contactId) {
-        selected = await CustomerContact.findOne({ where: { id: req.body.contactId, customerId: customer.id } });
-      } else {
-        selected = await CustomerContact.findOne({ where: { customerId: customer.id }, order: [['createdAt','ASC']] });
-      }
-      if (selected) {
-        if (!snap.contactPerson) snap.contactPerson = selected.name || '';
-        if (!snap.mobile) snap.mobile = selected.mobile || '';
-        if (!snap.email) snap.email = selected.email || '';
-      }
-    }
-
-    const uniqueNumber = await generateUniqueLeadNumber();
-    const lead = await Lead.create({
-      stage: req.body.stage || 'Discover',
-      forecastCategory: req.body.forecastCategory || 'Pipeline',
-      customerId: customer.id,
-      companyName: customer.companyName,
-      source: req.body.source || 'Website',
-      uniqueNumber,
-      quoteNumber: req.body.quoteNumber || '',
-      previewUrl: req.body.previewUrl || '',
-      actualDate: new Date(),
-      ...snap,
-      salesmanId: resolvedSalesmanId,
-      description: req.body.description || '',
-      creatorType: req.subjectType,
-      creatorId: req.subjectId,
-      // no direct nextFollowupAt persisted; derived from LeadFollowup
-    });
- const marker = String(resolvedSalesmanId);
- const arr = Array.isArray(customer.contactedBy) ? customer.contactedBy : [];
-  if (!arr.includes(marker)) {
-    arr.push(marker);
-    customer.contactedBy = arr;
-    await customer.save();
-  }
-    notifyAdmins(req.app.get('io'), {
-      event: 'LEAD_CREATED',
-      entityType: 'LEAD',
-      entityId: String(lead.id),
-      title: `Lead #${lead.uniqueNumber} created`,
-      message: `${actorLabel(req)} created a lead`,
-    });
-
-    if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
-      await createNotification({
-        toType: 'MEMBER',
-        toId: resolvedSalesmanId,
-        event: 'LEAD_ASSIGNED',
-        entityType: 'LEAD',
-        entityId: lead.id,
-        title: `New lead #${lead.uniqueNumber}`,
-        message: `Assigned by admin`,
-      }, req.app.get('io'));
-    }
-
-    await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`);
-
-    res.status(201).json({ success:true, id: lead.id, uniqueNumber: lead.uniqueNumber });
-  } catch (e) {
-    console.error('Create Lead Error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
-  }
-});
-
-=======
     body('customerId').trim().notEmpty(),
     body('stage').optional().isIn(STAGES),
     body('forecastCategory').optional().isIn(FORECASTS),
@@ -886,7 +632,6 @@ router.post('/', authenticateToken, [
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
->>>>>>> origin/main
 // Update lead
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
@@ -950,10 +695,6 @@ router.put('/:id', authenticateToken, async (req, res) => {
     res.status(500).json({ success:false, message:'Server error' });
   }
 });
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
   const lead = await Lead.findByPk(req.params.leadId);
   if (!lead) return res.status(404).json({ success:false, message:'Lead not found' });

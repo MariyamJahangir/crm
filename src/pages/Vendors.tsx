@@ -1,6 +1,6 @@
 // src/pages/Vendors.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
@@ -105,7 +105,7 @@ const Vendors: React.FC = () => {
           </div>
 
           {/* Search Bar */}
-          <form onSubmit={onSearch} className="mb-4 flex gap-2">
+          {/* <form onSubmit={onSearch} className="mb-4 flex gap-2">
             <input
               className="flex-1 border rounded-lg px-3 py-2 bg-cloud-50/30 dark:bg-midnight-900/30 text-midnight-700 dark:text-ivory-300 placeholder-gray-500"
               placeholder="Search vendors..."
@@ -136,7 +136,7 @@ const Vendors: React.FC = () => {
             >
               Reset
             </Button>
-          </form>
+          </form> */}
 
           {/* Status */}
           {loading && (
@@ -181,11 +181,10 @@ const Vendors: React.FC = () => {
                   header: 'Status',
                   render: (r: Vendor) => (
                     <span
-                      className={`px-2 py-1 text-xs rounded-full font-medium ${
-                        r.status === 'Active'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
+                      className={`px-2 py-1 text-xs rounded-full font-medium ${r.status === 'Active'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                        }`}
                     >
                       {r.status}
                     </span>
@@ -197,6 +196,22 @@ const Vendors: React.FC = () => {
                   render: (r: Vendor) => r.assignedMember?.name || '-',
                 },
                 { key: 'contacts', header: 'Contacts', render: (r: Vendor) => r.contacts.length },
+                {
+                  key: 'actions',
+                  header: 'Actions',
+                  render: (r: Vendor) => (
+                    <div className="hidden sm:inline-flex items-center justify-center 
+                                  w-8 h-8 rounded-full
+                                  bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md 
+                                  hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
+                                  shadow-md transition"
+                                onClick={() => navigate(`/vendors/${r.id}/edit`)}
+                              >
+                                <Pencil className="w-4 h-4 text-sky-500" />
+                              </div>
+                  ),
+                },
+
               ]}
               filterKeys={['vendorName', 'category', 'status', 'assignedMember.name']}
               initialSort={{ key: 'vendorName', dir: 'ASC' }}

@@ -5,20 +5,10 @@ const Lead = require('../models/Lead');
 const Member = require('../models/Member');
 const LeadFollowup = require('../models/LeadFollowup');
 const LeadLog = require('../models/LeadLog');
-<<<<<<< HEAD
-
-const router = express.Router();
-
-/**
- * Check if user can view the given lead.
- * Admins always can. Members if they are creator or assigned salesman.
- */
-=======
 const { notifyLeadUpdate  } = require('../utils/emailService')
 const router = express.Router();
 
 
->>>>>>> origin/main
 function canViewLead(req, lead) {
   if (isAdmin(req)) return true;
   const userId = String(req.subjectId);
@@ -28,14 +18,6 @@ function canViewLead(req, lead) {
   );
 }
 
-<<<<<<< HEAD
-/**
- * Check if user can modify the given lead.
- * Same as canView except members must be creator or salesman.
- */
-=======
-
->>>>>>> origin/main
 function canModifyLead(req, lead) {
   if (isAdmin(req)) return true;
   const userId = String(req.subjectId);
@@ -162,13 +144,9 @@ router.post(
       });
 
       await writeLeadLog(req, lead.id, 'FOLLOWUP_ADDED', `${actorLabel(req)} added follow-up: ${status}`);
-<<<<<<< HEAD
-
-=======
 if (isAdmin(req) && lead.salesman && lead.salesman.id !== req.subjectId) {
                 await notifyLeadUpdate(lead.salesman, lead, 'new follow-up');
             }
->>>>>>> origin/main
       req.app.get('io')?.to(`lead:${lead.id}`).emit('followup:new', {
         leadId: String(lead.id),
         followup: {

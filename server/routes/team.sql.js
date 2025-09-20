@@ -3,11 +3,7 @@ const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
 const Member = require('../models/Member');
-<<<<<<< HEAD
-
-=======
 const { notifyUserCreated} = require('../utils/emailService')
->>>>>>> origin/main
 const router = express.Router();
 
 // Create new user (members) - admin only
@@ -42,11 +38,7 @@ router.post(
         designation: designation || '',
         parentAdmin: req.subjectId,
       });
-<<<<<<< HEAD
-
-=======
 await notifyUserCreated(created, password); 
->>>>>>> origin/main
       res.status(201).json({
         success: true,
         user: {
@@ -89,10 +81,6 @@ router.get('/users', authenticateToken, async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
 // Get single user by ID
 router.get('/users/:id', authenticateToken, async (req, res) => {
   try {

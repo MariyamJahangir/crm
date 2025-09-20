@@ -152,117 +152,317 @@ const CreateInvoicePage: React.FC = () => {
         }
     };
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            <Sidebar />
-            <div className="pl-64">
-                <main className="max-w-7xl mx-auto py-8 px-6">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-6">Create New Invoice</h1>
-                    <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-lg space-y-8">
-                        {error && <div className="bg-red-100 p-4 rounded text-red-700">{error}</div>}
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Bill To</label>
-                                <div className="space-y-4">
-                                    <input type="text" placeholder="Company Name" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full form-input" required />
-                                    <textarea placeholder="Address" value={address} onChange={e => setAddress(e.target.value)} className="w-full form-textarea" rows={3}></textarea>
-                                    <Button type="button" onClick={() => setIsModalOpen(true)}>
-                                        {selectedCompany ? 'Change Company' : 'Select Company'}
-                                    </Button>
-                                </div>
-                            </div>
+   return (
+  <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+    <Sidebar />
 
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Contact & Details</label>
-                                <div className="space-y-4">
-                                    <select value={contactPersonId} onChange={e => handleContactPersonChange(e.target.value)} className="w-full form-select" disabled={companyContacts.length === 0}>
-                                        <option value="">-- Select Contact --</option>
-                                        {companyContacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                    <input type="email" placeholder="Contact Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full form-input" />
-                                    <input type="tel" placeholder="Contact Phone" value={phone} onChange={e => setPhone(e.target.value)} className="w-full form-input" />
-                                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full form-input" />
-                                    
-                                    {user?.type === 'ADMIN' ? (
-                                        <select value={salesmanId} onChange={e => setSalesmanId(e.target.value)} className="w-full form-select" required>
-                                            <option value="">-- Assign Salesman --</option>
-                                            {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
-                                        </select>
-                                    ) : (
-                                        <div className="p-2 bg-gray-100 rounded-md text-sm">
-                                            Salesman: <span className="font-semibold">{user?.name || '...'}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+    <div className="flex-1 overflow-y-auto h-screen">
+      <main className="max-w-7xl mx-auto py-8 px-6">
+        <h1 className="text-3xl font-bold text-midnight-900 dark:text-ivory-100 mb-6">
+          Create New Invoice
+        </h1>
 
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">Product / Service</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">Description</th>
-                                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Rate</th>
-                                        <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                        <th className="py-3"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {items.map((item, index) => (
-                                        <tr key={index}>
-                                            <td className="px-6 py-4"><input type="text" value={item.product} onChange={e => handleItemChange(index, 'product', e.target.value)} className="w-full border-gray-300 rounded-md" /></td>
-                                            <td className="px-6 py-4"><input type="text" value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} className="w-full border-gray-300 rounded-md" /></td>
-                                            <td className="px-3 py-4"><input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', parseFloat(e.target.value))} className="w-20 text-right border-gray-300 rounded-md" /></td>
-                                            <td className="px-3 py-4"><input type="number" value={item.itemRate} onChange={e => handleItemChange(index, 'itemRate', parseFloat(e.target.value))} className="w-24 text-right border-gray-300 rounded-md" /></td>
-                                            <td className="px-3 py-4 text-right text-sm text-gray-700">${(item.quantity * item.itemRate).toFixed(2)}</td>
-                                            <td className="py-4 text-right"><Button type="button" variant="icon" onClick={() => removeItem(index)}><X size={18} /></Button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <Button type="button" variant="secondary" onClick={addItem}>Add Item</Button>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t">
-                            <div>
-                                <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Notes / Terms</label>
-                                <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={4} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
-                            </div>
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-gray-600">Subtotal:</span>
-                                    <span className="font-medium">${subtotal.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <label htmlFor="discountAmount" className="text-gray-600">Discount:</label>
-                                    <input type="number" id="discountAmount" value={discountAmount} onChange={e => setDiscountAmount(parseFloat(e.target.value) || 0)} className="w-28 text-right border-gray-300 rounded-md" />
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-gray-600">VAT / Tax (5%):</span>
-                                    <span className="font-medium">${totalTax.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between items-center pt-3 border-t">
-                                    <span className="text-xl font-bold">Grand Total:</span>
-                                    <span className="text-xl font-bold">${grandTotal.toFixed(2)}</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="flex justify-end gap-4 pt-6 border-t">
-                           <Button type="button" variant="secondary" onClick={() => navigate('/invoices')}>Cancel</Button>
-                           <Button type="submit" disabled={submitting || !selectedCompany}>
-                               {submitting ? 'Saving...' : 'Create & Save Invoice'}
-                           </Button>
-                        </div>
-                    </form>
-                </main>
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white/30 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30 
+                     p-8 rounded-xl shadow-2xl space-y-8"
+        >
+          {error && (
+            <div className="bg-red-50/30 dark:bg-red-900/30 border border-red-200/30 dark:border-red-700/30 
+                            text-red-700 dark:text-red-400 px-4 py-2 rounded-xl text-sm shadow-sm">
+              {error}
             </div>
-            <SelectContactModal open={isModalOpen} onClose={() => setIsModalOpen(false)} onSelect={handleCompanySelect} />
-        </div>
-    );
+          )}
+
+          {/* Bill To & Contact */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+            <div>
+              <label className="block text-sm font-bold text-midnight-700 dark:text-ivory-200 mb-2">
+                Bill To
+              </label>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Company Name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-white/30 dark:border-midnight-700/30 
+                             bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                             shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
+                  required
+                />
+                <textarea
+                  placeholder="Address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl border border-white/30 dark:border-midnight-700/30 
+                             bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                             shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
+                />
+                <Button type="button" 
+                className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl"
+                onClick={() => setIsModalOpen(true)}>
+                  {selectedCompany ? "Change Company" : "Select Company"}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-midnight-700 dark:text-ivory-200 mb-2">
+                Contact & Details
+              </label>
+              <div className="space-y-4">
+                <select
+                  value={contactPersonId}
+                  onChange={(e) => handleContactPersonChange(e.target.value)}
+                  className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                             bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                             shadow-sm text-sm transition disabled:opacity-50"
+                  disabled={companyContacts.length === 0}
+                >
+                  <option value="">-- Select Contact --</option>
+                  {companyContacts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  type="email"
+                  placeholder="Contact Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                             bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                             text-sm transition"
+                />
+                <input
+                  type="tel"
+                  placeholder="Contact Phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                             bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                             text-sm transition"
+                />
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                             bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                             text-sm transition"
+                />
+
+                {user?.type === "ADMIN" ? (
+                  <select
+                    value={salesmanId}
+                    onChange={(e) => setSalesmanId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                               bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                               shadow-sm text-sm transition"
+                    required
+                  >
+                    <option value="">-- Assign Salesman --</option>
+                    {members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="p-2 bg-white/40 dark:bg-midnight-800/50 rounded-2xl text-sm text-midnight-700 dark:text-ivory-200">
+                    Salesman:{" "}
+                    <span className="font-semibold">{user?.name || "..."}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Items Table */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-white/20 dark:divide-midnight-700/30 text-sm">
+              <thead className="bg-white/40 dark:bg-midnight-800/50">
+                <tr>
+                  <th className="px-6 py-3 text-left font-medium text-midnight-700 dark:text-ivory-200 w-2/5">
+                    Product / Service
+                  </th>
+                  <th className="px-6 py-3 text-left font-medium text-midnight-700 dark:text-ivory-200 w-2/5">
+                    Description
+                  </th>
+                  <th className="px-3 py-3 text-right font-medium text-midnight-700 dark:text-ivory-200">
+                    Qty
+                  </th>
+                  <th className="px-3 py-3 text-right font-medium text-midnight-700 dark:text-ivory-200">
+                    Rate
+                  </th>
+                  <th className="px-3 py-3 text-right font-medium text-midnight-700 dark:text-ivory-200">
+                    Total
+                  </th>
+                  <th className="py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/20 dark:divide-midnight-700/30">
+                {items.map((item, index) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4">
+                      <input
+                        type="text"
+                        value={item.product}
+                        onChange={(e) =>
+                          handleItemChange(index, "product", e.target.value)
+                        }
+                        className="w-full h-9 px-2 rounded-lg border border-white/30 dark:border-midnight-700/30 
+                                   bg-white/40 dark:bg-midnight-800/50 text-sm text-midnight-800 dark:text-ivory-100"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) =>
+                          handleItemChange(index, "description", e.target.value)
+                        }
+                        className="w-full h-9 px-2 rounded-lg border border-white/30 dark:border-midnight-700/30 
+                                   bg-white/40 dark:bg-midnight-800/50 text-sm text-midnight-800 dark:text-ivory-100"
+                      />
+                    </td>
+                    <td className="px-3 py-4">
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) =>
+                          handleItemChange(
+                            index,
+                            "quantity",
+                            parseFloat(e.target.value)
+                          )
+                        }
+                        className="w-20 h-9 px-2 text-right rounded-lg border border-white/30 dark:border-midnight-700/30 
+                                   bg-white/40 dark:bg-midnight-800/50 text-sm text-midnight-800 dark:text-ivory-100"
+                      />
+                    </td>
+                    <td className="px-3 py-4">
+                      <input
+                        type="number"
+                        value={item.itemRate}
+                        onChange={(e) =>
+                          handleItemChange(
+                            index,
+                            "itemRate",
+                            parseFloat(e.target.value)
+                          )
+                        }
+                        className="w-24 h-9 px-2 text-right rounded-lg border border-white/30 dark:border-midnight-700/30 
+                                   bg-white/40 dark:bg-midnight-800/50 text-sm text-midnight-800 dark:text-ivory-100"
+                      />
+                    </td>
+                    <td className="px-3 py-4 text-right text-midnight-700 dark:text-ivory-200">
+                      ${(item.quantity * item.itemRate).toFixed(2)}
+                    </td>
+                    <td className="py-4 text-right">
+                      <Button
+                        type="button"
+                        variant="icon"
+                        onClick={() => removeItem(index)}
+                      >
+                        <X size={18} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Button type="button" variant="secondary" onClick={addItem}>
+            Add Item
+          </Button>
+
+          {/* Notes & Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-white/20 dark:border-midnight-700/30">
+            <div>
+              <label
+                htmlFor="notes"
+                className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2"
+              >
+                Notes / Terms
+              </label>
+              <textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                           bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm 
+                           text-sm transition"
+              />
+            </div>
+            <div className="space-y-3 text-midnight-700 dark:text-ivory-200">
+              <div className="flex justify-between items-center">
+                <span>Subtotal:</span>
+                <span className="font-medium">${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <label htmlFor="discountAmount">Discount:</label>
+                <input
+                  type="number"
+                  id="discountAmount"
+                  value={discountAmount}
+                  onChange={(e) =>
+                    setDiscountAmount(parseFloat(e.target.value) || 0)
+                  }
+                  className="w-28 h-9 px-2 text-right rounded-lg border border-white/30 dark:border-midnight-700/30 
+                             bg-white/40 dark:bg-midnight-800/50 text-sm text-midnight-800 dark:text-ivory-100"
+                />
+              </div>
+              <div className="flex justify-between items-center">
+                <span>VAT / Tax (5%):</span>
+                <span className="font-medium">${totalTax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-3 border-t border-white/20 dark:border-midnight-700/30">
+                <span className="text-xl font-bold">Grand Total:</span>
+                <span className="text-xl font-bold">${grandTotal.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-4 pt-6 border-t border-white/20 dark:border-midnight-700/30">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => navigate("/invoices")}
+              className="px-5 py-2 rounded-2xl bg-cloud-100/60 dark:bg-midnight-700/60 
+                         border border-cloud-300/40 dark:border-midnight-600/40 
+                         text-midnight-700 dark:text-ivory-200 
+                         hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 shadow-md transition"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting || !selectedCompany}
+              className="px-5 py-2 rounded-2xl bg-sky-500/90 hover:bg-sky-600 text-white shadow-lg transition disabled:opacity-50"
+            >
+              {submitting ? "Saving..." : "Create & Save Invoice"}
+            </Button>
+          </div>
+        </form>
+      </main>
+    </div>
+
+    <SelectContactModal
+      open={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+      onSelect={handleCompanySelect}
+    />
+  </div>
+);
+
 };
 
 export default CreateInvoicePage;

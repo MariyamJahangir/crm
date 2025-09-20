@@ -5,11 +5,7 @@ const { body, validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
-<<<<<<< HEAD
-
-=======
 const {  notifyAssignment  } = require('../utils/emailService')
->>>>>>> origin/main
 const Vendor = require('../models/Vendor');
 const VendorContact = require('../models/VendorContact');
 const Member = require('../models/Member');
@@ -82,10 +78,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 });
 
-<<<<<<< HEAD
-router.post('/', authenticateToken, [
-    // --- Validations ---
-=======
 // router.post('/', authenticateToken, [
 //     // --- Validations ---
 //     body('vendorName').trim().notEmpty().withMessage('Vendor name is required'),
@@ -166,91 +158,19 @@ router.post('/', authenticateToken, [
 
 
 router.post('/', authenticateToken, [
->>>>>>> origin/main
     body('vendorName').trim().notEmpty().withMessage('Vendor name is required'),
     body('email').optional({ checkFalsy: true }).isEmail().withMessage('Please provide a valid email address'),
     body('website').optional({ checkFalsy: true }).isURL().withMessage('Please provide a valid website URL'),
     body('contacts').optional().isArray().withMessage('Contacts must be an array')
-<<<<<<< HEAD
-  ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
-=======
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ success: false, errors: errors.array() });
->>>>>>> origin/main
     }
 
     const transaction = await sequelize.transaction();
 
     try {
-<<<<<<< HEAD
-      const { contacts = [], ...vendorData } = req.body;
-
-      // --- Logic for Ownership and Primary Contact ---
-
-      // 1. Determine who the vendor is assigned to
-      let assignedToId = (req.subjectType === 'ADMIN' && vendorData.assignedTo)
-        ? vendorData.assignedTo
-        : req.subjectId;
-
-      // 2. Intelligently set the primary contact person's name
-      const primaryContactName = (contacts.length > 0 && contacts[0].name)
-        ? contacts[0].name
-        : vendorData.vendorName;
-
-      // --- Database Operations ---
-
-      // 3. Create the main Vendor record within the transaction
-      const vendor = await Vendor.create({
-        ...vendorData,
-        contactPerson: primaryContactName, // Guaranteed to have a value
-        assignedTo: assignedToId,
-      }, { transaction });
-
-      // 4. If contacts were provided, create them in bulk
-      if (contacts.length > 0) {
-        const contactPayload = contacts
-          .filter(c => c && c.name) // Ensure contact has a name
-          .map(c => ({
-            ...c,
-            id: undefined, // Let the DB generate the ID
-            vendorId: vendor.id // Link to the newly created vendor
-          }));
-        
-        if (contactPayload.length > 0) {
-          await VendorContact.bulkCreate(contactPayload, { transaction });
-        }
-      }
-
-      // 5. Commit the transaction if all operations were successful
-      await transaction.commit();
-
-      // --- Final Response ---
-
-      // 6. Fetch the complete vendor object with all its associations
-      const newVendor = await Vendor.findByPk(vendor.id, {
-        include: [
-          { association: 'assignedMember' }, // Assuming 'assignedMember' is the alias for the Member model
-          { association: 'contacts' }        // Assuming 'contacts' is the alias for the VendorContact model
-        ]
-      });
-
-      res.status(201).json({ success: true, vendor: newVendor });
-
-    } catch (error) {
-      // If any error occurred, roll back the transaction
-      await transaction.rollback();
-      console.error('Create Vendor Error:', error);
-      res.status(500).json({ success: false, message: 'Failed to create vendor.' });
-    }
-  }
-);
-=======
         const { contacts = [], ...vendorData } = req.body;
 
         // 1. Determine who the vendor is assigned to
@@ -316,7 +236,6 @@ router.post('/', authenticateToken, [
         res.status(500).json({ success: false, message: 'Failed to create vendor.' });
     }
 });
->>>>>>> origin/main
 
 router.put('/:id', authenticateToken, async (req, res) => {
     const transaction = await sequelize.transaction();
