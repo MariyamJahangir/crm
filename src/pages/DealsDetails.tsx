@@ -35,7 +35,7 @@ const DealDetails: React.FC = () => {
   const invoice = quote?.invoice;
 
   return (
-    <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+    <div className="flex min-h-screen  z-10 transition-colors duration-300">
     <Sidebar />
     <div className="flex-1 overflow-y-auto h-screen">
       <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -48,7 +48,7 @@ const DealDetails: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-3xl font-bold text-midnight-900 dark:text-ivory-100 drop-shadow-lg">
+                <h1 className="text-3xl font-extrabold text-midnight-900 dark:text-ivory-100 drop-shadow-lg">
                   Deal #{deal.uniqueNumber}
                 </h1>
                 <p className="text-midnight-800 dark:text-ivory-400 text-sm mt-1">

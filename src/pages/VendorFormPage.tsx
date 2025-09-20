@@ -120,7 +120,7 @@ const VendorFormPage: React.FC = () => {
   if (loading) return <div className="p-8 text-center">Loading...</div>;
 
 return (
-  <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+  <div className="flex min-h-screen  z-10 transition-colors duration-300">
     <Sidebar />
 
     <div className="flex-1 overflow-y-auto h-screen">
@@ -491,23 +491,27 @@ return (
 
           {/* Form actions */}
           <div className="flex justify-end gap-4 pt-4">
-            <Button
-              type="button"
-              className="px-5 py-2 rounded-xl bg-cloud-100/60 dark:bg-midnight-700/60 
-                         border border-cloud-300/40 dark:border-midnight-600/40 
-                         text-midnight-700 dark:text-ivory-200 
-                         hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 
-                         backdrop-blur-md shadow-md transition"
-              onClick={() => navigate("/vendors")}
-            >
-              Cancel
-            </Button>
+           <Button
+  type="button"
+  className="px-5 py-2 rounded-xl 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition"
+  onClick={() => navigate("/vendors")}
+>
+  Cancel
+</Button>
+
 
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-xl bg-sky-500/90 hover:bg-sky-600 
-                         text-white shadow-lg transition disabled:opacity-50"
+              className="px-5 py-2 rounded-xl 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition"
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
             </Button>

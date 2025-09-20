@@ -117,7 +117,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
             <input
               className="w-full border rounded px-3 py-2
               bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-900 backdrop-blur-sm"
+                      placeholder-slate-400 backdrop-blur-sm"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="e.g., Priya Menon*"
@@ -129,7 +129,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
             <input
               className="w-full border rounded px-3 py-2
               bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-900 backdrop-blur-sm"
+                      placeholder-slate-400 backdrop-blur-sm"
               value={designation}
               onChange={e => setDesignation(e.target.value)}
               placeholder="Procurement Head*"
@@ -141,7 +141,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
             <input
               className="w-full border rounded px-3 py-2
               bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-900 backdrop-blur-sm"
+                      placeholder-slate-400 backdrop-blur-sm"
               value={department}
               onChange={e => setDepartment(e.target.value)}
               placeholder="Purchasing"
@@ -152,7 +152,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
             <input
               className="w-full border rounded px-3 py-2
               bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-900 backdrop-blur-sm"
+                      placeholder-slate-400 backdrop-blur-sm"
               value={mobile}
               onChange={e => setMobile(e.target.value)}
               placeholder="+91 98xxxxxxx*"
@@ -164,7 +164,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
             <input
               className="w-full border rounded px-3 py-2
               bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-900 backdrop-blur-sm"
+                      placeholder-slate-400 backdrop-blur-sm"
               value={fax}
               onChange={e => setFax(e.target.value)}
             />
@@ -175,7 +175,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
               type="email"
               className="w-full border rounded px-3 py-2
               bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-900 backdrop-blur-sm"
+                      placeholder-slate-400 backdrop-blur-sm"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="name@company.com"
@@ -186,7 +186,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
             <input
               className="w-full border rounded px-3 py-2
               bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-900 backdrop-blur-sm"
+                      placeholder-slate-400 backdrop-blur-sm"
               value={social}
               onChange={e => setSocial(e.target.value)}
               placeholder="https://linkedin.com/in/..."

@@ -55,16 +55,16 @@ const CreateUser: React.FC = () => {
   };
 
   return (
-   <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+   <div className="flex min-h-screen  z-10 transition-colors duration-300">
       <Sidebar />
 
       <div className="flex-1 overflow-y-auto h-screen">
         <main className="max-w-3xl mx-auto py-6 ">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-midnight-800 dark:text-ivory-100">
+            <h1 className="text-3xl font-bold text-midnight-600 dark:text-ivory-100">
               Create User
             </h1>
-            <p className="text-gray-200 dark:text-ivory-400 mt-1">
+            <p className="text-gray-700 dark:text-ivory-400 mt-1">
               Add a user under your account.
             </p>
           </div>
@@ -182,11 +182,11 @@ const CreateUser: React.FC = () => {
             <div className="flex justify-end gap-4 pt-4">
               <Button
                 type="button"
-                className="px-5 py-2 rounded-xl bg-cloud-100/60 dark:bg-midnight-700/60 
+                className="px-5 py-2 rounded-xl 
                  border border-cloud-300/40 dark:border-midnight-600/40 
-                 text-midnight-700 dark:text-ivory-200 
-                 hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 
-                 backdrop-blur-md shadow-md transition"
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition"
                 onClick={() => navigate('/users')}
               >
                 Cancel
@@ -194,8 +194,11 @@ const CreateUser: React.FC = () => {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2 rounded-xl bg-sky-500/90 hover:bg-sky-600 
-                 text-white shadow-lg transition disabled:opacity-50"
+                className="px-5 py-2 rounded-xl 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition0"
               >
                 {submitting ? 'Creating...' : 'Create User'}
               </Button>

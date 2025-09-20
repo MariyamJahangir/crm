@@ -226,7 +226,7 @@ const EditCustomer: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative h-screen">
       {/* Background with overlay */}
       {/* <div className="absolute inset-0">
         <img
@@ -238,7 +238,7 @@ const EditCustomer: React.FC = () => {
       </div> */}
 
       {/* Foreground content */}
-      <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+      <div className="flex min-h-screen  z-10 transition-colors duration-300">
         <Sidebar />
         <div className="flex-1 overflow-y-auto h-screen">
           <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -458,11 +458,11 @@ const EditCustomer: React.FC = () => {
                   <div className="flex justify-end gap-4 pt-6">
                     <Button
                       type="button"
-                      className="px-6 py-2.5 rounded-xl bg-cloud-100/70 dark:bg-midnight-700/60 
-                       border border-cloud-300/50 dark:border-midnight-600/50 
-                       text-midnight-800 dark:text-ivory-200 
-                       hover:bg-cloud-200/80 dark:hover:bg-midnight-600/70 
-                       backdrop-blur-md shadow transition"
+                      className="x-5 py-2 rounded-xl 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition"
                       onClick={() => navigate('/customers')}
                     >
                       Cancel
@@ -470,8 +470,11 @@ const EditCustomer: React.FC = () => {
                     <Button
                       type="submit"
                       disabled={saving}
-                      className="px-6 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 
-                       text-white shadow-lg transition disabled:opacity-50"
+                      className="x-5 py-2 rounded-xl 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition"
                     >
                       {saving ? 'Saving...' : isCreate ? 'Create Customer' : 'Save Changes'}
                     </Button>
@@ -559,7 +562,11 @@ const EditCustomer: React.FC = () => {
                           value={contactForm.social}
                           onChange={(e) => setContactForm((p) => ({ ...p, social: e.target.value }))}
                         />
-                        <Button type="submit">Add</Button>
+                        <Button className='x-5 py-2 rounded-xl 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition' type="submit">Add</Button>
                       </div>
                     </form>
 

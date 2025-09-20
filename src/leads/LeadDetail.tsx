@@ -423,7 +423,7 @@ const LeadDetail: React.FC = () => {
 
 
   return (
-  <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+  <div className="flex min-h-screen  z-10 transition-colors duration-300">
       <Sidebar />
       <div className="flex-1 overflow-y-auto h-screen">
         <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -445,7 +445,11 @@ const LeadDetail: React.FC = () => {
                 <div className="flex gap-2">
                   <Button
                     variant="secondary"
-                    className="rounded-xl shadow-md bg-sky-500/80 hover:bg-sky-600/90 text-ivory-50 backdrop-blur-md transition"
+                    className="flex items-center px-5 py-2 rounded-xl 
+                 border border-cloud-300/40 
+                 text-gray-700 
+                 bg-midnight-200
+                 shadow-md transition"
                     onClick={() => navigate(`/leads/${lead.id}/edit`)}
                   >
                     Edit
@@ -507,7 +511,11 @@ const LeadDetail: React.FC = () => {
                   <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200">Followups</div>
                   <Button
                     variant="secondary"
-                    className="rounded-xl shadow bg-sky-500/80 hover:bg-sky-600/90 text-ivory-50 backdrop-blur-md transition"
+                    className="flex items-center px-5 py-2 rounded-xl 
+                 border border-cloud-300/40 
+                 text-gray-700 
+                 bg-midnight-200
+                 shadow-md transition"
                     onClick={() => setOpenFollowup(true)}
                   >
                     Add Followup
@@ -556,7 +564,11 @@ const LeadDetail: React.FC = () => {
                     />
                     <Button
                       variant="secondary"
-                      className="rounded-xl shadow bg-sky-500/80 hover:bg-sky-600/90 text-ivory-50 backdrop-blur-md transition"
+                      className="flex items-center px-5 py-2 rounded-xl 
+                 border border-cloud-300/40 
+                 text-gray-700 
+                 bg-midnight-200
+                 shadow-md transition"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
                     >

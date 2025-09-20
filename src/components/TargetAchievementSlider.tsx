@@ -12,15 +12,19 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
     const [currentIndex, setCurrentIndex] = useState(0);
     const itemsToShow = 3;
 
+    // Determine if the sliding functionality should be active
+    const isSliderActive = data.length > itemsToShow;
+
     useEffect(() => {
-        if (data.length <= itemsToShow) return;
+        // Only auto-slide if the slider is active
+        if (!isSliderActive) return;
 
         const timer = setInterval(() => {
-            handleNext();
+            setCurrentIndex(prev => (prev + 1) % data.length);
         }, 2000); // Slide every 2 seconds
 
         return () => clearInterval(timer);
-    }, [data.length]);
+    }, [data.length, isSliderActive]);
 
     const handlePrev = () => {
         setCurrentIndex(prev => (prev - 1 + data.length) % data.length);
@@ -29,7 +33,7 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
     const handleNext = () => {
         setCurrentIndex(prev => (prev + 1) % data.length);
     };
-    
+
     if (!data || data.length === 0) {
         return (
             <div className="bg-white p-6 rounded-2xl shadow-lg">
@@ -42,25 +46,38 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
     }
 
     const getVisibleItems = () => {
+        if (!isSliderActive) {
+            return data; // Show all items if not sliding
+        }
+        
+        // Logic for the sliding view
         const visibleItems = [];
         for (let i = 0; i < itemsToShow; i++) {
             const index = (currentIndex + i) % data.length;
-            if (data[index]) {
-                visibleItems.push(data[index]);
-            }
+            visibleItems.push(data[index]);
         }
         return visibleItems;
     };
     
     const visibleData = getVisibleItems();
 
+    // Dynamically choose between flexbox and grid for the layout
+    const containerClasses = isSliderActive
+        ? "grid grid-cols-1 md:grid-cols-3 gap-6"
+        : "flex flex-wrap justify-center gap-6";
+
     return (
         <div className="bg-white p-6 rounded-2xl shadow-lg">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Member Target Achievement (This Month)</h3>
-            <div className="relative">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {visibleData.map((member, index) => (
-                        <div key={`${member.name}-${index}`} onClick={() => onEdit(member)} className="cursor-pointer transition-transform duration-300 hover:scale-105">
+            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Member Target Achievement (This Month)</h3>
+            {/* **FIX**: This parent container will now center the content */}
+            <div className="relative flex justify-center">
+                <div className={containerClasses}>
+                    {visibleData.map((member) => (
+                        <div 
+                            key={member.id} 
+                            onClick={() => onEdit(member)} 
+                            className="cursor-pointer transition-transform duration-300 hover:scale-105 w-full max-w-[280px]"
+                        >
                              <MemberTargetGauge
                                 name={member.name}
                                 achieved={member.achieved}
@@ -70,10 +87,12 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
                         </div>
                     ))}
                 </div>
-                {data.length > itemsToShow && (
+                
+                {/* Only show slider controls if the slider is active */}
+                {isSliderActive && (
                     <>
-                        <button onClick={handlePrev} className="absolute -left-3 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100 z-10"><ChevronLeft size={20} /></button>
-                        <button onClick={handleNext} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100 z-10"><ChevronRight size={20} /></button>
+                        <button onClick={handlePrev} className="absolute left-0 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100 z-10"><ChevronLeft size={20} /></button>
+                        <button onClick={handleNext} className="absolute right-0 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100 z-10"><ChevronRight size={20} /></button>
                     </>
                 )}
             </div>

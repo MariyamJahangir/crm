@@ -168,10 +168,15 @@ Invoice.init({
       key: 'id'
     }
   },
-  createdById: {
+    createdById: {
     type: DataTypes.UUID,
     allowNull: false,
-    comment: 'Foreign key to the user who created the invoice.'
+    comment: 'Polymorphic foreign key to the user (Admin or Member) who created the invoice.'
+  },
+  creatorType: {
+    type: DataTypes.STRING, // Use STRING to store 'ADMIN' or 'MEMBER'
+    allowNull: false,
+    comment: 'The type of the creator, e.g., "ADMIN" or "MEMBER".'
   },
 }, {
   sequelize,
