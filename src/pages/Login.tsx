@@ -5,7 +5,7 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import { authService } from '../services/authService';
 import { useNavigate } from 'react-router-dom';
-
+import {API_BASE_URL} from '../services/api'
 interface LoginProps {
   onSwitchToSignup?: () => void;
   onForgotPassword?: () => void;
@@ -50,8 +50,9 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
 
     try {
       const data = await authService.login(formData);
-      console.log(data);
+      console.log(API_BASE_URL);
       if (data.success && data.token && data.user) {
+       
         login(data.token, data.user);
         navigate('/dashboard', { replace: true });
       } else {

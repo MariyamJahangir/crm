@@ -58,7 +58,7 @@ const RejectDialog: React.FC<{
 
 
 // --- Constants ---
-const memberStatuses = ['Draft', 'Sent'] as const;
+const memberStatuses = ['Draft', 'Sent', 'Accepted', 'Rejected', 'Expired'] as const;
 const adminStatuses = ['Draft', 'Sent', 'Accepted', 'Rejected', 'Expired'] as const;
 const FINAL_STATES = ['Accepted', 'Rejected', 'Expired'];
 

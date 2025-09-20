@@ -23,7 +23,7 @@ Vendor.init({
   // Business Info
   industry: { type: DataTypes.STRING(120), allowNull: true },
   category: {
-    type: DataTypes.ENUM('Manufacturer','Distributor','ServiceProvider','Other'),
+    type: DataTypes.ENUM('Manufacturer','Distributor','Service Provider','Other'),
     allowNull: true
   },
   productsServices: { type: DataTypes.TEXT, allowNull: true },

@@ -39,6 +39,7 @@ const Contacts: React.FC = () => {
         setError(null);
         try {
             const res = await contactsService.list(token);
+            
             setMasterRows(res.contacts);
             setRows(res.contacts);
         } catch (e: any) {
@@ -152,8 +153,8 @@ const Contacts: React.FC = () => {
                                 { key: 'department', header: 'Department' },
                                 { key: 'email', header: 'Email' },
                                 { key: 'mobile', header: 'Mobile' },
-                                { key: 'customer.companyName', header: 'Company' },
-                                { key: 'customer.salesman.name', header: 'Salesman' },
+                                { key: 'Customer.companyName', header: 'Company' },
+                                { key: 'Customer.salesman.name', header: 'Salesman' },
                                 { key: 'actions', header: 'Actions', width: '80px', sortable: false, render: (r: ContactRow) => (
                                     <button onClick={() => openEditModal(r.id)} className="p-2 text-gray-500 hover:text-sky-500">
                                         <Pencil size={18} />

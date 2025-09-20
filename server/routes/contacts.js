@@ -7,10 +7,11 @@ const Vendor = require('../models/Vendor');
 const VendorContact = require('../models/VendorContact');
 const Lead = require('../models/Lead');
 const router = express.Router();
-
+const Member = require('../models/Member')
 // --- HIGH-LEVEL & SPECIFIC ROUTES FIRST ---
 
 // GET /contacts -> Lists all individual customer contacts.
+// routes/contacts.js (or similar file)
 router.get('/', authenticateToken, async (req, res) => {
     try {
         const search = String(req.query.search || '').trim();
@@ -22,17 +23,31 @@ router.get('/', authenticateToken, async (req, res) => {
                 { mobile: { [Op.like]: `%${search}%` } },
             ];
         }
+
         const contacts = await CustomerContact.findAll({
             where,
-            include: [{ model: Customer, attributes: ['id', 'companyName'] }],
+            include: [
+                {
+                    model: Customer,
+                    attributes: ['id', 'companyName'],
+                    // UPDATED: Nested include to get the salesman (creator) from the Customer model
+                    include: [{
+                        model: Member,
+                        as: 'salesman', // Use the alias defined in your Customer model association
+                        attributes: ['id', 'name', 'email']
+                    }]
+                }
+            ],
             order: [['createdAt', 'DESC']],
         });
+
         res.json({ success: true, contacts });
     } catch (e) {
         console.error('List Contacts Error:', e);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+
 
 // POST /contacts -> Creates a new CustomerContact.
 router.post('/', authenticateToken, async (req, res) => {

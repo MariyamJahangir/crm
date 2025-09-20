@@ -1,3 +1,4 @@
+// components/Modal.tsx
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -6,7 +7,8 @@ type Props = {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
-  footer?: {
+  // Allow footer to be either a ReactNode (JSX) or a structured object
+  footer?: React.ReactNode | {
     onCancel?: () => void;
     onConfirm?: () => void;
     cancelLabel?: string;
@@ -25,79 +27,87 @@ const sizeClass = (s?: string) =>
     : 'max-w-xl';
 
 const Modal: React.FC<Props> = ({ open, title, onClose, children, footer, size }) => {
-return (
-  <AnimatePresence>
-    {open && (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-        {/* Overlay */}
-        <motion.div
-          className="absolute inset-0 bg-black/50"
-          onClick={onClose}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        />
+  // Helper to determine if the footer is the structured object or custom JSX
+  const isStructuredFooter = footer && typeof footer === 'object' && !React.isValidElement(footer);
 
-        {/* Modal Card */}
-        <motion.div
-          className={`relative w-full ${sizeClass(size)} mx-auto rounded-2xl 
-                      bg-cloud-50/30 dark:bg-midnight-900/80 backdrop-blur-xl
-                      border border-cloud-200/30 dark:border-midnight-700/50
-                      shadow-2xl transition-all`}
-          initial={{ opacity: 0, scale: 0.95, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 30 }}
-          transition={{ duration: 0.25 }}
-        >
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-cloud-200/30 dark:border-midnight-700/50 flex justify-between items-center">
-            <h3 className="text-lg font-bold text-midnight-900 dark:text-ivory-100">{title}</h3>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-ivory-200 hover:bg-gray-200/40 dark:hover:bg-midnight-700/40 transition"
-            >
-              ✕
-            </button>
-          </div>
+  return (
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Overlay */}
+          <motion.div
+            className="absolute inset-0 bg-black/50"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          />
 
-          {/* Content */}
-          <div className="p-6 text-midnight-900 dark:text-ivory-100">
-            {children}
-          </div>
-
-          {/* Footer */}
-          {footer && (
-            <div className="px-6 py-4 border-t border-gray-200/50 dark:border-midnight-700/50 flex justify-end gap-3">
+          {/* Modal Card */}
+          <motion.div
+            className={`relative w-full ${sizeClass(size)} mx-auto rounded-2xl
+                        bg-cloud-50/30 dark:bg-midnight-900/80 backdrop-blur-xl
+                        border border-cloud-200/30 dark:border-midnight-700/50
+                        shadow-2xl transition-all`}
+            initial={{ opacity: 0, scale: 0.95, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 30 }}
+            transition={{ duration: 0.25 }}
+          >
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-cloud-200/30 dark:border-midnight-700/50 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-midnight-900 dark:text-ivory-100">{title}</h3>
               <button
-                onClick={footer.onCancel || onClose}
-                className="px-4 py-2 rounded-lg border border-gray-300/50 dark:border-midnight-700/50 
-                           text-gray-800 dark:text-ivory-200 bg-white/70 dark:bg-midnight-800/70 backdrop-blur-sm
-                           hover:text-midnight-900 dark:hover:text-white 
-                           hover:border-gray-400 hover:bg-white/90 dark:hover:bg-midnight-700/70
-                           shadow-sm hover:shadow-md transition-all"
+                onClick={onClose}
+                className="p-2 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-ivory-200 hover:bg-gray-200/40 dark:hover:bg-midnight-700/40 transition"
               >
-                {footer.cancelLabel || 'Cancel'}
-              </button>
-
-              <button
-                onClick={footer.onConfirm}
-                disabled={footer.confirmDisabled || footer.confirmLoading}
-                className={`px-4 py-2 rounded-lg border border-sky-400/60 text-white
-                           bg-sky-500/90 backdrop-blur-sm
-                           hover:bg-sky-600
-                           shadow-sm hover:shadow-md transition-all
-                           ${footer.confirmDisabled || footer.confirmLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {footer.confirmLoading ? 'Saving...' : footer.confirmLabel || 'Create'}
+                ✕
               </button>
             </div>
-          )}
-        </motion.div>
-      </div>
-    )}
-  </AnimatePresence>
-);
 
+            {/* Content */}
+            <div className="p-6 text-midnight-900 dark:text-ivory-100">
+              {children}
+            </div>
+
+            {/* Footer */}
+            {footer && (
+              <div className="px-6 py-4 border-t border-gray-200/50 dark:border-midnight-700/50 flex justify-end gap-3">
+                {isStructuredFooter ? (
+                  <>
+                    <button
+                      onClick={(footer as any).onCancel || onClose}
+                      className="px-4 py-2 rounded-lg border border-gray-300/50 dark:border-midnight-700/50
+                                 text-gray-800 dark:text-ivory-200 bg-white/70 dark:bg-midnight-800/70 backdrop-blur-sm
+                                 hover:text-midnight-900 dark:hover:text-white
+                                 hover:border-gray-400 hover:bg-white/90 dark:hover:bg-midnight-700/70
+                                 shadow-sm hover:shadow-md transition-all"
+                    >
+                      {(footer as any).cancelLabel || 'Cancel'}
+                    </button>
+                    <button
+                      onClick={(footer as any).onConfirm}
+                      disabled={(footer as any).confirmDisabled || (footer as any).confirmLoading}
+                      className={`px-4 py-2 rounded-lg border border-sky-400/60 text-white
+                                  bg-sky-500/90 backdrop-blur-sm
+                                  hover:bg-sky-600
+                                  shadow-sm hover:shadow-md transition-all
+                                  ${(footer as any).confirmDisabled || (footer as any).confirmLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {(footer as any).confirmLoading ? 'Saving...' : (footer as any).confirmLabel || 'Create'}
+                    </button>
+                  </>
+                ) : (
+                  
+                  footer
+                )}
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
 };
 
 export default Modal;

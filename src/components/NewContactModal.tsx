@@ -99,7 +99,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
       title="New Customer Contact"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          {/* <Button variant="secondary" onClick={onClose}>Cancel</Button> */}
           {/* UPDATED: Disable button if mandatory fields are missing */}
           <Button onClick={save} disabled={saving || !name.trim() || !designation.trim() || !mobile.trim()}>
             {saving ? 'Saving...' : 'Create'}

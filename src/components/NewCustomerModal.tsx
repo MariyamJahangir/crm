@@ -90,7 +90,10 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
         website: website || undefined,
         category: category || undefined,
       };
-      if (isAdmin) payload.salesmanId = salesmanId;
+       if (isAdmin && salesmanId) {
+        payload.salesmanId = salesmanId;
+     }
+
 
       const out = await customerService.create(payload, token);
       onCreated(out.customerId);
