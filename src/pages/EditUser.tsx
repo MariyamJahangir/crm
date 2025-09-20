@@ -82,7 +82,7 @@ const EditUser: React.FC = () => {
           <h1 className="text-3xl font-bold text-midnight-800 dark:text-ivory-100">
             {isSelf ? 'Edit Profile' : 'Edit User'}
           </h1>
-          <p className="text-midnight-400 dark:text-ivory-400 mt-1">
+          <p className="text-gray-200 dark:text-ivory-400 mt-1">
             {isSelf ? 'Update your profile' : 'Update user details'}
           </p>
         </div>

@@ -64,7 +64,7 @@ const CreateUser: React.FC = () => {
             <h1 className="text-3xl font-bold text-midnight-800 dark:text-ivory-100">
               Create User
             </h1>
-            <p className="text-midnight-400 dark:text-ivory-400 mt-1">
+            <p className="text-gray-200 dark:text-ivory-400 mt-1">
               Add a user under your account.
             </p>
           </div>
