@@ -236,13 +236,13 @@ const Users: React.FC = () => {
   return (
     <div className="relative min-h-screen  transition-colors duration-300">
 
-      <div className="flex z-10 min-h-screen">
+      <div className="flex z-10 h-screen">
         <Sidebar />
         <main className="flex-1 transition-all duration-300 
                ml-2 group-hover:ml-56 max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-extrabold text-midnight-900 dark:text-ivory-100 drop-shadow-lg">
+              <h1 className="text-3xl font-extrabold text-midnight-600 dark:text-ivory-100 drop-shadow-lg">
                 Users
               </h1>
               {/* <p className="text-sky-600 mt-1 select-none">
@@ -281,7 +281,7 @@ const Users: React.FC = () => {
             </div>
           </div>
 
-          {/* Controls
+         
           <div className="bg-cloud-100/30 dark:bg-midnight-800/30 backdrop-blur-xl border border-cloud-300/40 dark:border-midnight-600/40 rounded-2xl p-5 mb-6 shadow-lg">
             <div className="flex flex-col md:flex-row md:items-center gap-3">
               <input
@@ -319,7 +319,7 @@ const Users: React.FC = () => {
                 <option value={50}>50 / page</option>
               </select>
             </div>
-          </div> */}
+          </div>
 
           {loading && (
             <div className="text-midnight-700 dark:text-ivory-300 font-semibold select-none animate-pulse">

@@ -8,7 +8,7 @@ import { Filter } from '../components/FilterDropdown';
 import { useAuth } from '../contexts/AuthContext';
 import { leadsService, Lead } from '../services/leadsService';
 import { teamService, TeamUser } from '../services/teamService';
-
+import FormattedDateTime from '../components/FormattedDateTime'
 const STAGES = ['Discover', 'Solution Validation', 'Quote', 'Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'];
 const FORECASTS = ['Pipeline', 'BestCase', 'Commit'];
 
@@ -42,6 +42,7 @@ const Leads: React.FC = () => {
         const loadSalesmen = async () => {
             try {
                 const teamRes = await teamService.list(token);
+            
                 setSalesmen(teamRes.users);
             } catch (e) {
                 console.error("Failed to load salesmen list for admin.");
@@ -64,6 +65,7 @@ const Leads: React.FC = () => {
             try {
                 const res = await leadsService.list(token, appliedFilters, signal);
                 if (!signal.aborted) {
+                        console.log(res.leads)
                     setLeads(res.leads);
                 }
             } catch (e: any) {
@@ -81,20 +83,24 @@ const Leads: React.FC = () => {
     }, [token, appliedFilters]);
 
     return (
-        <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+        <div className="flex min-h-screen  z-10 transition-colors duration-300">
             <Sidebar />
             <div className="flex-1 overflow-y-auto h-screen">
                 <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
                         <div>
-                            <h1 className="text-2xl font-semibold text-gray-900 dark:text-ivory-200">Leads</h1>
-                            <p className="text-gray-600 dark:text-midnight-400">
+                            <h1 className="text-2xl font-extrabold text-gray-700 dark:text-ivory-200">Leads</h1>
+                            <p className="text-gray-700 dark:text-midnight700">
                                 Manage potential customers and track progress.
                             </p>
                         </div>
                         <Button
                             onClick={handleCreateLead}
-                            className="flex items-center px-4 py-2 bg-sky-500/80 text-white hover:bg-sky-600 shadow-lg rounded-xl transition"
+                            className="flex items-center px-5 py-2 rounded-xl 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition"
                         >
                             <Plus size={18} className="mr-2" />
                             Create Lead
@@ -114,6 +120,16 @@ const Leads: React.FC = () => {
                                 { key: 'stage', header: 'Stage' },
                                 { key: 'forecastCategory', header: 'Forecast' },
                                 { key: 'salesman.name', header: 'Salesman' },
+                                 { key: 'source', header: 'Source' },
+                                  
+                                   { key: 'nextFollowupAt', header: 'Next Follow Up' },
+                                   {
+      key: 'createdAt',
+      header: 'Created At',
+      render: (row: { createdAt?: string }) => 
+        row.createdAt ? <FormattedDateTime isoString={row.createdAt} /> : '-',
+      sortable: true
+    },
                                 {
                                     key: 'action',
                                     header: 'Action',

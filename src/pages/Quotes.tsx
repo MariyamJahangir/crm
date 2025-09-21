@@ -279,7 +279,7 @@ useEffect(() => {
 
   // --- Main Component Render ---
 return (
-  <div className="flex min-h-screen bg-midnight-800/50 transition-colors duration-300">
+  <div className="flex min-h-screen  transition-colors duration-300">
     {/* Sidebar */}
     <Sidebar />
 
@@ -287,12 +287,12 @@ return (
     <div className="flex-1 overflow-y-auto h-screen">
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
-          <h1 className="text-2xl font-semibold text-gray-900">Quotes</h1>
+          <h1 className="text-2xl font-extrabold text-gray-900">Quotes</h1>
 
           {/* Search + Create button aligned center */}
           <div className="flex items-center gap-2">
             <Button
-              className="h-10 bg-sky-500/80 text-white rounded-xl px-4 whitespace-nowrap flex items-center justify-center"
+              className="h-10 bg-sky-500/80 hover:bg-color-sky-700/80 text-white rounded-xl px-4 whitespace-nowrap flex items-center justify-center"
               onClick={() => navigate('/create-quote')}
             >
               Create Quote

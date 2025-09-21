@@ -3,6 +3,7 @@ const { sequelize } = require('../config/database');
 const { body, validationResult } = require('express-validator');
 const pdf = require('html-pdf'); 
 // Model Imports
+const { Op } = require("sequelize");
 const Invoice = require('../models/Invoices');
 const InvoiceItem = require('../models/InvoiceItem');
 const Quote = require('../models/Quote');
@@ -14,6 +15,7 @@ const router = express.Router();
 const  {  notifyAdminsOfSuccess  }= require('../utils/emailService')
 const Member = require('../models/Member')
 const Customer = require('../models/Customer')
+const Admin = require('../models/Admin')
 // --- Helper Functions ---
 
 /**
@@ -197,59 +199,6 @@ function buildInvoiceHTML({ invoice, items, creator }) {
  * GET /api/invoices
  * Retrieves a list of all invoices.
  */
-router.get('/', authenticateToken, async (req, res) => {
-    try {
-        const isUserAdmin = isAdmin(req);
-        const userId = req.subjectId;
-
-        // Base 'where' clause to filter invoices based on user role
-        const whereClause = {};
-        if (!isUserAdmin) {
-            // This assumes non-admins should only see invoices they created.
-            // Adjust 'createdById' to the actual field in your Invoice model.
-            whereClause.createdById = userId;
-        }
-
-        const invoices = await Invoice.findAll({
-            where: whereClause,
-            order: [['invoiceDate', 'DESC']],
-            include: [
-                { model: InvoiceItem, as: 'items' },
-                {
-                    model: Quote,
-                    as: 'quote',
-                    attributes: ['id', 'quoteNumber'],
-                    required: false,
-                    // --- NESTED INCLUDE TO FETCH THE SALESMAN ---
-                    include: [{
-                        model: Member,
-                        as: 'salesman', // This alias must match the association in your Quote model
-                        attributes: ['id', 'name', 'email'] // Specify only the fields you need
-                    }]
-                }
-            ]
-        });
-
-        // Map the results to hoist salesmanName to the top level for easy frontend access
-        const results = invoices.map(invoice => {
-            const plainInvoice = invoice.get({ plain: true });
-            return {
-                ...plainInvoice,
-                // Add salesmanName from the nested include, defaulting to null if not found
-                salesmanName: plainInvoice.quote?.salesman?.name || null 
-            };
-        });
-
-        res.json({ success: true, invoices: results });
-
-    } catch (error) {
-        console.error('List Invoices Error:', error);
-        res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
-    }
-});
-
-
-
 // router.get('/:id/download', authenticateToken, async (req, res) => {
 //   try {
 //     const invoice = await Invoice.findByPk(req.params.id, {
@@ -301,58 +250,155 @@ router.get('/', authenticateToken, async (req, res) => {
 //     res.status(500).json({ success: false, message: 'An unexpected server error occurred while generating the PDF.' });
 //   }
 // });
+/**
+ * PATCH /api/invoices/:id/status
+ * Updates the status of a single invoice.
+ */
+// routes/invoices.js
+
+// router.get('/:id/preview', authenticateToken, async (req, res) => {
+//     try {
+//         const invoice = await Invoice.findByPk(req.params.id, { 
+//             include: [
+//                 { model: InvoiceItem, as: 'items' },
+//                 { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
+//             ] 
+//         });
+//         if (!invoice) {
+//             return res.status(404).json({ success: false, message: 'Invoice not found' });
+//         }
+//         const html = buildInvoiceHTML({ invoice: invoice.toJSON(), items: (invoice.items || []).map(i => i.toJSON()) });
+//         res.json({ success: true, html });
+//     } catch (e) {
+//         res.status(500).json({ success: false, message: 'Failed to generate preview: ' + e.message });
+//     }
+// });
+
+
+
+
+router.get('/', authenticateToken, async (req, res) => {
+    try {
+        const isUserAdmin = (req) => req.subjectType !== 'MEMBER';
+        const userId = req.subjectId;
+
+        let whereClause = {};
+
+        // ★★★ FIX: This is the core of the new logic for non-admins ★★★
+        if (!isUserAdmin(req)) {
+            whereClause = {
+                [Op.or]: [
+                    // Condition 1: The user is the direct salesman on the invoice itself.
+                    { salesmanId: userId },
+                    // Condition 2: The invoice is linked to a quote where the user is the salesman.
+                    // We use '$related_model.field$' syntax for this.
+                    { '$quote.salesmanId$': userId }
+                ]
+            };
+        }
+
+        const invoices = await Invoice.findAll({
+            where: whereClause,
+            order: [['invoiceDate', 'DESC']],
+            // The includes must contain the models referenced in the where clause.
+            include: [
+                { model: InvoiceItem, as: 'items' },
+                {
+                    model: Quote,
+                    as: 'quote',
+                    attributes: ['id', 'quoteNumber', 'salesmanId'], // Ensure salesmanId is included
+                    required: false, // Use LEFT JOIN to not exclude invoices without quotes
+                    include: [{
+                        model: Lead,
+                        as: 'lead',
+                        attributes: ['id', 'previewUrl'],
+                        required: false
+                    }]
+                },
+                { model: Member, as: 'salesman', attributes: ['id', 'name'], required: false },
+                { model: Member, as: 'memberCreator', attributes: ['id', 'name'], required: false },
+                { model: Admin, as: 'adminCreator', attributes: ['id', 'name'], required: false },
+            ],
+            // ★★★ FIX: This prevents errors when ordering/filtering by an included column ★★★
+            subQuery: false
+        });
+
+        // The mapping logic can now be simplified as the filtering is done in the database.
+        const results = invoices.map(invoice => {
+            const plainInvoice = invoice.get({ plain: true });
+            const creator = plainInvoice.memberCreator || plainInvoice.adminCreator;
+
+            return {
+                ...plainInvoice,
+                salesmanName: plainInvoice.salesman?.name || 'N/A',
+                creatorName: creator?.name || 'N/A',
+                previewUrl: plainInvoice.quote?.lead?.previewUrl || null
+            };
+        });
+
+        res.json({ success: true, invoices: results });
+
+    } catch (error) {
+        console.error('List Invoices Error:', error);
+        res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
+    }
+});
+
+
+
 
 
 router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
     const { quoteId } = req.params;
     const loggedInUserId = req.subjectId;
-    const loggedInUserType = req.subjectType; // e.g., 'ADMIN' or 'MEMBER'
+    const loggedInUserType = req.subjectType;
 
     const transaction = await sequelize.transaction();
 
     try {
-        // --- 1. Fetch Quote and its associated Lead to get the salesmanId ---
+        // --- 1. Fetch Quote with associated Lead and Salesman ---
         const quote = await Quote.findByPk(quoteId, {
             include: [
                 { model: QuoteItem, as: 'items' },
-                { 
-                    model: Lead, 
-                    as: 'lead', 
-                    attributes: ['id', 'salesmanId', 'customerId'], // Only fetch necessary fields
-                    include: [{ model: Customer, as: 'customer', attributes: ['id'] }]
+                {
+                    model: Lead,
+                    as: 'lead',
+                    attributes: ['id', 'salesmanId', 'customerId'],
+                    include: [
+                        { model: Customer, as: 'customer', attributes: ['id', 'companyName', 'address'] },
+                        // ★★★ FIX: Include the salesman's data from the lead
+                        { model: Member, as: 'salesman', attributes: ['id', 'name'] }
+                    ]
                 }
             ],
             transaction
         });
 
-        // --- 2. Perform All Validations (including the new Authorization check) ---
-
+        // --- 2. Perform All Validations ---
         if (!quote) {
             await transaction.rollback();
             return res.status(404).json({ success: false, message: 'Quote not found.' });
         }
 
-        // --- NEW AUTHORIZATION LOGIC ---
         const isAdmin = loggedInUserType === 'ADMIN';
-        const isAssignedSalesman = quote.lead?.salesmanId === loggedInUserId;
+        const isAssignedSalesman = quote.lead && String(quote.lead.salesmanId) === String(loggedInUserId);
 
         if (!isAdmin && !isAssignedSalesman) {
             await transaction.rollback();
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Forbidden: You do not have permission to convert this quote.' 
+            return res.status(403).json({
+                success: false,
+                message: 'Forbidden: You do not have permission to convert this quote.'
             });
         }
-        // --- END OF NEW AUTHORIZATION LOGIC ---
 
         if (quote.status !== 'Accepted') {
             await transaction.rollback();
             return res.status(400).json({ success: false, message: 'Only an "Accepted" quote can be converted to an invoice.' });
         }
         
-        if (!quote.lead || !quote.lead.customerId || !quote.lead.customer) {
+        if (!quote.lead || !quote.lead.customer) {
             await transaction.rollback();
-            return res.status(400).json({ success: false, message: 'Data consistency error: The quote is not linked to a valid customer.' });
+            return res.status(400).json({ success: false, message: 'Data consistency error: The quote is not linked to a valid customer or lead.' });
         }
 
         const existingInvoice = await Invoice.findOne({ where: { quoteId: quote.id }, transaction });
@@ -361,52 +407,63 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
             return res.status(409).json({ success: false, message: `This quote has already been converted to Invoice #${existingInvoice.invoiceNumber}.` });
         }
 
-        // --- 3. Calculations (No Changes) ---
+        // --- 3. Calculations (remains the same) ---
         const FIXED_TAX_PERCENT = 5;
-        let calculatedSubtotal = 0, calculatedVatAmount = 0;
+        let calculatedSubtotal = 0;
+        let calculatedVatAmount = 0;
         const invoiceItemsData = quote.items.map((item, index) => {
             const lineSubtotal = (Number(item.quantity) || 0) * (Number(item.itemRate) || 0) - (Number(item.lineDiscountAmount) || 0);
             const taxAmount = lineSubtotal * (FIXED_TAX_PERCENT / 100);
             calculatedSubtotal += lineSubtotal;
             calculatedVatAmount += taxAmount;
             return {
-                slNo: index + 1, product: item.product, description: item.description, quantity: item.quantity,
-                itemRate: item.itemRate, taxPercent: FIXED_TAX_PERCENT, taxAmount: taxAmount.toFixed(2),
+                slNo: index + 1,
+                product: item.product,
+                description: item.description,
+                quantity: item.quantity,
+                itemRate: item.itemRate,
+                taxPercent: FIXED_TAX_PERCENT,
+                taxAmount: taxAmount.toFixed(2),
                 lineTotal: (lineSubtotal + taxAmount).toFixed(2),
             };
         });
         const overallDiscountAmount = Number(quote.discountAmount) || 0;
         const calculatedGrandTotal = (calculatedSubtotal - overallDiscountAmount) + calculatedVatAmount;
 
-        // --- 4. Database Creation (No Changes) ---
+        // --- 4. Database Creation with Correct Salesman ---
         const newInvoice = await Invoice.create({
             quoteId: quote.id,
             invoiceNumber: await generateInvoiceNumber(),
             invoiceDate: new Date(),
             dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
             customerId: quote.lead.customerId,
-            customerName: quote.customerName,
-            address: quote.address,
+            customerName: quote.lead.customer.companyName, 
+            address: quote.lead.customer.address,
             subtotal: calculatedSubtotal.toFixed(2),
             discountAmount: overallDiscountAmount.toFixed(2),
             vatAmount: calculatedVatAmount.toFixed(2),
             grandTotal: calculatedGrandTotal.toFixed(2),
             status: 'Draft',
             createdById: loggedInUserId,
+            creatorType: loggedInUserType,
+            // ★★★ FIX: Populate salesman details from the included lead data
+            salesmanId: quote.lead.salesmanId,
+            salesmanName: quote.lead.salesman ? quote.lead.salesman.name : 'N/A',
         }, { transaction });
 
-        const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id, }));
+        const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id }));
         await InvoiceItem.bulkCreate(finalInvoiceItems, { transaction });
+        
         await quote.update({ invoiceId: newInvoice.id }, { transaction });
 
         // --- 5. Commit and Respond ---
         await transaction.commit();
-        
-        const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'quote'] });
+
+        const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'quote', 'salesman'] });
         res.status(201).json({ success: true, message: 'Quote successfully converted to invoice.', invoice: fullInvoice });
 
     } catch (error) {
-        if (!transaction.finished) {
+        if (transaction && !transaction.finished) {
             await transaction.rollback();
         }
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -416,69 +473,52 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
 });
 
 
-/**
- * POST /api/invoices
- * Creates a new invoice manually.
- */
 router.post('/', authenticateToken, [
-    // --- Validation Rules ---
+    // Validation rules remain the same
     body('manualData.customerId').isUUID().withMessage('A valid customer must be selected.'),
     body('manualData.invoiceDate').isISO8601().withMessage('A valid invoice date is required.'),
     body('manualData.items').isArray({ min: 1 }).withMessage('Invoice must have at least one item.'),
     body('manualData.salesmanId').isUUID().withMessage('A valid salesman must be assigned.'),
     body('manualData.termsAndConditions').optional({ checkFalsy: true }).isString().withMessage('Terms and conditions must be a string.'),
-    
-    // This rule validates that if 'customerType' is sent, it must be 'Vendor' or 'Customer'.
     body('manualData.customerType').optional({ checkFalsy: true }).isIn(['Vendor', 'Customer']).withMessage('Invalid customer type specified.'),
-
 ], async (req, res) => {
-   
-    
-
     const errors = validationResult(req);
-
-    // --- (2) Error Handling: Check for and log validation errors ---
+    console.log(errors)
     if (!errors.isEmpty()) {
-      
-        
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Validation failed. Please check the data.', 
-            errors: errors.array() 
-        });
+        return res.status(400).json({ success: false, message: 'Validation failed.', errors: errors.array() });
     }
 
-    // --- (3) Transaction and Data Processing ---
     const { manualData } = req.body;
     const transaction = await sequelize.transaction();
 
     try {
-        if (!manualData) {
-            // This case should be rare since the body is not empty, but it's good practice.
-            await transaction.rollback();
-            return res.status(400).json({ success: false, message: 'Request must include `manualData`.' });
-        }
-
-        // --- (4) Sanitize and Prepare Data ---
-        // Explicitly destructure `customerType` to handle it safely.
         const { items, termsAndConditions, customerType, ...invoiceData } = manualData;
-
-        // Ensure `customerType` is a valid ENUM value or null before it reaches the database.
-        const finalCustomerType = ['Vendor', 'Customer'].includes(customerType) ? customerType : null;
+        
+        // --- FIX ---
+        // Default to 'Customer' if the type is not 'Vendor' or is invalid
+        const finalCustomerType = customerType === 'Vendor' ? 'Vendor' : 'Customer';
         
         const TAX_PERCENT = 5;
 
-        // --- (5) Invoice Calculation Logic ---
+        // --- Invoice Calculation & Item Preparation ---
         let calculatedSubtotal = 0;
         let calculatedVatAmount = 0;
+        
         const invoiceItemsData = items.map((item, index) => {
-            const lineSubtotal = (Number(item.quantity) || 0) * (Number(item.itemRate) || 0);
+            const quantity = Number(item.quantity) || 0;
+            const itemRate = Number(item.itemRate) || 0;
+            const lineSubtotal = quantity * itemRate;
             const taxAmount = lineSubtotal * (TAX_PERCENT / 100);
+
             calculatedSubtotal += lineSubtotal;
             calculatedVatAmount += taxAmount;
+
             return {
-                ...item,
                 slNo: index + 1,
+                product: item.product,
+                description: item.description,
+                quantity: quantity,
+                itemRate: itemRate,
                 taxPercent: TAX_PERCENT,
                 taxAmount: taxAmount.toFixed(2),
                 lineTotal: (lineSubtotal + taxAmount).toFixed(2),
@@ -488,28 +528,29 @@ router.post('/', authenticateToken, [
         const discountAmount = Number(invoiceData.discountAmount) || 0;
         const calculatedGrandTotal = (calculatedSubtotal - discountAmount) + calculatedVatAmount;
 
-        // --- (6) Database Creation ---
+        // --- Database Creation ---
         const newInvoice = await Invoice.create({
             ...invoiceData,
-            customerType: finalCustomerType, // Use the sanitized value
+            customerType: finalCustomerType,
             invoiceNumber: await generateInvoiceNumber(),
             subtotal: calculatedSubtotal.toFixed(2),
             discountAmount: discountAmount.toFixed(2),
             vatAmount: calculatedVatAmount.toFixed(2),
             grandTotal: calculatedGrandTotal.toFixed(2),
             status: 'Draft',
-            createdById: manualData.salesmanId, 
-            termsAndConditions: termsAndConditions || '', // Ensure it's not null if model doesn't allow it
+            termsAndConditions: termsAndConditions || '',
+            salesmanId: manualData.salesmanId,
+            createdById: req.subjectId,
+            creatorType: req.subjectType,
         }, { transaction });
         
         const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id }));
+
         await InvoiceItem.bulkCreate(finalInvoiceItems, { transaction });
 
         await transaction.commit();
         
-        // --- (7) Success Response ---
         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: 'items' });
-       
         res.status(201).json({ success: true, invoice: fullInvoice });
 
     } catch (error) {
@@ -519,11 +560,9 @@ router.post('/', authenticateToken, [
     }
 });
 
-/**
- * PATCH /api/invoices/:id/status
- * Updates the status of a single invoice.
- */
-// routes/invoices.js
+
+
+
 router.patch('/:id/status', authenticateToken, async (req, res) => {
     const { status } = req.body;
     const { id } = req.params;
@@ -601,44 +640,32 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 });
 
 
-// router.get('/:id/preview', authenticateToken, async (req, res) => {
-//     try {
-//         const invoice = await Invoice.findByPk(req.params.id, { 
-//             include: [
-//                 { model: InvoiceItem, as: 'items' },
-//                 { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
-//             ] 
-//         });
-//         if (!invoice) {
-//             return res.status(404).json({ success: false, message: 'Invoice not found' });
-//         }
-//         const html = buildInvoiceHTML({ invoice: invoice.toJSON(), items: (invoice.items || []).map(i => i.toJSON()) });
-//         res.json({ success: true, html });
-//     } catch (e) {
-//         res.status(500).json({ success: false, message: 'Failed to generate preview: ' + e.message });
-//     }
-// });
+
 router.get('/:id/download', authenticateToken, async (req, res) => {
     try {
         const invoice = await Invoice.findByPk(req.params.id, {
+            // FIX: Use the same robust include as the preview route.
             include: [
                 { model: InvoiceItem, as: 'items' },
                 { model: Quote, as: 'quote', required: false },
-                // FIX: Eagerly load the creator (Member)
-                { model: Member, as: 'creator', attributes: ['name'] }
+                { model: Member, as: 'salesman', attributes: ['name'], required: false },
+                { model: Member, as: 'memberCreator', attributes: ['id', 'name'], required: false },
+                { model: Admin, as: 'adminCreator', attributes: ['id', 'name'], required: false },
             ]
         });
 
         if (!invoice) {
             return res.status(404).json({ success: false, message: 'Invoice not found' });
         }
-
-        const html = buildInvoiceHTML({ 
-            invoice: invoice.toJSON(), 
-            items: (invoice.items || []).map(i => i.toJSON()),
-            creator: invoice.creator ? invoice.creator.toJSON() : null // Pass creator to HTML builder
-        });
         
+        const creator = invoice.memberCreator || invoice.adminCreator;
+
+        const html = buildInvoiceHTML({
+            invoice: invoice.toJSON(),
+            creator: creator ? creator.toJSON() : null,
+            salesman: invoice.salesman ? invoice.salesman.toJSON() : null
+        });
+
         const options = { format: 'A4', border: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' } };
 
         pdf.create(html, options).toBuffer((err, buffer) => {
@@ -650,31 +677,39 @@ router.get('/:id/download', authenticateToken, async (req, res) => {
             res.send(buffer);
         });
     } catch (e) {
-        res.status(500).json({ success: false, message: 'An unexpected error occurred.' });
+        res.status(500).json({ success: false, message: 'An unexpected error occurred: ' + e.message });
     }
 });
 
 // --- UPDATED: GET /:id/preview Route ---
 router.get('/:id/preview', authenticateToken, async (req, res) => {
     try {
-        const invoice = await Invoice.findByPk(req.params.id, { 
+        const invoice = await Invoice.findByPk(req.params.id, {
+            // FIX: Explicitly include all required associations using their correct aliases.
             include: [
                 { model: InvoiceItem, as: 'items' },
                 { model: Quote, as: 'quote', required: false },
-                // FIX: Eagerly load the creator (Member)
-                { model: Member, as: 'creator', attributes: ['name'] }
-            ] 
+                { model: Member, as: 'salesman', attributes: ['name'], required: false },
+                { model: Member, as: 'memberCreator', attributes: ['id', 'name'], required: false },
+                { model: Admin, as: 'adminCreator', attributes: ['id', 'name'], required: false },
+            ]
         });
-        
+
         if (!invoice) {
             return res.status(404).json({ success: false, message: 'Invoice not found' });
         }
-        const html = buildInvoiceHTML({ 
-            invoice: invoice.toJSON(), 
-            items: (invoice.items || []).map(i => i.toJSON()),
-            creator: invoice.creator ? invoice.creator.toJSON() : null // Pass creator to HTML builder
+        
+        // FIX: Correctly determine the creator from the eager-loaded associations.
+        const creator = invoice.memberCreator || invoice.adminCreator;
+        
+        const html = buildInvoiceHTML({
+            invoice: invoice.toJSON(),
+            creator: creator ? creator.toJSON() : null,
+            salesman: invoice.salesman ? invoice.salesman.toJSON() : null
         });
+        
         res.json({ success: true, html });
+
     } catch (e) {
         res.status(500).json({ success: false, message: 'Failed to generate preview: ' + e.message });
     }

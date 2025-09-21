@@ -1,6 +1,6 @@
-import { api, API_BASE_URL } from './api'; // Your central API instance
+import { api, API_BASE_URL } from './api';
 
-// --- TYPE DEFINITIONS (assuming they are in the same file) ---
+// --- TYPE DEFINITIONS ---
 export interface InvoiceItem {
   id: string;
   slNo: number;
@@ -26,13 +26,24 @@ export interface Invoice {
   subtotal: number;
   discountAmount: number;
   vatAmount: number;
+  salesmanId: string;
   grandTotal: number;
   status: 'Draft' | 'Sent' | 'Paid' | 'Cancelled' | 'Overdue';
   items: InvoiceItem[];
   notes?: string;
 }
 
-export type ManualInvoicePayload = Omit<Invoice, 'id' | 'invoiceNumber' | 'status' | 'items' |'salesmanId'|  'subtotal' | 'grandTotal' | 'notes'> & {
+// ★★★ FIX IS HERE ★★★
+// Removed 'customerType' from the Omit list to allow it in the payload.
+export type ManualInvoicePayload = Omit<Invoice, 
+  'id' | 
+  'invoiceNumber' | 
+  'status' | 
+
+  'items' | 
+  'subtotal' | 
+  'grandTotal' 
+> & {
   items: Omit<InvoiceItem, 'id' | 'lineTotal' | 'taxPercent' | 'taxAmount'>[];
 };
 
@@ -45,26 +56,25 @@ export interface CreateInvoiceResponse {
   success: boolean;
   invoice: Invoice;
   message?: string;
+  errors?: { msg: string }[]; // Added to handle validation errors from the previous step
 }
 
 export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Cancelled' | 'Overdue';
 
 // --- SERVICE OBJECT ---
 export const invoiceService = {
+  // ... (service methods remain the same)
   list: (token: string): Promise<ListInvoicesResponse> => {
     return api.get('/invoices', token);
   },
   
-  // MODIFIED create method
   create: (
     payload: { quoteId: string } | { manualData: ManualInvoicePayload },
     token: string
   ): Promise<CreateInvoiceResponse> => {
     if ('quoteId' in payload) {
-      // If a quoteId is provided, use the new conversion route
       return api.post(`/invoices/from-quote/${payload.quoteId}`, {}, token);
     }
-    // Otherwise, use the manual creation route
     return api.post('/invoices', payload, token);
   },
 
@@ -80,7 +90,7 @@ export const invoiceService = {
     return api.get(`/invoices/${id}/preview`, token);
   },
   
- downloadPdf: async (id: string, token: string | null): Promise<Blob> => {
+  downloadPdf: async (id: string, token: string | null): Promise<Blob> => {
     const headers: HeadersInit = {
       Accept: 'application/pdf',
     };
@@ -88,7 +98,6 @@ export const invoiceService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Use the imported API_BASE_URL to build the correct, absolute path
     const res = await fetch(`${API_BASE_URL}/invoices/${id}/download`, {
       method: 'GET',
       headers,
@@ -107,5 +116,4 @@ export const invoiceService = {
     
     return res.blob();
   },
-  
 };

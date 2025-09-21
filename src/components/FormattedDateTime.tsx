@@ -27,10 +27,10 @@ const FormattedDateTime: React.FC<FormattedDateTimeProps> = ({ isoString, classN
     });
 
     return (
-      <div className={`relative inline-block group ${className}`}>
+       <div className={`relative inline-block group ${className}`}>
         {formattedDate}
         <div 
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 
+          className="absolute z-10 bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 
                      bg-gray-800 text-white text-xs font-semibold rounded-md shadow-lg 
                      opacity-0 group-hover:opacity-100 transition-opacity duration-200 
                      whitespace-nowrap pointer-events-none"

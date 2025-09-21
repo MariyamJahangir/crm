@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
@@ -113,7 +113,7 @@ const Customers: React.FC = () => {
     };
 
     return (
-        <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+        <div className="flex min-h-screen z-10 transition-colors duration-300">
             <Sidebar />
             <div className="flex-1 overflow-y-auto h-screen">
                 <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -150,6 +150,13 @@ const Customers: React.FC = () => {
                                     sortable: false,
                                     render: (r) => (
                                         <div className="flex justify-center gap-2">
+                                              <button 
+                                                onClick={() => navigate(`/customers/${r.id}`)} 
+                                                className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition" 
+                                                title="View Customer Details"
+                                            >
+                                                <Eye className="w-5 h-5 text-green-500" />
+                                            </button>
                                             <button onClick={() => navigate(`/customers/${r.id}/edit`)} className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition" title="Edit Customer">
                                                 <Pencil className="w-5 h-5 text-sky-500" />
                                             </button>

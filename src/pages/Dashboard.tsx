@@ -321,16 +321,16 @@ const Dashboard: React.FC = () => {
     return (
         <>
             <SetTargetModal isOpen={isTargetModalOpen} onClose={() => { setTargetModalOpen(false); setEditingTarget(null); fetchData(true); }} token={token} editTarget={editingTarget} />
-            <div className="flex min-h-screen font-sans">
+            <div className="flex font-sans">
                 <Sidebar />
-                <main className="flex-1 p-4 sm:p-6 lg:p-8">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 min-h-screen">
                     <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
                         <div>
                             <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
                             <p className="mt-1 text-gray-500">Welcome back, {user?.name || 'User'}. Here's your performance overview.</p>
                         </div>
                         <div className="flex items-center gap-2 mt-4 sm:mt-0">
-                            {isAdmin && <button onClick={() => setTargetModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-all hover:scale-105 active:scale-100"><span>Set Target</span></button>}
+                            {isAdmin && <button onClick={() => setTargetModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-all hover:scale-105 active:scale-100"><span>Set Target</span></button>}
                             <button onClick={() => fetchData(true)} className="p-2 sm:px-4 sm:py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 transition-all hover:scale-105 active:scale-100 flex items-center">
                                 <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
                                

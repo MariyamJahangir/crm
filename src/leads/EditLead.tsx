@@ -136,16 +136,16 @@ useLayoutEffect(() => {
   if (!token) return null;
 
   return (
-    <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
+    <div className="flex min-h-screen  transition-colors duration-300">
     <Sidebar />
 
     <div className="flex-1 overflow-y-auto h-screen">
-      <main className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+       <main className="max-w-5xl mx-auto py-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-midnight-800 dark:text-ivory-100">
             Edit Lead #{lead?.uniqueNumber}
           </h1>
-          <p className="text-midnight-400 dark:text-ivory-400 mt-1">
+          <p className="text-midnight-600 dark:text-ivory-400 mt-1">
             Update lead details.
           </p>
         </div>
@@ -383,11 +383,11 @@ useLayoutEffect(() => {
             <div className="flex justify-end gap-4 pt-4">
               <Button
                 type="button"
-                className="px-5 py-2 rounded-xl bg-cloud-100/60 dark:bg-midnight-700/60 
+                className="px-5 py-2 rounded-xl 
                  border border-cloud-300/40 dark:border-midnight-600/40 
-                 text-midnight-700 dark:text-ivory-200 
-                 hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 
-                 backdrop-blur-md shadow-md transition"
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition"
                 onClick={() => navigate(`/leads/${id}`)}
               >
                 Cancel
@@ -395,8 +395,11 @@ useLayoutEffect(() => {
               <Button
                 type="submit"
                 disabled={saving}
-                className="px-5 py-2 rounded-xl bg-sky-500/90 hover:bg-sky-600 
-                 text-white shadow-lg transition disabled:opacity-50"
+                className="px-5 py-2 rounded-xl 
+                 border border-cloud-300/40 dark:border-midnight-600/40 
+                 text-gray-700 
+                 dark:hover:bg-cloud-400/70 bg-midnight-600/70 
+                 shadow-md transition"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </Button>

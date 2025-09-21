@@ -126,10 +126,10 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
           <Button
             variant="secondary"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-white/30 text-white/80 
+            className="px-4 py-2 rounded-lg border border-gray text-gray-400
                    bg-white/5 backdrop-blur-sm
-                   hover:text-white hover:border-white/60
-                   hover:bg-white/10
+                   hover:text-gray-800 hover:border-white/60
+                   hover:bg-slate/10
                    hover:shadow-[0_0_12px_rgba(255,255,255,0.5)]
                    transition-all"
           >
@@ -137,17 +137,20 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
           </Button>
 
           <Button
-            onClick={save}
-            disabled={saving || !companyName.trim()}
-            className={`px-4 py-2 rounded-lg border border-sky-400/40 text-sky-200
-                   bg-sky-500/10 backdrop-blur-sm
-                   hover:text-white hover:bg-sky-500/20
-                   hover:shadow-[0_0_16px_rgba(56,189,248,0.6)]
-                   transition-all
-                   ${saving || !companyName.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {saving ? 'Saving...' : 'Create'}
-          </Button>
+    onClick={save}
+    disabled={saving || !companyName.trim()}
+    className={`
+        px-4 py-2 rounded-lg 
+        bg-blue-600 text-white 
+        border border-blue-500
+        hover:bg-blue-700 hover:shadow-lg
+        transition-all duration-300 ease-in-out
+        ${saving || !companyName.trim() ? 'opacity-50 cursor-not-allowed' : ''}
+    `}
+>
+    {saving ? 'Saving...' : 'Create'}
+</Button>
+
         </>
       }
     >
@@ -196,7 +199,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
                 type={field.type || 'text'}
                 className="w-full rounded-lg px-3 py-2 
                        bg-white/50 border border-white/20 text-midnight-900/90
-                       placeholder-slate-900 backdrop-blur-sm
+                       placeholder-slate-500 backdrop-blur-sm
                        focus:outline-none focus:border-white/50
                        hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
                        transition-all"
@@ -213,7 +216,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
             <textarea
               className="w-full rounded-lg px-3 py-2 
                      bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-900 backdrop-blur-sm
+                      placeholder-slate-500 backdrop-blur-sm
                      focus:outline-none focus:border-white/50
                      hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
                      transition-all"
@@ -229,7 +232,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
             <input
               className="w-full rounded-lg px-3 py-2 
                      bg-white/50 border border-white/20 text-midnight-900/90
-                     placeholder-slate-900 backdrop-blur-sm
+                     placeholder-slate-500 backdrop-blur-sm
                      focus:outline-none focus:border-white/50
                      hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
                      transition-all"
@@ -244,7 +247,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
             <input
               className="w-full rounded-lg px-3 py-2 
                      bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-900 backdrop-blur-sm
+                      placeholder-slate-500 backdrop-blur-sm
                      focus:outline-none focus:border-white/50
                      hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
                      transition-all"
@@ -258,7 +261,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
             <label className="text-sm font-medium text-midnight-900/80">Category</label>
             <select
               className="w-full rounded-lg px-3 py-2 
-                     bg-white/50 border border-white/20 text-midnight-900/90
+                     bg-white/50 border border-white/20 text-midnight-400/90
                      backdrop-blur-sm
                      focus:outline-none focus:border-white/50
                      hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
@@ -275,7 +278,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
 
           {/* Conditional salesman field */}
           <div className="sm:col-span-2">
-            <label className="text-sm font-medium text-midnight-900/80">Salesman</label>
+            <label className="text-sm font-medium text-midnight-400">Salesman</label>
             {isAdmin ? (
               <>
                 <select

@@ -45,14 +45,14 @@ const Sidebar: React.FC = () => {
                  transition-all duration-300 overflow-hidden"
     >
       {/* Brand */}
-    <div className="h-16 bg-white px-3 border-b border-midnight-700/40 flex items-center transition-all duration-300">
-    <div className="flex items-center space-x-2 ">
+    <div className="h-16 bg-white px-2 border-b border-midnight-700/40 flex items-center transition-all duration-300">
+    <div className="flex items-center space-x-1 ">
         
         {/* Emblem - Always Visible */}
         {/* The size h-12 w-12 was working well, so we keep it. */}
         <img 
             src={Emblem} 
-            className="h-20 w-10 flex-shrink-0 " 
+            className="h-20 w-12 flex-shrink-0 " 
             alt="Artiflex Emblem" 
         />
         

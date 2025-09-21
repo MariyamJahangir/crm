@@ -30,6 +30,7 @@ const reportRouter = require('./routes/reports')
 const dashboardRouter= require('./routes/dashboard.sql')
 const targetRoutes = require('./routes/targets');
 const layoutRoutes= require('./routes/layout')
+const Counter = require('./models/Counter');
 // CORS for API
 const allowedOrigins = [
   process.env.FRONTEND_ORIGIN,      
@@ -75,11 +76,17 @@ async function seedAdmins() {
     applyAssociations();
     await connectDB();
     if (process.env.DB_SYNC === 'true') {
-      await sequelize.sync({ alter: true });
+      // await sequelize.sync({ alter: true });
       console.log('Sequelize synced');
     }
     await seedAdmins();
-
+const [counter, created] = await Counter.findOrCreate({
+      where: { name: 'leadNumber' },
+      defaults: { currentValue: 1000 }
+    });
+    if (created) {
+      console.log('✅ "leadNumber" counter has been initialized.');
+    }
     const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
     // Socket.IO with CORS matching the frontend and auth via handshake.auth
