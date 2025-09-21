@@ -29,7 +29,7 @@ const initialForm: FormState = {
   vatNo: '',
   address: '',
   industry: '',
-category: '',
+  category: '',
   website: '',
 };
 
@@ -122,9 +122,9 @@ const EditCustomer: React.FC = () => {
 
   const onChange =
     (key: keyof FormState) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      setForm((p) => ({ ...p, [key]: e.target.value as any }));
-    };
+      (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setForm((p) => ({ ...p, [key]: e.target.value as any }));
+      };
 
   const saveCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,9 +141,9 @@ const EditCustomer: React.FC = () => {
       }
       if (isCreate) {
         const out = await customerService.create(payload as any, token);
-        navigate(`/customers/${out.customerId}/edit`, { 
-            replace: true, 
-            state: { justCreated: true } 
+        navigate(`/customers/${out.customerId}/edit`, {
+          replace: true,
+          state: { justCreated: true }
         });
       } else {
         await customerService.update(id!, payload as any, token);
@@ -174,14 +174,14 @@ const EditCustomer: React.FC = () => {
     }
     try {
       await customerService.addContact(id, {
-          name: contactForm.name.trim(),
-          designation: contactForm.designation || undefined,
-          department: contactForm.department || undefined,
-          mobile: contactForm.mobile || undefined,
-          fax: contactForm.fax || undefined,
-          email: contactForm.email || undefined,
-          social: contactForm.social || undefined,
-        },
+        name: contactForm.name.trim(),
+        designation: contactForm.designation || undefined,
+        department: contactForm.department || undefined,
+        mobile: contactForm.mobile || undefined,
+        fax: contactForm.fax || undefined,
+        email: contactForm.email || undefined,
+        social: contactForm.social || undefined,
+      },
         token
       );
       await loadCustomer();
@@ -381,23 +381,71 @@ const EditCustomer: React.FC = () => {
                       />
                     </div>
 
+{/* code changed by mariyam - Start*/}
+
                     {/* Address */}
                     <div className="sm:col-span-2">
-                      <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
-                        Address
-                      </label>
-                      <textarea
-                        value={form.address}
-                        onChange={onChange('address')}
-                        rows={3}
-                        className="w-full px-4 py-3 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
-                         bg-white/70 dark:bg-midnight-800/60 
-                         text-midnight-900 dark:text-ivory-100 
-                         placeholder-midnight-400 dark:placeholder-ivory-500 
-                         shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
-                        placeholder="Full address"
-                      />
+                      <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                        <div>
+                          <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+                            Address
+                          </label>
+                          <input
+                            value={form.street}
+                            onChange={onChange('street')}
+                            rows={3}
+                            className="w-full h-11 px-4 py-3 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                              bg-white/70 dark:bg-midnight-800/60 
+                              text-midnight-900 dark:text-ivory-100 
+                              placeholder-midnight-400 dark:placeholder-ivory-500 
+                              shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                            placeholder="Street"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            value={form.city}
+                            onChange={onChange('city')}
+                            rows={3}
+                            className="w-full h-11 mt-7 px-4 py-3 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                              bg-white/70 dark:bg-midnight-800/60 
+                              text-midnight-900 dark:text-ivory-100 
+                              placeholder-midnight-400 dark:placeholder-ivory-500 
+                              shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                                  placeholder="City"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            value={form.state}
+                            onChange={onChange('state')}
+                            rows={3}
+                            className="w-full h-11 px-4 py-3 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                              bg-white/70 dark:bg-midnight-800/60 
+                              text-midnight-900 dark:text-ivory-100 
+                              placeholder-midnight-400 dark:placeholder-ivory-500 
+                              shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                                  placeholder="State"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            value={form.country}
+                            onChange={onChange('country')}
+                            rows={3}
+                            className="w-full h-11 px-4 py-3 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 
+                              bg-white/70 dark:bg-midnight-800/60 
+                              text-midnight-900 dark:text-ivory-100 
+                              placeholder-midnight-400 dark:placeholder-ivory-500 
+                              shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+                                  placeholder="Country"
+                          />
+                        </div>
+
+                      </div>
                     </div>
+
+{/* code changed by mariyam - End*/}
 
                     {/* Industry */}
                     <div>
