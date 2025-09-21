@@ -180,7 +180,7 @@ const Dashboard: React.FC = () => {
         },
         scales: {
             y: {
-                ticks: { color: '#4b5563', callback: (value: any) => typeof value === 'number' && value >= 1000 ? `$${value / 1000}k` : `$${value}`},
+                ticks: { color: '#4b5563', callback: (value: any) => typeof value === 'number' && value >= 1000 ? `${value / 1000}k` : `${value}`},
                 grid: { color: '#e5e7eb' },
             },
             x: { ticks: { color: '#4b5563' }, grid: { display: false } },
@@ -318,9 +318,9 @@ const Dashboard: React.FC = () => {
     return (
         <>
             <SetTargetModal isOpen={isTargetModalOpen} onClose={() => { setTargetModalOpen(false); setEditingTarget(null); fetchData(true); }} token={token} editTarget={editingTarget} />
-            <div className="flex min-h-screen bg-slate-100 font-sans">
+            <div className="flex font-sans">
                 <Sidebar />
-                <main className="flex-1 p-4 sm:p-6 lg:p-8">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 min-h-screen">
                     <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
                         <div>
                             <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>

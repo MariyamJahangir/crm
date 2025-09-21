@@ -20,7 +20,7 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
         if (!isSliderActive) return;
 
         const timer = setInterval(() => {
-            setCurrentIndex(prev => (prev + 1) % data.length);
+            handleNext();
         }, 2000); // Slide every 2 seconds
 
         return () => clearInterval(timer);
@@ -61,18 +61,18 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
     
     const visibleData = getVisibleItems();
 
-    // Dynamically choose between flexbox and grid for the layout
+    // **FIX**: Dynamically choose between flexbox and grid for the layout
     const containerClasses = isSliderActive
         ? "grid grid-cols-1 md:grid-cols-3 gap-6"
         : "flex flex-wrap justify-center gap-6";
 
     return (
         <div className="bg-white p-6 rounded-2xl shadow-lg">
-            <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Member Target Achievement (This Month)</h3>
-            {/* **FIX**: This parent container will now center the content */}
-            <div className="relative flex justify-center">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Member Target Achievement (This Month)</h3>
+            <div className="relative">
                 <div className={containerClasses}>
                     {visibleData.map((member) => (
+                        // **FIX**: Set a max-width on the item wrapper to control its size
                         <div 
                             key={member.id} 
                             onClick={() => onEdit(member)} 
@@ -91,8 +91,8 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
                 {/* Only show slider controls if the slider is active */}
                 {isSliderActive && (
                     <>
-                        <button onClick={handlePrev} className="absolute left-0 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100 z-10"><ChevronLeft size={20} /></button>
-                        <button onClick={handleNext} className="absolute right-0 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100 z-10"><ChevronRight size={20} /></button>
+                        <button onClick={handlePrev} className="absolute -left-3 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100 z-10"><ChevronLeft size={20} /></button>
+                        <button onClick={handleNext} className="absolute -right-3 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100 z-10"><ChevronRight size={20} /></button>
                     </>
                 )}
             </div>
@@ -101,3 +101,4 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
 };
 
 export default TargetAchievementSlider;
+

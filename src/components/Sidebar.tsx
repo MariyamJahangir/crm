@@ -38,21 +38,21 @@ const Sidebar: React.FC = () => {
   return (
     <aside
       className="group inset-y-0 left-0 z-40 
-                 w-16 hover:w-56 
+                 w-16 hover:w-48 
                  bg-midnight-900/60 backdrop-blur-xl 
                  border-r border-midnight-700/40 
                  flex flex-col shadow-2xl 
                  transition-all duration-300 overflow-hidden"
     >
       {/* Brand */}
-    <div className="h-16 px-3 border-b border-midnight-700/40 flex items-center transition-all duration-300">
-    <div className="flex items-center space-x-2">
+    <div className="h-16 bg-white px-2 border-b border-midnight-700/40 flex items-center transition-all duration-300">
+    <div className="flex items-center space-x-1 ">
         
         {/* Emblem - Always Visible */}
         {/* The size h-12 w-12 was working well, so we keep it. */}
         <img 
             src={Emblem} 
-            className="h-14 w-14 flex-shrink-0" 
+            className="h-20 w-12 flex-shrink-0 " 
             alt="Artiflex Emblem" 
         />
         
@@ -60,7 +60,7 @@ const Sidebar: React.FC = () => {
         {/* We set a fixed height and let the width adjust automatically, with a max-width to prevent it from getting too large. */}
         <img 
             src={Logo} 
-            className="h-17 w-auto max-w-[120px] opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+            className="h-17 w-auto max-w-[130px] opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
             alt="Artiflex Logo" 
         />
 
@@ -173,9 +173,9 @@ const Sidebar: React.FC = () => {
 
       {/* Footer actions */}
       <div className="p-3 border-t border-midnight-700/40">
-        <Button
+        <button
           variant="secondary"
-          className="w-full flex items-center justify-start px-3
+          className="w-full flex items-center justify-start p-3
                      bg-sky-500/70 text-ivory-50 hover:bg-sky-600/80 
                      backdrop-blur-md border border-sky-400/30
                      transition-all duration-300 rounded-lg shadow-md"
@@ -185,7 +185,7 @@ const Sidebar: React.FC = () => {
           <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             Logout
           </span>
-        </Button>
+        </button>
       </div>
     </aside>
   );

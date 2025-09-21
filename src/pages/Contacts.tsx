@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Plus, Trash2,Eye, Pencil } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { contactsService, ContactRow } from '../services/contactsService';
@@ -13,7 +14,7 @@ import { Filter } from '../components/FilterDropdown'; // Make sure this path is
 const Contacts: React.FC = () => {
     const { token, user } = useAuth();
     const isAdmin = user?.type === 'ADMIN';
-
+const navigate = useNavigate();
     // State for the master (unfiltered) list and the displayed (filtered) list
     const [masterRows, setMasterRows] = useState<ContactRow[]>([]);
     const [rows, setRows] = useState<ContactRow[]>([]);
@@ -156,9 +157,22 @@ const Contacts: React.FC = () => {
                                 { key: 'Customer.companyName', header: 'Company' },
                                 { key: 'Customer.salesman.name', header: 'Salesman' },
                                 { key: 'actions', header: 'Actions', width: '80px', sortable: false, render: (r: ContactRow) => (
-                                    <button onClick={() => openEditModal(r.id)} className="p-2 text-gray-500 hover:text-sky-500">
-                                        <Pencil size={18} />
-                                    </button>
+                                     <div className="flex justify-center gap-2">
+                                            <button 
+                                                   onClick={() => navigate(`/contacts/${r.id}`)} 
+                    className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition" 
+                    title="View Details"
+                                            >
+                                                <Eye className="w-5 h-5 text-green-500" />
+                                            </button>
+                                            <button 
+                                                onClick={() => openEditModal(r.id)} 
+                                                className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition" 
+                                                title="Edit Contact"
+                                            >
+                                                <Pencil className="w-5 h-5 text-sky-500" />
+                                            </button>
+                                        </div>
                                 )},
                             ]}
                             filterKeys={['name', 'designation', 'department', 'email', 'mobile', 'customer.companyName', 'customer.salesman.name']}

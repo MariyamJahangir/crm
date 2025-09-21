@@ -1,6 +1,6 @@
 // src/pages/Vendors.tsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Plus,Eye, Trash2, Pencil } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
@@ -200,15 +200,22 @@ const Vendors: React.FC = () => {
                   key: 'actions',
                   header: 'Actions',
                   render: (r: Vendor) => (
-                    <div className="hidden sm:inline-flex items-center justify-center 
-                                  w-8 h-8 rounded-full
-                                  bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md 
-                                  hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
-                                  shadow-md transition"
-                                onClick={() => navigate(`/vendors/${r.id}/edit`)}
-                              >
-                                <Pencil className="w-4 h-4 text-sky-500" />
-                              </div>
+                      <div className="flex justify-center gap-2">
+                    <button
+                        onClick={() => navigate(`/vendors/${r.id}`)}
+                        className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition"
+                        title="View Vendor Details"
+                    >
+                        <Eye className="w-5 h-5 text-green-500" />
+                    </button>
+                    <button
+                        onClick={() => navigate(`/vendors/${r.id}/edit`)}
+                        className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition"
+                        title="Edit Vendor"
+                    >
+                        <Pencil className="w-5 h-5 text-sky-500" />
+                    </button>
+                </div>
                   ),
                 },
 

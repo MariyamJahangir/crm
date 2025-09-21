@@ -128,7 +128,7 @@ const SetTargetModal: React.FC<SetTargetModalProps> = ({ isOpen, onClose, token,
             <div className="bg-white/10 dark:bg-midnight-800/50 backdrop-blur-lg border border-white/20 dark:border-midnight-700/40 rounded-2xl shadow-2xl p-6 w-full max-w-md transform transition-all">
                 
                 <div className="flex justify-between items-center border-b border-white/20 dark:border-midnight-700/40 pb-3 mb-5">
-                    <h2 className="text-xl font-bold text-ivory-100">{editTarget ? `Edit Target for ${editTarget.name}` : 'Set Sales Target'}</h2>
+                    <h2 className="text-xl font-bold text-gray-700">{editTarget ? `Edit Target for ${editTarget.name}` : 'Set Sales Target'}</h2>
                     <button onClick={onClose} className="p-1 rounded-full text-ivory-300 hover:bg-white/10 hover:text-white transition-colors">
                         <X size={22} />
                     </button>
@@ -136,7 +136,7 @@ const SetTargetModal: React.FC<SetTargetModalProps> = ({ isOpen, onClose, token,
 
                <form onSubmit={handleSubmit} className="space-y-5">
     <div>
-        <label htmlFor="member" className="block text-sm font-medium text-ivory-300 mb-1">Select Member</label>
+        <label htmlFor="member" className="block text-sm font-medium text-gray-700 mb-1">Select Member</label>
         <Select
             id="member"
             value={selectedMember}
@@ -157,7 +157,7 @@ const SetTargetModal: React.FC<SetTargetModalProps> = ({ isOpen, onClose, token,
     </div>
 
     <div>
-        <label htmlFor="targetAmount" className="block text-sm font-medium text-ivory-300 mb-1">Target Amount ($) for this Month</label>
+        <label htmlFor="targetAmount" className="block text-sm font-medium text-gray-700 mb-1">Target Amount ($) for this Month</label>
         <input
             id="targetAmount"
             type="number"
@@ -166,7 +166,7 @@ const SetTargetModal: React.FC<SetTargetModalProps> = ({ isOpen, onClose, token,
             value={targetAmount}
             onChange={e => setTargetAmount(e.target.value)}
             // The placeholder style is controlled here
-             className="w-full p-2 h-10 rounded-lg bg-white/10 dark:bg-midnight-700/30 border border-white/20 dark:border-midnight-600 text-ivory-100 placeholder-slate-500 focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 focus:outline-none transition"
+             className="w-full p-2 h-10 rounded-lg bg-white/10 dark:bg-midnight-700 border border-white/20 dark:border-midnight-600 text-gray-700 placeholder-slate-500 focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 focus:outline-none transition"
             placeholder="e.g., 50000"
             required
         />

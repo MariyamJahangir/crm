@@ -24,7 +24,9 @@ import CreateInvoice from './pages/CreateInvoicePage';
 import Deals from './pages/Deals';
 import DealDetails from './pages/DealsDetails';
 import SalesReport from './pages/SalesReport';
-
+import CustomerDetail from './pages/CustomerDetials';
+import CustomerContactDetail from './pages/CustomerContactDetail';
+import VendorDetailPage from './pages/VendorDetailPage';
 function App() {
   return (
     <AuthProvider>
@@ -47,6 +49,9 @@ function App() {
 <Route path="/users/create" element={<CreateUser />} />
 <Route path="/users/:id/edit" element={<EditUser />} />
 <Route path="/customers" element={<Customers />} />
+<Route path="/customers/:customerId/contacts/:contactId" element={<CustomerContactDetail />} />
+<Route path="/contacts/:contactId" element={<CustomerContactDetail />} />
+<Route path="/customers/:id" element={<CustomerDetail />} />
 <Route path="/customers/create" element={<EditCustomer />} />
 <Route path="/customers/:id/edit" element={<EditCustomer />} />
 <Route path="/quote" element={<Quote />} />
@@ -54,6 +59,7 @@ function App() {
 <Route path="/contacts" element={<Contact />} />
 <Route path="/vendors" element={<VendorsPage />} />
 <Route path="/vendors/new" element={<VendorFormPage />} />
+<Route path="/vendors/:id" element={<VendorDetailPage />} />
 <Route path="/vendors/:id/edit" element={<VendorFormPage />} /> 
 <Route path="/invoices" element={<InvoicesList />} /> 
 <Route path="/invoices/create" element={<CreateInvoice />} /> 

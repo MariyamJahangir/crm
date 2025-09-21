@@ -47,6 +47,8 @@ export type ContactRow = {
         id: string;
         companyName: string;
     }
+    createdAt?: string; // Added for timestamp
+    updatedAt?: string; // Added for timestamp
 };
 
 export type CreateContactPayload = {

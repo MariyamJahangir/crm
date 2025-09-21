@@ -8,7 +8,7 @@ import { Filter } from '../components/FilterDropdown';
 import { useAuth } from '../contexts/AuthContext';
 import { leadsService, Lead } from '../services/leadsService';
 import { teamService, TeamUser } from '../services/teamService';
-
+import FormattedDateTime from '../components/FormattedDateTime'
 const STAGES = ['Discover', 'Solution Validation', 'Quote', 'Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'];
 const FORECASTS = ['Pipeline', 'BestCase', 'Commit'];
 
@@ -42,6 +42,7 @@ const Leads: React.FC = () => {
         const loadSalesmen = async () => {
             try {
                 const teamRes = await teamService.list(token);
+            
                 setSalesmen(teamRes.users);
             } catch (e) {
                 console.error("Failed to load salesmen list for admin.");
@@ -64,6 +65,7 @@ const Leads: React.FC = () => {
             try {
                 const res = await leadsService.list(token, appliedFilters, signal);
                 if (!signal.aborted) {
+                        console.log(res.leads)
                     setLeads(res.leads);
                 }
             } catch (e: any) {
@@ -118,6 +120,16 @@ const Leads: React.FC = () => {
                                 { key: 'stage', header: 'Stage' },
                                 { key: 'forecastCategory', header: 'Forecast' },
                                 { key: 'salesman.name', header: 'Salesman' },
+                                 { key: 'source', header: 'Source' },
+                                  
+                                   { key: 'nextFollowupAt', header: 'Next Follow Up' },
+                                   {
+      key: 'createdAt',
+      header: 'Created At',
+      render: (row: { createdAt?: string }) => 
+        row.createdAt ? <FormattedDateTime isoString={row.createdAt} /> : '-',
+      sortable: true
+    },
                                 {
                                     key: 'action',
                                     header: 'Action',
