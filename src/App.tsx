@@ -24,6 +24,7 @@ import CreateInvoice from './pages/CreateInvoicePage';
 import Deals from './pages/Deals';
 import DealDetails from './pages/DealsDetails';
 import SalesReport from './pages/SalesReport';
+
 function App() {
   return (
     <AuthProvider>

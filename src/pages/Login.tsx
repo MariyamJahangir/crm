@@ -5,7 +5,7 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import { authService } from '../services/authService';
 import { useNavigate } from 'react-router-dom';
-import {API_BASE_URL} from '../services/api'
+
 interface LoginProps {
   onSwitchToSignup?: () => void;
   onForgotPassword?: () => void;
@@ -50,7 +50,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
 
     try {
       const data = await authService.login(formData);
-      console.log(API_BASE_URL);
+      
       if (data.success && data.token && data.user) {
        
         login(data.token, data.user);
@@ -85,9 +85,9 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
       <div className="bg-cloud-800/30 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20">
         <div className="text-center mb-8">
           <div className="bg-sky-700/30 p-3 rounded-full w-fit mx-auto mb-4 shadow-md">
-            <LogIn className="h-8 w-8 text-sky-400" />
+            
           </div>
-          <h1 className="text-3xl font-bold text-ivory-100">Welcome Back</h1>
+          <h1 className="text-3xl font-bold text-ivory-100">Welcome </h1>
           <p className="text-cloud-200 mt-2">Sign in to your account</p>
         </div>
 

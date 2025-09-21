@@ -118,7 +118,7 @@ const Contacts: React.FC = () => {
                 disabled={selectedIds.length === 0} 
                 onClick={() => setConfirmOpen(true)}
             >
-                <Trash2 size={18} className="mr-2" /> Delete ({selectedIds.length})
+                <Trash2 size={18} className="mr-2" />  ({selectedIds.length})
             </Button>
         )}
                             <Button onClick={() => setAddModalOpen(true)}>

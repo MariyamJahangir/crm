@@ -115,7 +115,7 @@ const Customers: React.FC = () => {
     return (
         <div className="flex min-h-screen bg-midnight-800/50 z-10 transition-colors duration-300">
             <Sidebar />
-            <div className="flex-1 overflow-y-auto min-h-screen">
+            <div className="flex-1 overflow-y-auto h-screen">
                 <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">

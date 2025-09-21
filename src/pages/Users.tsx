@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { teamService, TeamUser } from '../services/teamService';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { Pencil, Trash2, ListRestart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, RefreshCw,ListRestart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 type SortKey = 'name' | 'email' | 'designation' | 'createdAt' | 'status';
 type SortDir = 'asc' | 'desc';
@@ -234,7 +234,7 @@ const Users: React.FC = () => {
   );
 
   return (
-    <div className="relative min-h-screen bg-midnight-800/50 transition-colors duration-300">
+    <div className="relative min-h-screen  transition-colors duration-300">
 
       <div className="flex z-10 min-h-screen">
         <Sidebar />
@@ -262,7 +262,7 @@ const Users: React.FC = () => {
                 onClick={load}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
               >
-                <ListRestart /> 
+                <RefreshCw /> 
               </Button>
               {/* <Button
                 variant="secondary"
@@ -446,7 +446,7 @@ const Users: React.FC = () => {
                           <td className="px-4 py-3 text-sm text-center align-middle">
                             <div className="flex items-center justify-center gap-2">
 
-                              <div className="hidden sm:inline-flex items-center justify-center 
+                              {/* <div className="hidden sm:inline-flex items-center justify-center 
                                   w-8 h-8 rounded-full
                                   bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md 
                                   hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 
@@ -454,7 +454,7 @@ const Users: React.FC = () => {
                                 onClick={() => navigate(`/users/${u.id}/sales-report`)}
                               >
                                 <Eye className="w-4 h-4 text-midnight-500" />
-                              </div>
+                              </div> */}
 
 
                               <div className="hidden sm:inline-flex items-center justify-center 

@@ -32,8 +32,11 @@ function debounce(fn: Function, ms: number) {
 }
 
 
-const Loader: React.FC = () => <div className="flex h-screen w-full items-center justify-center"><div className="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-indigo-600"></div></div>;
-
+const Loader: React.FC = () => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-indigo-600"></div>
+  </div>
+);
 
 const ChartCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="bg-white p-4 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 w-full h-full flex flex-col overflow-hidden">
@@ -180,7 +183,7 @@ const Dashboard: React.FC = () => {
         },
         scales: {
             y: {
-                ticks: { color: '#4b5563', callback: (value: any) => typeof value === 'number' && value >= 1000 ? `$${value / 1000}k` : `$${value}`},
+                ticks: { color: '#4b5563', callback: (value: any) => typeof value === 'number' && value >= 1000 ? `${value / 1000}k` : `${value}`},
                 grid: { color: '#e5e7eb' },
             },
             x: { ticks: { color: '#4b5563' }, grid: { display: false } },
@@ -272,7 +275,7 @@ const Dashboard: React.FC = () => {
     }, [dashboardData]);
 
     if (isLoading || !dashboardData || !isLayoutInitialized) {
-        return <div className="flex bg-gray-50 min-h-screen"><Sidebar /><Loader /></div>;
+        return <div className="flex  min-h-screen"><Sidebar /><Loader /></div>;
     }
     
     if (error) {
@@ -318,7 +321,7 @@ const Dashboard: React.FC = () => {
     return (
         <>
             <SetTargetModal isOpen={isTargetModalOpen} onClose={() => { setTargetModalOpen(false); setEditingTarget(null); fetchData(true); }} token={token} editTarget={editingTarget} />
-            <div className="flex min-h-screen bg-slate-100 font-sans">
+            <div className="flex min-h-screen font-sans">
                 <Sidebar />
                 <main className="flex-1 p-4 sm:p-6 lg:p-8">
                     <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
@@ -327,10 +330,10 @@ const Dashboard: React.FC = () => {
                             <p className="mt-1 text-gray-500">Welcome back, {user?.name || 'User'}. Here's your performance overview.</p>
                         </div>
                         <div className="flex items-center gap-2 mt-4 sm:mt-0">
-                            {isAdmin && <button onClick={() => setTargetModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-all hover:scale-105 active:scale-100"><Target size={18} /><span>Set Target</span></button>}
+                            {isAdmin && <button onClick={() => setTargetModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-all hover:scale-105 active:scale-100"><span>Set Target</span></button>}
                             <button onClick={() => fetchData(true)} className="p-2 sm:px-4 sm:py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 transition-all hover:scale-105 active:scale-100 flex items-center">
                                 <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
-                                <span className="hidden sm:inline ml-2">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+                               
                             </button>
                         </div>
                     </header>

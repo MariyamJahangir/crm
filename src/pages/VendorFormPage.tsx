@@ -426,7 +426,7 @@ return (
                              shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
                 >
                   <option value="">Select Category</option>
-                  {(["Manufacturer", "Distributor", "ServiceProvider", "Other"] as VendorCategory[]).map(
+                  {(["Manufacturer", "Distributor", "Service Provider", "Other"] as VendorCategory[]).map(
                     (cat) => (
                       <option key={cat} value={cat}>
                         {cat}
