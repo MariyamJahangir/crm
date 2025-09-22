@@ -9,7 +9,7 @@ import { teamService, TeamUser } from '../services/teamService';
 import { customerService } from '../services/customerService';
 import NewCustomerModal from '../components/NewCustomerModal';
 import NewContactModal from '../components/NewContactModal';
-
+import {toast} from 'react-hot-toast';
 
 type CustomerLite = { id: string; companyName: string };
 
@@ -54,7 +54,6 @@ const CreateLead: React.FC = () => {
 
 
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
 
   const [openNewCustomer, setOpenNewCustomer] = useState(false);
@@ -83,7 +82,7 @@ const CreateLead: React.FC = () => {
         setCustomers(liteCustomers);
 
       } catch {
-        setError('Failed to load initial data.');
+        toast.error('Failed to load initial data.');
       }
     })();
   }, [token, user?.id, isAdmin]);
@@ -166,13 +165,17 @@ const CreateLead: React.FC = () => {
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+   
     if (!customerId) {
-      setError('Please select a customer.');
+      toast.error('Please select a customer.');
+      return;
+    }
+    if (!contactId) {
+      toast.error('Please select a contact.');
       return;
     }
     if (isAdmin && !salesmanId) {
-      setError('Please select a salesman.');
+       toast.error('Please select a salesman.');
       return;
     }
 
@@ -193,9 +196,10 @@ const CreateLead: React.FC = () => {
         salesmanId,
       };
       const out = await leadsService.create(payload, token);
+      toast.success('Lead created succesfully')
       navigate(`/leads/${out.id}`, { replace: true });
     } catch (e: any) {
-      setError(e?.data?.message || 'Failed to create lead');
+       toast.error(e?.data?.message || 'Failed to create lead');
     } finally {
       setSubmitting(false);
     }
@@ -217,11 +221,7 @@ const CreateLead: React.FC = () => {
           </p>
         </div>
 
-        {error && (
-          <div className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-200 px-4 py-3 rounded-lg mb-6 shadow-sm">
-            {error}
-          </div>
-        )}
+       
 
         <form
           onSubmit={save}
@@ -285,7 +285,7 @@ const CreateLead: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
-                Customer (Company)
+              Company*
               </label>
               <div className="flex gap-2">
                 <select
@@ -320,7 +320,7 @@ const CreateLead: React.FC = () => {
           {/* Contact + Salesman */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Select Contact</label>
+              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Contact*</label>
               <div className="flex gap-2">
                 <select
                   value={contactId || ''}

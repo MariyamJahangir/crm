@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { leadsService, Lead } from '../services/leadsService';
 import { teamService, TeamUser } from '../services/teamService';
 import FormattedDateTime from '../components/FormattedDateTime'
+import { toast } from 'react-hot-toast';
 const STAGES = ['Discover', 'Solution Validation', 'Quote', 'Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'];
 const FORECASTS = ['Pipeline', 'BestCase', 'Commit'];
 
@@ -20,7 +21,7 @@ const Leads: React.FC = () => {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+
     const [appliedFilters, setAppliedFilters] = useState<Filter[]>([]);
 
     const handleCreateLead = () => navigate('/leads/create');
@@ -61,7 +62,7 @@ const Leads: React.FC = () => {
 
         (async () => {
             setLoading(true);
-            setError(null);
+            
             try {
                 const res = await leadsService.list(token, appliedFilters, signal);
                 if (!signal.aborted) {
@@ -70,7 +71,7 @@ const Leads: React.FC = () => {
                 }
             } catch (e: any) {
                 if (!signal.aborted) {
-                    setError(e?.data?.message || 'Failed to load leads');
+                     toast.error(e?.data?.message || 'Failed to load leads');
                 }
             } finally {
                 if (!signal.aborted) {
@@ -108,9 +109,9 @@ const Leads: React.FC = () => {
                     </div>
 
                     {loading && <div className="text-center py-4 text-midnight-700 dark:text-ivory-300">Loading...</div>}
-                    {error && <div className="text-center py-4 text-red-600">{error}</div>}
+                    
 
-                    {!loading && !error && (
+                    {!loading  && (
                         <DataTable
                             rows={leads}
                             columns={[

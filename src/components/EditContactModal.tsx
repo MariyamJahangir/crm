@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { contactsService, UpdateContactPayload } from '../services/contactsService';
 import Button from './Button';
-
+import {toast} from 'react-hot-toast'
 interface Props {
   open: boolean;
   contactId: string | null;
@@ -26,13 +26,13 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  
 const [companyName, setCompanyName] = useState(''); 
   useEffect(() => {
     if (open && contactId) {
       (async () => {
         setLoading(true);
-        setError(null);
+       
         try {
           const res = await contactsService.getOne(contactId, token);
         setCompanyName(res.contact.Customer?.companyName || 'N/A');
@@ -46,14 +46,14 @@ const [companyName, setCompanyName] = useState('');
             social: res.contact.social || '',
           });
         } catch (e: any) {
-          setError(e?.data?.message || 'Failed to load contact data.');
+          toast.error(e?.data?.message || 'Failed to load contact data.');
         } finally {
           setLoading(false);
         }
       })();
     } else {
-      setForm(initialForm); // Reset form when modal is closed
-      setCompanyName(''); // Also reset the company name
+      setForm(initialForm); 
+      setCompanyName(''); 
     }
   }, [open, contactId, token]);
 
@@ -65,19 +65,33 @@ const [companyName, setCompanyName] = useState('');
     e.preventDefault();
     if (!contactId) return;
 
-    if (!form.name.trim() || !form.designation.trim() || !form.mobile.trim()) {
-      setError('Name, Designation, and Mobile are required.');
-      return;
+      
+     if (!form.name.trim() || !form.designation.trim() || !form.mobile.trim()) {
+        toast.error('Name, Designation, and Mobile are all required fields.');
+        return;
+    }
+
+    // 2. Validate phone number format
+    // This regex allows an optional '+' at the start, followed by 7 to 15 digits.
+    if (!/^\+?[0-9]{7,15}$/.test(form.mobile.trim())) {
+        toast.error('Please enter a valid phone number (digits only, optional +).');
+        return;
+    }
+
+    // 3. Validate email format if an email is provided
+    if (form.email.trim() && !/^\S+@\S+\.\S+$/.test(form.email.trim())) {
+        toast.error('Please provide a valid email address.');
+        return;
     }
 
     setSaving(true);
-    setError(null);
+
     try {
       await contactsService.update(contactId, form, token);
       onSuccess(); // This will trigger a reload on the parent page
       onClose(); // Close modal on success
     } catch (e: any) {
-      setError(e?.data?.message || 'Failed to save changes.');
+      toast.error(e?.data?.message || 'Failed to save changes.');
     } finally {
       setSaving(false);
     }
@@ -86,7 +100,7 @@ const [companyName, setCompanyName] = useState('');
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-sm p-6">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/10 backdrop-blur-sm p-6">
       <div className="bg-white/50 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30
                       w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
@@ -110,12 +124,7 @@ const [companyName, setCompanyName] = useState('');
             <>
               {/* Body */}
               <div className="px-6 py-6 space-y-4 overflow-auto flex-1">
-                {error && (
-                  <div className="bg-red-50/30 dark:bg-red-900/30 border border-red-200/30 dark:border-red-700/30
-                                  text-red-700 dark:text-red-400 px-4 py-2 rounded-xl text-sm shadow-sm">
-                    {error}
-                  </div>
-                )}
+               
 
                 
                   <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
@@ -135,24 +144,24 @@ const [companyName, setCompanyName] = useState('');
                     {/* Reusable Input Style */}
                     {[
                     
-                      { key: 'name', label: 'Name', required: true },
-                      { key: 'designation', label: 'Designation', required: true },
+                      { key: 'name', label: 'Name*' },
+                      { key: 'designation', label: 'Designation' },
                       { key: 'department', label: 'Department' },
-                      { key: 'mobile', label: 'Mobile', required: true },
+                      { key: 'mobile', label: 'Mobile*' },
                       { key: 'email', label: 'Email', type: 'email' },
                       { key: 'fax', label: 'Fax' },
                       { key: 'social', label: 'LinkedIn/Social' },
                     ].map(field => (
                       <div key={field.key}>
                         <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
-                          {field.label}{field.required && '*'}
+                          {field.label}
                         </label>
                         <input
                           value={form[field.key as keyof UpdateContactPayload]}
                           onChange={handleChange(field.key as keyof UpdateContactPayload)}
-                          placeholder={`${field.label}${field.required ? '*' : ''}`}
+                          placeholder={`${field.label}`}
                           type={field.type || 'text'}
-                          required={field.required}
+                         
                           className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
                                  bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100
                                  shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"

@@ -9,7 +9,7 @@ import { quotesService, QuoteItem as QItem } from '../services/quotesService';
 import { teamService, TeamUser } from '../services/teamService';
 import { customerService } from '../services/customerService';
 import PreviewModal from '../components/PreviewModal';
-
+import {toast} from 'react-hot-toast';
 type SavedQuote = {
   id: string;
   number: string;
@@ -61,7 +61,7 @@ const CreateQuote: React.FC = () => {
     },
   ]);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [lastSavedQuote, setLastSavedQuote] = useState<SavedQuote | null>(null);
   
   const today = new Date().toISOString().split('T')[0];
@@ -155,6 +155,7 @@ const CreateQuote: React.FC = () => {
         setPreview({ open: true, html: res.html });
       } else {
         throw new Error('Failed to load preview content.');
+   
       }
     } catch (e: any) {
       const errorMessage = e?.message || 'Failed to load preview.';
@@ -172,7 +173,8 @@ const CreateQuote: React.FC = () => {
         setSalesmen(team.users);
         const me = team.users.find(u => String(u.id) === String(user?.id));
         setSalesmanId(me?.id || team.users[0]?.id || '');
-      } catch { setError('Failed to load team data.'); }
+      } catch { 
+       toast.error('Failed to load team data.'); }
     })();
   }, [token, user]);
 
@@ -193,7 +195,7 @@ const CreateQuote: React.FC = () => {
   useEffect(() => {
     if (!token || !selectedLeadId) return;
     (async () => {
-      setError(null);
+      
       try {
         const leadRes = await leadsService.getOne(selectedLeadId, token);
         const { lead } = leadRes;
@@ -223,29 +225,57 @@ const CreateQuote: React.FC = () => {
           setAddress('');
         }
       } catch (e: any) {
-        setError(e?.data?.message || 'Failed to load lead details');
+           toast.error(e?.data?.message || 'Failed to load lead details');
       }
     })();
   }, [token, selectedLeadId]);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+   
 
     if (!selectedLeadId) {
-        setError('Please select a lead before saving the quote.');
+           toast.error('Please select a lead before saving the quote.');
         return;
     }
-    if (!customerName.trim()) {
-        setError('Customer Name is required.');
+     if (!customerName.trim()) {
+        toast.error('Customer Name is required.');
         return;
+    }
+
+    // 1. NEW: If a customer is linked, a contact and phone number are now mandatory.
+    if (customerId) {
+        if (!contactId) {
+            toast.error('Please select a contact person for the customer.');
+            return;
+        }
+        if (!phone.trim()) {
+            toast.error('Phone number is required for the selected contact.');
+            return;
+        }
     }
     if (items.some(it => !it.product.trim() || it.quantity <= 0 || it.itemRate <= 0)) {
-        setError('Each item must have a product name, and both Quantity and Rate must be greater than 0.');
+           toast.error('Each item must have a product name, and both Quantity and Rate must be greater than 0.');
         return;
     }
     if (items.some(it => it.itemRate < it.itemCost)) {
-        setError('Item Rate cannot be lower than Cost. Please review the item list.');
+           toast.error('Item Rate cannot be lower than Cost. Please review the item list.');
+        return;
+    }
+    if (!validityUntil) {
+        toast.error('Please select a "Validity Until" date for the quote.');
+        return;
+    }
+
+    // 2. NEW: Check if the selected date is in the future
+    const today = new Date();
+    const validityDate = new Date(validityUntil);
+    // Set hours to 0 to compare dates only, ignoring time
+    today.setHours(0, 0, 0, 0); 
+    validityDate.setHours(0, 0, 0, 0);
+
+    if (validityDate <= today) {
+        toast.error('"Validity Until" date must be in the future.');
         return;
     }
 
@@ -279,11 +309,12 @@ const CreateQuote: React.FC = () => {
         };
 
         const res = await quotesService.create(selectedLeadId, payload, token!);
+           toast.success("Quote saved succesfully")
         setLastSavedQuote({ id: res.quoteId, number: res.quoteNumber, isApproved: res.isApproved });
 
     } catch (e: any) {
         const errorMessage = e?.data?.errors?.[0]?.msg || e?.data?.message || 'Failed to save quote. Please check all fields.';
-        setError(errorMessage);
+           toast.error(errorMessage);
     } finally {
         setSaving(false);
     }
@@ -292,7 +323,7 @@ const CreateQuote: React.FC = () => {
   const downloadPdf = async () => {
     if (!token || !selectedLeadId || !lastSavedQuote) return;
     if (!isAdmin && lastSavedQuote.isApproved === false) {
-      setError('This quote requires admin approval before it can be downloaded.');
+         toast.error('This quote requires admin approval before it can be downloaded.');
       return;
     }
     try {
@@ -306,7 +337,7 @@ const CreateQuote: React.FC = () => {
       a.remove();
       setTimeout(() => window.URL.revokeObjectURL(url), 3000);
     } catch (e: any) {
-      setError(e?.data?.message || 'Failed to download PDF');
+         toast.error(e?.data?.message || 'Failed to download PDF');
     }
   };
 
@@ -717,7 +748,7 @@ const CreateQuote: React.FC = () => {
                 </Button>
               </div>
 
-              {error && <p className="text-red-600 mt-2 text-center">{error}</p>}
+           
               {lastSavedQuote && (
                 <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-900/40 
                                   text-green-800 dark:text-green-200 text-center">

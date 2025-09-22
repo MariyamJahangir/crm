@@ -49,7 +49,7 @@ const ResponsiveChart: React.FC<{ title: string; type: 'line' | 'bar' | 'doughnu
         const baseOptions: ChartOptions<any> = {
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { position: type === 'doughnut' ? 'right' : 'top', labels: { font: { size: legendFontSize, weight: 'bold' }, boxWidth: isSmall ? 10 : 20, padding: isSmall ? 8 : 15, }, }, tooltip: { backgroundColor: '#111827', titleFont: { size: 14, weight: 'bold' }, bodyFont: { size: 12 }, padding: 12, cornerRadius: 8, }, },
-            scales: type === 'doughnut' ? {} : { y: { ticks: { color: '#4b5563', font: { size: tickFontSize } }, grid: { color: '#e5e7eb' }, }, x: { ticks: { color: '#4b5563', font: { size: tickFontSize } }, grid: { display: false }, }, },
+            scales: type === 'doughnut' ? {} : { y: { ticks: { color: '#a8a8a8ff', font: { size: tickFontSize } }, grid: { color: '#e5e7eb' }, }, x: { ticks: { color: '#8d8d8dff', font: { size: tickFontSize } }, grid: { display: false }, }, },
         };
         if (type === 'doughnut') { baseOptions.cutout = '70%'; }
         return baseOptions;

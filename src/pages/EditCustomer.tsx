@@ -8,6 +8,7 @@ import { customerService, Customer } from '../services/customerService';
 import { teamService, TeamUser } from '../services/teamService';
 import ConfirmDialog from '../components/ConfirmDialog';
 import EditContactModal from '../components/EditContactModal';
+import {  toast } from 'react-hot-toast';
 
 type FormState = {
   companyName: string;
@@ -45,7 +46,7 @@ const EditCustomer: React.FC = () => {
   const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
   const [loading, setLoading] = useState(!isCreate);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [showContacts, setShowContacts] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -71,7 +72,7 @@ const EditCustomer: React.FC = () => {
       const res = await customerService.getOne(id, token);
       setCustomer(res.customer);
     } catch (e: any) {
-      setError(e?.data?.message || 'Failed to reload customer data');
+        toast.error(e?.data?.message || 'Failed to reload customer data');
     } finally {
       setLoading(false);
     }
@@ -94,7 +95,7 @@ const EditCustomer: React.FC = () => {
     if (!id || !token) return;
     (async () => {
       setLoading(true);
-      setError(null);
+      
       try {
         const res = await customerService.getOne(id, token);
         setCustomer(res.customer);
@@ -113,7 +114,7 @@ const EditCustomer: React.FC = () => {
           setShowContacts(true);
         }
       } catch (e: any) {
-        setError(e?.data?.message || 'Failed to load customer');
+         toast.error(e?.data?.message || 'Failed to load customer');
       } finally {
         setLoading(false);
       }
@@ -128,11 +129,15 @@ const EditCustomer: React.FC = () => {
 
   const saveCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+   
     if (form.website && !/^(https?:\/\/|www\.).+/i.test(form.website)) {
-      setError('Website must start with http://, https://, or www.');
+      toast.error('Website must start with http://, https://, or www.');
       return;
     }
+     if (!form.contactNumber.trim() &&  !form.email.trim()) {
+            toast.error('Either Mobile or Email is required');
+            return;
+        }
     setSaving(true);
     try {
       const payload: Partial<FormState> = { ...form };
@@ -146,11 +151,14 @@ const EditCustomer: React.FC = () => {
             state: { justCreated: true } 
         });
       } else {
+        toast.success('Customer saved successfully!');
         await customerService.update(id!, payload as any, token);
+         
         navigate('/customers');
+        
       }
     } catch (e: any) {
-      setError(e?.data?.message || 'Failed to save customer');
+       toast.error(e?.data?.message || 'Failed to save customer');
     } finally {
       setSaving(false);
     }
@@ -159,19 +167,16 @@ const EditCustomer: React.FC = () => {
   const addContact = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !token) return;
-    setContactError(null);
-    if (!contactForm.name.trim()) {
-      setContactError('Contact name is required');
-      return;
-    }
-    if (!contactForm.designation.trim()) {
-      setContactError('Designation is required');
-      return;
-    }
-    if (!contactForm.mobile.trim()) {
-      setContactError('Mobile number is required');
-      return;
-    }
+   
+          if (!contactForm.name.trim()) {
+            toast.error('Contact name is required');
+            return;
+        }
+        if (!contactForm.mobile.trim() &&  !contactForm.email.trim()) {
+            toast.error('Either Mobile or Email is required');
+            return;
+        }
+
     try {
       await customerService.addContact(id, {
           name: contactForm.name.trim(),
@@ -184,10 +189,11 @@ const EditCustomer: React.FC = () => {
         },
         token
       );
+       toast.success('Contact added successfully!');
       await loadCustomer();
       setContactForm({ name: '', designation: '', department: '', mobile: '', fax: '', email: '', social: '' });
     } catch (e: any) {
-      setContactError(e?.data?.message || 'Failed to add contact');
+     toast.error(e?.data?.message || 'Failed to add contact');
     }
   };
 
@@ -208,7 +214,9 @@ const EditCustomer: React.FC = () => {
       await loadCustomer();
       setSelectedContacts({});
       setConfirmOpen(false);
-    } catch { /* ignore */ }
+    } catch { 
+      toast.error(e?.data?.message || 'Failed to delete contacts');
+     }
     finally {
       setDeleting(false);
     }
@@ -218,6 +226,7 @@ const EditCustomer: React.FC = () => {
     setEditModalOpen(false);
     setEditingContactId(null);
     loadCustomer();
+    toast.success('Contact updated successfully!');
   };
 
   const openEditModal = (contactId: string) => {
@@ -227,6 +236,7 @@ const EditCustomer: React.FC = () => {
 
   return (
     <div className="relative h-screen">
+
       {/* Background with overlay */}
       {/* <div className="absolute inset-0">
         <img
@@ -256,12 +266,7 @@ const EditCustomer: React.FC = () => {
             {loading && !isCreate && (
               <div className="text-midnight-700 dark:text-ivory-300">Loading...</div>
             )}
-            {error && (
-              <div className="bg-red-50/80 dark:bg-red-900/40 border border-red-200 dark:border-red-700 
-                    text-red-700 dark:text-red-300 px-4 py-3 rounded-xl mb-6 shadow-sm">
-                {error}
-              </div>
-            )}
+           
 
             {/* Customer form */}
             {(!loading || isCreate) && (
@@ -501,7 +506,7 @@ const EditCustomer: React.FC = () => {
                           disabled={selectedIds.length === 0}
                           onClick={() => setConfirmOpen(true)}
                         >
-                          Delete Selected ({selectedIds.length})
+                          Delete({selectedIds.length})
                         </Button>
                       </div>
                     </div>

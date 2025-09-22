@@ -9,7 +9,7 @@ import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { X } from "lucide-react";
-
+import { toast } from 'react-hot-toast';
 interface Member { id: string; name: string; }
 
 const VendorFormPage: React.FC = () => {
@@ -22,7 +22,7 @@ const VendorFormPage: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [activeTab, setActiveTab] = useState('basic');
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -42,7 +42,7 @@ const VendorFormPage: React.FC = () => {
           setContacts([{ name: '' }]);
         }
       } catch {
-        setError('Failed to fetch initial data.');
+        toast.error('Failed to fetch initial data.');
       } finally {
         setLoading(false);
       }
@@ -54,7 +54,7 @@ const VendorFormPage: React.FC = () => {
           const res = await teamService.list(token);
           setMembers(res.users || []);
         } catch {
-          setError("Failed to load team members.");
+           toast.error("Failed to load team members.");
         }
       }
     };
@@ -79,8 +79,48 @@ const VendorFormPage: React.FC = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!token) return;
-    setIsSubmitting(true);
-    setError(null);
+ 
+   
+      if (!vendor.vendorName?.trim()) {
+        toast.error('Vendor Name is a required field.');
+        setActiveTab('basic'); // Switch to the relevant tab
+        return;
+    }
+
+    // 2. Vendor Contact Info Format Validation
+    if (vendor.phone && !/^\+?[0-9]{7,15}$/.test(vendor.phone.trim())) {
+        toast.error('Please enter a valid phone number for the vendor.');
+        setActiveTab('basic');
+        return;
+    }
+    if (vendor.email && !/^\S+@\S+\.\S+$/.test(vendor.email.trim())) {
+        toast.error('Please enter a valid email address for the vendor.');
+        setActiveTab('basic');
+        return;
+    }
+
+    // 3. Contacts Validation
+    const validContacts = contacts.filter(c => c && c.name?.trim());
+
+    if (validContacts.length === 0) {
+        toast.error('At least one contact with a name is required.');
+        setActiveTab('contacts');
+        return;
+    }
+
+    for (const contact of validContacts) {
+        if (contact.phone && !/^\+?[0-9]{7,15}$/.test(contact.phone.trim())) {
+            toast.error(`Invalid phone number for contact "${contact.name}".`);
+            setActiveTab('contacts');
+            return;
+        }
+        if (contact.email && !/^\S+@\S+\.\S+$/.test(contact.email.trim())) {
+            toast.error(`Invalid email address for contact "${contact.name}".`);
+            setActiveTab('contacts');
+            return;
+        }
+           setIsSubmitting(true);
+    }
     try {
       const payload = { ...vendor, contacts: contacts.filter(c => c && c.name) as VendorContact[] };
 
@@ -90,8 +130,9 @@ const VendorFormPage: React.FC = () => {
         await vendorService.create(token, payload);
       }
       navigate('/vendors');
+       toast.success('Vendor saved succesfully')
     } catch (err: any) {
-      setError(err?.data?.message || 'An error occurred while saving the vendor.');
+       toast.error(err?.data?.message || 'An error occurred while saving the vendor.');
     } finally {
       setIsSubmitting(false);
     }
@@ -104,7 +145,7 @@ const VendorFormPage: React.FC = () => {
       await vendorService.remove(token, id);
       navigate('/vendors');
     } catch (err: any) {
-      setError(err?.data?.message || 'Failed to delete vendor.');
+       toast.error(err?.data?.message || 'Failed to delete vendor.');
     } finally {
       setIsSubmitting(false);
       setConfirmDeleteOpen(false);
@@ -137,14 +178,7 @@ return (
           )}
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700
-                          text-stone-700 dark:text-stone-200 px-4 py-3 rounded-lg mb-6 shadow-sm">
-            {error}
-          </div>
-        )}
-
+      
         <form
           onSubmit={handleSubmit}
           className="space-y-6 bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl
@@ -170,7 +204,7 @@ return (
                   placeholder="Vendor Name*"
                   value={vendor.vendorName || ""}
                   onChange={handleChange}
-                  required
+                 
                   className="w-full h-11 px-4 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50
                              bg-white/70 dark:bg-midnight-800/60 text-midnight-900 dark:text-ivory-100
                              placeholder-midnight-400 dark:placeholder-ivory-500 shadow-sm
@@ -316,7 +350,7 @@ return (
                       className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50
                                  bg-white/60 dark:bg-midnight-800/60 text-midnight-900 dark:text-ivory-100
                                  shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/40 transition"
-                      required={i === 0}
+                      
                     />
                   </div>
 

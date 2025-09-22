@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { invoiceService, ManualInvoicePayload } from '../services/invoiceService';
 import { contactsService, Contact, Company } from '../services/contactsService';
 import { teamService, TeamUser } from '../services/teamService'; // CORRECTED to use teamService
-
+import { toast } from 'react-hot-toast';
 // --- Main Create Invoice Page Component ---
 const CreateInvoicePage: React.FC = () => {
     // --- Hooks and State ---
@@ -20,7 +20,6 @@ const CreateInvoicePage: React.FC = () => {
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [companyContacts, setCompanyContacts] = useState<Contact[]>([]);
     const [members, setMembers] = useState<TeamUser[]>([]);
@@ -65,7 +64,7 @@ const CreateInvoicePage: React.FC = () => {
                     }
                 }
             })
-            .catch(err => setError(err.message || 'Failed to fetch contacts.'));
+            .catch(err => toast.error(err.message || 'Failed to fetch contacts.'));
     }, [selectedCompany, token]);
 
     // --- Event Handlers ---
@@ -109,17 +108,73 @@ const CreateInvoicePage: React.FC = () => {
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!token || !selectedCompany || !salesmanId) {
-            setError("A company and salesman must be selected.");
+         // 1. Company and Salesman Validation
+    if (!token) {
+        toast.error("Authentication error. Please log in again.");
+        return;
+    }
+    if (!selectedCompany) {
+        toast.error("A company must be selected for the invoice.");
+        return;
+    }
+    if (!salesmanId) {
+        toast.error("A salesman must be assigned to the invoice.");
+        return;
+    }
+
+    // 2. Contact Information Validation
+    if (!contactPersonId) {
+        toast.error("Please select a contact person.");
+        return;
+    }
+    if (!phone.trim()) {
+        toast.error("Contact phone number is required.");
+        return;
+    }
+    // Validate phone format (optional +, 7-15 digits)
+    if (!/^\+?[0-9]{7,15}$/.test(phone.trim())) {
+        toast.error("Please enter a valid phone number.");
+        return;
+    }
+
+    // 3. Date Validation
+    if (!invoiceDate || !dueDate) {
+        toast.error("Both Invoice Date and Due Date are required.");
+        return;
+    }
+    const today = new Date();
+    const dDate = new Date(dueDate);
+    today.setHours(0, 0, 0, 0);
+    dDate.setHours(0, 0, 0, 0);
+
+    if (dDate < today) {
+        toast.error("The due date cannot be in the past.");
+        return;
+    }
+
+    // 4. Invoice Items Validation
+    if (items.length === 0 || items.every(it => !it.product.trim())) {
+        toast.error("The invoice must contain at least one valid item.");
+        return;
+    }
+    for (const item of items) {
+        if (!item.product.trim()) {
+            toast.error("Every item must have a product name.");
             return;
         }
-        if (items.length === 0 || items.every(it => !it.product)) {
-            setError("Invoice must contain at least one valid item.");
+        if (Number(item.quantity) <= 0) {
+            toast.error(`Quantity for "${item.product}" must be greater than zero.`);
             return;
         }
+        if (Number(item.itemRate) <= 0) {
+            toast.error(`Rate for "${item.product}" must be greater than zero.`);
+            return;
+        }
+    }
+
 
         setSubmitting(true);
-        setError(null);
+       
 
         try {
             const validCustomerType = selectedCompany.entityType === 'Vendor' ? 'Vendor' : 'Customer';
@@ -144,11 +199,12 @@ const CreateInvoicePage: React.FC = () => {
             };
 
             const response = await invoiceService.create(payload, token);
+            toast.success('Invoice created succesfully')
             if (!response.success) throw new Error(response.message || "Failed to save invoice.");
             
             navigate('/invoices');
         } catch (err: any) {
-            setError(err.message || "An unknown error occurred.");
+            toast.error(err.message || "An unknown error occurred.");
         } finally {
             setSubmitting(false);
         }
@@ -169,12 +225,7 @@ const CreateInvoicePage: React.FC = () => {
           className="bg-white/30 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30 
                      p-8 rounded-xl shadow-2xl space-y-8"
         >
-          {error && (
-            <div className="bg-red-50/30 dark:bg-red-900/30 border border-red-200/30 dark:border-red-700/30 
-                            text-red-700 dark:text-red-400 px-4 py-2 rounded-xl text-sm shadow-sm">
-              {error}
-            </div>
-          )}
+          
 
           {/* Bill To & Contact */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
@@ -191,7 +242,7 @@ const CreateInvoicePage: React.FC = () => {
                   className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 
                              bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                              shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-                  required
+                 
                 />
                 <textarea
                   placeholder="Address"
@@ -265,7 +316,7 @@ const CreateInvoicePage: React.FC = () => {
                     className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
                                bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                                shadow-sm text-sm transition"
-                    required
+          
                   >
                     <option value="">-- Assign Salesman --</option>
                     {members.map((member) => (
