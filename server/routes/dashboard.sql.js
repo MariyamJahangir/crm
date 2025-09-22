@@ -3,10 +3,30 @@ const router = express.Router();
 const { Op, fn, col, literal } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const Member = require('../models/Member');
+const Admin = require('../models/Admin'); // Required for admin sales
 const Invoice = require('../models/Invoices');
 const Lead = require('../models/Lead');
 const Customer = require('../models/Customer');
 const SalesTarget = require('../models/SalesTarget');
+
+// Helper to process monthly sales data
+const processMonthlySales = (salesData) => {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const salesMap = new Map(salesData.map(d => [`${d.year}-${d.month}`, d.totalSales]));
+    const labels = [];
+    const values = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1;
+        const key = `${year}-${month}`;
+        labels.push(`${monthNames[month - 1]} ${year}`);
+        const salesValue = salesMap.get(key) || 0;
+        values.push(parseFloat(salesValue));
+    }
+    return { labels, values };
+};
 
 const getDashboardData = async (user) => {
     const isAdmin = user && user.subjectType !== 'MEMBER';
@@ -15,11 +35,12 @@ const getDashboardData = async (user) => {
         startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
         endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59)
     };
+    const sixMonthsAgo = new Date(new Date().setMonth(new Date().getMonth() - 6));
 
     const [overallStatsData, leadStagesData] = await Promise.all([
         Promise.all([
             Lead.count({ where: isAdmin ? {} : { salesmanId: memberId } }),
-            Lead.count({ where: { stage: { [Op.notIn]: ['Deal Closed', 'Deal Lost', 'Cancelled'] }, ...(isAdmin ? {} : { salesmanId: memberId }) } }),
+            Lead.count({ where: { stage: { [Op.notIn]: ['Deal Closed', 'Deal Lost', 'Cancelled', 'Fake Lead'] }, ...(isAdmin ? {} : { salesmanId: memberId }) } }),
             Customer.count({ where: isAdmin ? {} : { salesmanId: memberId } }),
             Lead.count({ where: { stage: 'Deal Closed', ...(isAdmin ? {} : { salesmanId: memberId }) } })
         ]),
@@ -30,7 +51,6 @@ const getDashboardData = async (user) => {
             raw: true
         })
     ]);
-
     const overallStats = { queries: overallStatsData[0], inProgress: overallStatsData[1], clients: overallStatsData[2], completed: overallStatsData[3] };
     const leadPipeline = { labels: leadStagesData.map(i => i.stage), values: leadStagesData.map(i => parseInt(i.count, 10)) };
 
@@ -48,95 +68,55 @@ const getDashboardData = async (user) => {
                 where: { id: { [Op.in]: Array.from(memberMap.keys()) } }, group: ['Member.id'], raw: true,
             }),
             Invoice.findAll({
-                attributes: ['createdById', [fn('SUM', col('grandTotal')), 'total'], [literal('DATE(paidAt)'), 'date']],
+                attributes: ['createdById', 'creatorType', [fn('SUM', col('grandTotal')), 'total'], [literal('DATE(paidAt)'), 'date']],
                 where: { status: 'Paid', paidAt: { [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
-                group: ['createdById', literal('DATE(paidAt)')], raw: true,
+                group: ['createdById', 'creatorType', literal('DATE(paidAt)')], raw: true,
             }),
             Invoice.findAll({
                 attributes: [[fn('YEAR', col('paidAt')), 'year'], [fn('MONTH', col('paidAt')), 'month'], [fn('SUM', col('grandTotal')), 'totalSales']],
-                where: { status: 'Paid', paidAt: { [Op.gte]: new Date(new Date().setMonth(new Date().getMonth() - 6)) } },
+                where: { status: 'Paid', paidAt: { [Op.gte]: sixMonthsAgo } },
                 group: [fn('YEAR', col('paidAt')), fn('MONTH', col('paidAt'))], order: [[fn('YEAR', col('paidAt')), 'ASC'], [fn('MONTH', col('paidAt')), 'ASC']], raw: true,
             })
         ]);
 
         const achievementsMap = new Map(memberAchievementsData.map(m => [m.id, { achieved: parseFloat(m.achieved || 0), target: parseFloat(m.target || 0) }]));
-        
-        // ★★★ FIX: Added 'id' to the member achievement object ★★★
-        const memberTargetAchievements = members.map(m => {
-            const ach = achievementsMap.get(m.id) || { achieved: 0, target: 0 };
-            return {
-                id: m.id, // This was the missing piece
-                name: m.name,
-                achieved: ach.achieved,
-                target: ach.target,
-                isAchieved: ach.achieved >= ach.target && ach.target > 0
-            };
-        });
+        const memberTargetAchievements = members.map(m => { const ach = achievementsMap.get(m.id) || { achieved: 0, target: 0 }; return { id: m.id, name: m.name, achieved: ach.achieved, target: ach.target, isAchieved: ach.achieved >= ach.target && ach.target > 0 }; });
 
         const trendLabels = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
         const salesByMemberByDay = {};
+
         teamSalesTrendData.forEach(s => {
-            const memberName = memberMap.get(s.createdById);
-            if (!memberName) return;
-            if (!salesByMemberByDay[memberName]) salesByMemberByDay[memberName] = {};
+            let creatorName = '';
+            if (s.creatorType === 'ADMIN') {
+                creatorName = 'Admin Sales';
+            } else {
+                creatorName = memberMap.get(s.createdById);
+            }
+            
+            if (!creatorName) return;
+
+            if (!salesByMemberByDay[creatorName]) salesByMemberByDay[creatorName] = {};
             const dateLabel = new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            salesByMemberByDay[memberName][dateLabel] = parseFloat(s.total);
+            salesByMemberByDay[creatorName][dateLabel] = (salesByMemberByDay[creatorName][dateLabel] || 0) + parseFloat(s.total);
         });
+
         const teamSalesTrend = {
             labels: trendLabels,
             datasets: Object.keys(salesByMemberByDay).map(name => ({ label: name, data: trendLabels.map(label => salesByMemberByDay[name][label] || 0) }))
         };
         
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const monthlySalesMap = new Map(monthlySalesData.map(d => [`${d.year}-${d.month}`, parseFloat(d.totalSales)]));
-        const monthlySalesLabels = []; const monthlySalesValues = [];
-        for (let i = 5; i >= 0; i--) {
-            const d = new Date(); d.setMonth(d.getMonth() - i);
-            monthlySalesLabels.push(`${monthNames[d.getMonth()]} ${d.getFullYear()}`);
-            monthlySalesValues.push(monthlySalesMap.get(`${d.getFullYear()}-${d.getMonth() + 1}`) || 0);
-        }
-        const monthlySales = { labels: monthlySalesLabels, values: monthlySalesValues };
+        const monthlySales = processMonthlySales(monthlySalesData);
 
         return { isAdmin, overallStats, leadPipeline, memberTargetAchievements, teamSalesTrend, monthlySales };
 
     } else {
-        const [memberTargetData, memberDailySalesData, memberMonthlySalesData] = await Promise.all([
-            Promise.all([
-                SalesTarget.findOne({ where: { memberId, year: thisMonth.startDate.getFullYear(), month: thisMonth.startDate.getMonth() + 1 } }),
-                Invoice.sum('grandTotal', { where: { createdById: memberId, status: 'Paid', paidAt: { [Op.between]: [thisMonth.startDate, thisMonth.endDate] } } })
-            ]),
-            Invoice.findAll({
-                attributes: [[literal('DATE(paidAt)'), 'date'], [fn('SUM', col('grandTotal')), 'total']],
-                where: { createdById: memberId, status: 'Paid', paidAt: { [Op.between]: [thisMonth.startDate, thisMonth.endDate] } },
-                group: [literal('DATE(paidAt)')], order: [[literal('DATE(paidAt)'), 'ASC']], raw: true,
-            }),
-            Invoice.findAll({
-                attributes: [[fn('YEAR', col('paidAt')), 'year'], [fn('MONTH', col('paidAt')), 'month'], [fn('SUM', col('grandTotal')), 'totalSales']],
-                where: { createdById: memberId, status: 'Paid', paidAt: { [Op.gte]: new Date(new Date().setMonth(new Date().getMonth() - 6)) } },
-                group: [fn('YEAR', col('paidAt')), fn('MONTH', col('paidAt'))], order: [[fn('YEAR', col('paidAt')), 'ASC'], [fn('MONTH', col('paidAt')), 'ASC']], raw: true,
-            })
-        ]);
-
-        const target = parseFloat(memberTargetData[0]?.targetAmount || 0);
-        const achieved = memberTargetData[1] || 0;
-        const memberTargetAchievements = [{
-            id: memberId,
-            name: 'Your Achievement',
-            target,
-            achieved,
-            isAchieved: achieved >= target && target > 0
-        }];
-        
-        const daysInMonth = new Date(thisMonth.startDate.getFullYear(), thisMonth.startDate.getMonth() + 1, 0).getDate();
-        const dailySalesLabels = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`);
-        const salesByDay = new Map(memberDailySalesData.map(d => [new Date(d.date).getDate(), parseFloat(d.total)]));
-        
-        const memberDailySales = {
-            labels: dailySalesLabels,
-            values: dailySalesLabels.map(dayLabel => salesByDay.get(parseInt(dayLabel)) || 0)
-        };
-        
-        return { isAdmin, overallStats, leadPipeline, memberTargetAchievements, memberDailySales, memberMonthlySales: memberMonthlySalesData };
+        // Member-specific logic
+        const [memberTargetData, memberDailySalesData, memberMonthlySalesData] = await Promise.all([ Promise.all([ SalesTarget.findOne({ where: { memberId, year: thisMonth.startDate.getFullYear(), month: thisMonth.startDate.getMonth() + 1 } }), Invoice.sum('grandTotal', { where: { createdById: memberId, status: 'Paid', paidAt: { [Op.between]: [thisMonth.startDate, thisMonth.endDate] } } }) ]), Invoice.findAll({ attributes: [[literal('DATE(paidAt)'), 'date'], [fn('SUM', col('grandTotal')), 'total']], where: { createdById: memberId, status: 'Paid', paidAt: { [Op.between]: [thisMonth.startDate, thisMonth.endDate] } }, group: [literal('DATE(paidAt)')], order: [[literal('DATE(paidAt)'), 'ASC']], raw: true, }), Invoice.findAll({ attributes: [[fn('YEAR', col('paidAt')), 'year'], [fn('MONTH', col('paidAt')), 'month'], [fn('SUM', col('grandTotal')), 'totalSales']], where: { createdById: memberId, status: 'Paid', paidAt: { [Op.gte]: sixMonthsAgo } }, group: [fn('YEAR', col('paidAt')), fn('MONTH', col('paidAt'))], order: [[fn('YEAR', col('paidAt')), 'ASC'], [fn('MONTH', col('paidAt')), 'ASC']], raw: true, }) ]);
+        const target = parseFloat(memberTargetData[0]?.targetAmount || 0); const achieved = memberTargetData[1] || 0; const memberTargetAchievements = [{ id: memberId, name: 'Your Achievement', target, achieved, isAchieved: achieved >= target && target > 0 }];
+        const daysInMonth = new Date(thisMonth.startDate.getFullYear(), thisMonth.startDate.getMonth() + 1, 0).getDate(); const dailySalesLabels = Array.from({ length: daysInMonth }, (_, i) => `${i + 1}`); const salesByDay = new Map(memberDailySalesData.map(d => [new Date(d.date).getDate(), parseFloat(d.total)]));
+        const memberDailySales = { labels: dailySalesLabels, values: dailySalesLabels.map(dayLabel => salesByDay.get(parseInt(dayLabel)) || 0) };
+        const memberMonthlySales = processMonthlySales(memberMonthlySalesData);
+        return { isAdmin, overallStats, leadPipeline, memberTargetAchievements, memberDailySales, memberMonthlySales };
     }
 };
 

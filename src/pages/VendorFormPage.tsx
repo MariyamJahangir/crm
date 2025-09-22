@@ -154,7 +154,7 @@ return (
           <div className="flex gap-4 border-b border-cloud-300/40 dark:border-midnight-700/40 pb-3">
             <TabButton tab="basic" label="Basic Info" />
             <TabButton tab="contacts" label="Contacts" />
-            <TabButton tab="business" label="Business & Financial" />
+            <TabButton tab="business" label="Business" />
           </div>
 
           {/* Basic Info */}
@@ -436,7 +436,7 @@ return (
                 </select>
               </div>
 
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
                   Payment Terms
                 </label>
@@ -455,7 +455,7 @@ return (
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
 
              
 

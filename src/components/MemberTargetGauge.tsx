@@ -8,7 +8,7 @@ interface MemberTargetGaugeProps {
   isAchieved: boolean;
 }
 
-const CIRCUMFERENCE = 283; // 2πr for r=45
+const CIRCUMFERENCE = 2 * Math.PI * 45; // 2πr for r=45
 
 const MemberTargetGauge: React.FC<MemberTargetGaugeProps> = ({
   name,
@@ -17,117 +17,71 @@ const MemberTargetGauge: React.FC<MemberTargetGaugeProps> = ({
   isAchieved,
 }) => {
   const percentage = target > 0 ? Math.min((achieved / target) * 100, 100) : 0;
-
-  // Animation states
   const [animatedPercent, setAnimatedPercent] = useState(0);
-  const [animatedOffset, setAnimatedOffset] = useState(CIRCUMFERENCE);
+  const [strokeOffset, setStrokeOffset] = useState(CIRCUMFERENCE);
 
   useEffect(() => {
-    let start: number | null = null;
-    const duration = 1200; // ms
-    const targetOffset = CIRCUMFERENCE - (CIRCUMFERENCE * percentage) / 100;
-
-    const animate = (timestamp: number) => {
-      if (!start) start = timestamp;
-      const progress = Math.min((timestamp - start) / duration, 1);
-
-      setAnimatedPercent(Math.floor(progress * percentage));
-      setAnimatedOffset(
-        CIRCUMFERENCE - (CIRCUMFERENCE * (progress * percentage)) / 100
-      );
-
-      if (progress < 1) requestAnimationFrame(animate);
-    };
-
-    requestAnimationFrame(animate);
+    const animation = requestAnimationFrame(() => {
+      setAnimatedPercent(percentage);
+      setStrokeOffset(CIRCUMFERENCE - (CIRCUMFERENCE * percentage) / 100);
+    });
+    return () => cancelAnimationFrame(animation);
   }, [percentage]);
 
   return (
-    <div
-      className="relative w-[18rem] h-[18rem] 
-      bg-gradient-to-br from-midnight-800 via-midnight-700 to-midnight-900
-      border border-sky-500/30 shadow-lg shadow-sky-500/20 
-      rounded-2xl p-6 flex flex-col items-center justify-between
-      transform-gpu transition-all duration-500
-      hover:scale-105 hover:shadow-sky-400/40"
-    >
-      {/* Title */}
-      <h4 className="text-base font-semibold tracking-wide text-sky-200 uppercase">
+    <div className="relative w-[18rem] h-[18rem] bg-gradient-to-br from-gray-800 via-gray-900 to-black border border-indigo-500/30 shadow-lg shadow-indigo-500/20 rounded-2xl p-6 flex flex-col items-center justify-between transform-gpu transition-all duration-500 hover:scale-105 hover:shadow-indigo-400/40">
+      <h4 className="text-base font-semibold tracking-wide text-indigo-200 uppercase truncate w-full text-center">
         {name}
       </h4>
 
-      {/* Gauge Circle */}
       <div className="relative w-[9rem] h-[9rem]">
         <svg className="w-full h-full" viewBox="0 0 100 100">
-          {/* Background ring */}
+          <circle className="text-gray-700" strokeWidth="10" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
           <circle
-            className="text-midnight-600"
-            strokeWidth="10"
-            stroke="currentColor"
-            fill="transparent"
-            r="45"
-            cx="50"
-            cy="50"
-          />
-
-          {/* Animated progress ring */}
-          <circle
-            className="drop-shadow-[0_0_8px_rgba(56,189,248,0.8)]"
+            className="drop-shadow-[0_0_8px_rgba(139,92,246,0.8)]"
             strokeWidth="10"
             strokeDasharray={CIRCUMFERENCE}
-            strokeDashoffset={animatedOffset}
+            strokeDashoffset={strokeOffset}
             strokeLinecap="round"
-            stroke={`url(#neon-gradient-${name})`}
+            stroke={isAchieved ? "url(#gold-gradient)" : "url(#indigo-gradient)"}
             fill="transparent"
             r="45"
             cx="50"
             cy="50"
-            style={{
-              transform: "rotate(-90deg)",
-              transformOrigin: "50% 50%",
-              transition: "stroke-dashoffset 0.3s ease-out",
-            }}
+            style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%", transition: "stroke-dashoffset 1.2s ease-out" }}
           />
-
-          {/* Gradient defs */}
           <defs>
-            <linearGradient id={`neon-gradient-${name}`} x1="1" y1="0" x2="0" y2="1">
-              <stop
-                offset="0%"
-                stopColor={isAchieved ? "#facc15" : "#38bdf8"} // gold or cyan
-              />
-              <stop
-                offset="100%"
-                stopColor={isAchieved ? "#d97706" : "#0ea5e9"} // deep gold or blue
-              />
+            <linearGradient id="indigo-gradient" x1="1" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#818cf8" />
+              <stop offset="100%" stopColor="#6366f1" />
+            </linearGradient>
+            <linearGradient id="gold-gradient" x1="1" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#facc15" />
+              <stop offset="100%" stopColor="#d97706" />
             </linearGradient>
           </defs>
         </svg>
 
-        {/* Center content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {isAchieved ? (
-            <Crown className="text-yellow-400 w-10 h-10 drop-shadow-[0_0_12px_rgba(250,204,21,0.8)] animate-bounce" />
+            <Crown className="text-yellow-400 w-10 h-10 drop-shadow-[0_0_12px_rgba(250,204,21,0.8)] animate-pulse" />
           ) : (
-            <span className="text-3xl font-bold text-sky-100 drop-shadow-sm">
-              {`${animatedPercent}%`}
+            <span className="text-3xl font-bold text-indigo-100 drop-shadow-sm">
+              {`${Math.round(animatedPercent)}%`}
             </span>
           )}
         </div>
       </div>
 
-      {/* Footer */}
       {isAchieved ? (
         <p className="text-sm font-semibold text-yellow-400 tracking-wide animate-pulse">
           Target Achieved!
         </p>
       ) : (
-        <p className="text-xs text-sky-300">
-          <span className="font-semibold text-sky-200">
+        <p className="text-xs text-indigo-300">
+          <span className="font-semibold text-indigo-200">
             AED {achieved.toLocaleString()}
-          </span>{" "}
-          /{" "}
-          <span className="font-medium text-sky-400">
+          </span> / <span className="font-medium text-indigo-400">
             AED {target.toLocaleString()}
           </span>
         </p>
