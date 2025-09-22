@@ -177,7 +177,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
               label: 'Contact Number',
               value: contactNumber,
               setter: setContactNumber,
-              placeholder: '+91 44xxxxxxx',
+              placeholder: '+971 44xxxxxxx',
             },
             {
               label: 'Email',

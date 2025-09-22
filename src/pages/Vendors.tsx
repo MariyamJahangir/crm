@@ -34,6 +34,7 @@ const Vendors: React.FC = () => {
     setLoading(true);
     try {
       const res = await vendorService.list(token, query);
+      console.log(res)
       setRows(res.vendors);
     } catch (e: any) {
       setError(e?.data?.message || 'Failed to load vendors');
@@ -85,7 +86,7 @@ const Vendors: React.FC = () => {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button
+              {/* <Button
                 variant="danger"
                 disabled={selectedIds.length === 0}
                 onClick={() => setConfirmOpen(true)}
@@ -93,7 +94,7 @@ const Vendors: React.FC = () => {
               >
                 <Trash2 size={18} className="mr-2" />
                 Delete Selected ({selectedIds.length})
-              </Button>
+              </Button> */}
               <Button
                 onClick={() => navigate('/vendors/new')}
                 className="flex items-center px-4 py-2 bg-cloud-200   text-midnight-700  hover:bg-blue-300 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
@@ -149,20 +150,20 @@ const Vendors: React.FC = () => {
             <DataTable
               rows={rows}
               columns={[
-                {
-                  key: 'sel',
-                  header: '',
-                  width: '40px',
-                  sortable: false,
-                  render: (r: Vendor) => (
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={!!selected[r.id]}
-                      onChange={() => toggle(r.id)}
-                    />
-                  ),
-                },
+                // {
+                //   key: 'sel',
+                //   header: '',
+                //   width: '40px',
+                //   sortable: false,
+                //   render: (r: Vendor) => (
+                //     <input
+                //       type="checkbox"
+                //       className="h-4 w-4"
+                //       checked={!!selected[r.id]}
+                //       onChange={() => toggle(r.id)}
+                //     />
+                //   ),
+                // },
                 {
                   key: 'vendorName',
                   header: 'Vendor',

@@ -10,7 +10,7 @@ import DataTable from '../components/DataTable';
 import AddContactModal from '../components/AddContactModal';
 import EditContactModal from '../components/EditContactModal';
 import { Filter } from '../components/FilterDropdown'; // Make sure this path is correct
-
+import FormattedDateTime from '../components/FormattedDateTime';
 const Contacts: React.FC = () => {
     const { token, user } = useAuth();
     const isAdmin = user?.type === 'ADMIN';
@@ -65,7 +65,7 @@ const navigate = useNavigate();
                     const value = 
                         key === 'Designation' ? contact.designation :
                         key === 'Department' ? contact.department :
-                        key === 'Salesman' ? contact.customer?.salesman?.name :
+                        // key === 'Salesman' ? contact.Customer?.salesman?.name :
                         null;
                     return value && filter.values.includes(value);
                 });
@@ -113,7 +113,7 @@ const navigate = useNavigate();
                             <p className="text-gray-600 dark:text-midnight-400">All customer contacts in one place.</p>
                         </div>
                         <div className="flex gap-2">
-                            {isAdmin && (
+                            {/* {isAdmin && (
             <Button 
                 variant="danger" 
                 disabled={selectedIds.length === 0} 
@@ -121,7 +121,7 @@ const navigate = useNavigate();
             >
                  Delete ({selectedIds.length})
             </Button>
-        )}
+        )} */}
                             <Button onClick={() => setAddModalOpen(true)}>
                             Create
                             </Button>
@@ -135,27 +135,30 @@ const navigate = useNavigate();
                         <DataTable
                             rows={rows}
                             columns={[
-                                ...(isAdmin ? [{ 
-        key: 'sel', 
-        header: '', 
-        width: '40px', 
-        sortable: false, 
-        render: (r: ContactRow) => (
-            <input 
-                type="checkbox" 
-                className="h-4 w-4" 
-                checked={!!selected[r.id]} 
-                onChange={() => toggle(r.id)} 
-            />
-        )
-    }] : []),
+    //                             ...(isAdmin ? [{ 
+    //     key: 'sel', 
+    //     header: '', 
+    //     width: '40px', 
+    //     sortable: false, 
+    //     render: (r: ContactRow) => (
+    //         <input 
+    //             type="checkbox" 
+    //             className="h-4 w-4" 
+    //             checked={!!selected[r.id]} 
+    //             onChange={() => toggle(r.id)} 
+    //         />
+    //     )
+    // }] : []),
                                 { key: 'name', header: 'Name' },
+                                { key: 'Customer.companyName', header: 'Company' },
                                 { key: 'designation', header: 'Designation' },
                                 { key: 'department', header: 'Department' },
                                 { key: 'email', header: 'Email' },
                                 { key: 'mobile', header: 'Mobile' },
-                                { key: 'Customer.companyName', header: 'Company' },
+                                
                                 { key: 'Customer.salesman.name', header: 'Salesman' },
+                                 { key: 'createdAt', header: 'Created', render: (row) => <FormattedDateTime isoString={row.createdAt} /> },
+                               
                                 { key: 'actions', header: 'Actions', width: '80px', sortable: false, render: (r: ContactRow) => (
                                      <div className="flex justify-center gap-2">
                                             <button 

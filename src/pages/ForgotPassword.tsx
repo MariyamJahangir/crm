@@ -37,7 +37,7 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBack, onSuccess }) =>
     }
   };
 
-return (
+ return (
   <div
     className="min-h-screen flex items-center justify-center bg-cover bg-center p-4 relative"
   >
@@ -96,7 +96,6 @@ return (
     </div>
   </div>
 );
-
 };
 
 export default ForgotPassword;

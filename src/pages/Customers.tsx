@@ -48,6 +48,7 @@ const Customers: React.FC = () => {
                 const res = await customerService.list(token, [], signal);
                 if (!signal.aborted) {
                     setMasterItems(res.customers);
+                    console.log(res.customers)
                     setItems(res.customers); // Initially, displayed items are all items
                 }
             } catch (e: any) {
@@ -160,9 +161,9 @@ const Customers: React.FC = () => {
                                             <button onClick={() => navigate(`/customers/${r.id}/edit`)} className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition" title="Edit Customer">
                                                 <Pencil className="w-5 h-5 text-sky-500" />
                                             </button>
-                                            <button onClick={() => askDelete(r.id)} className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition" title="Delete Customer">
+                                            {/* <button onClick={() => askDelete(r.id)} className="p-2 rounded-full hover:bg-cloud-200 dark:hover:bg-midnight-700 transition" title="Delete Customer">
                                                 <Trash2 className="w-5 h-5 text-red-500" />
-                                            </button>
+                                            </button> */}
                                         </div>
                                     ),
                                 },

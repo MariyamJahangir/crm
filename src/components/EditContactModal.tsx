@@ -27,7 +27,7 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+const [companyName, setCompanyName] = useState(''); 
   useEffect(() => {
     if (open && contactId) {
       (async () => {
@@ -35,7 +35,7 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
         setError(null);
         try {
           const res = await contactsService.getOne(contactId, token);
-          console.log(res)
+        setCompanyName(res.contact.Customer?.companyName || 'N/A');
           setForm({
             name: res.contact.name || '',
             designation: res.contact.designation || '',
@@ -52,7 +52,8 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
         }
       })();
     } else {
-      setForm(initialForm); // Reset form when modal is closed or no ID
+      setForm(initialForm); // Reset form when modal is closed
+      setCompanyName(''); // Also reset the company name
     }
   }, [open, contactId, token]);
 
@@ -118,10 +119,22 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
 
                 
                   <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                      <div>
+                      <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                        Customer
+                      </label>
+                      <input
+                        value={companyName}
+                        disabled
+                        className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
+                                   bg-cloud-200/50 dark:bg-midnight-800/80 text-midnight-600 dark:text-ivory-400
+                                   shadow-sm focus:outline-none cursor-not-allowed text-sm transition"
+                      />
+                    </div>
 
                     {/* Reusable Input Style */}
                     {[
-                      { key: 'Customer.companyName', label: 'Customer', required: true },
+                    
                       { key: 'name', label: 'Name', required: true },
                       { key: 'designation', label: 'Designation', required: true },
                       { key: 'department', label: 'Department' },

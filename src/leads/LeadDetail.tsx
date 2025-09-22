@@ -10,7 +10,7 @@ import FollowupModal from '../components/FollowupModal';
 import { quotesService, Quote } from '../services/quotesService';
 import PreviewModal from '../components/PreviewModal';
 import ChatBox from '../components/ChatBox';
-
+import { Download, Eye } from 'lucide-react';
 
 type Followup = {
   id: string;
@@ -31,7 +31,7 @@ const QuotePicker: React.FC<{
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ open: boolean; html?: string; quote?: Quote; downloading?: boolean }>({ open: false });
-
+const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token || !leadId) return;
@@ -61,6 +61,7 @@ const QuotePicker: React.FC<{
 
   const download = async (q: Quote) => {
     try {
+      setDownloadingId(q.id);
       const blob = await quotesService.downloadPdf(q.leadId, q.id, token);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -69,7 +70,10 @@ const QuotePicker: React.FC<{
       setTimeout(() => window.URL.revokeObjectURL(url), 1200);
     } catch (e: any) {
       setErr(e?.data?.message || 'Failed to download PDF');
+    }finally {
+      setDownloadingId(null); // Clear the downloading ID
     }
+
   };
 
 
@@ -119,6 +123,7 @@ const QuotePicker: React.FC<{
       <div className="flex flex-wrap gap-3">
         {quotes.map((q) => {
           const isMain = currentMain === q.quoteNumber;
+             const isDownloading = downloadingId === q.id;
           return (
             <div
               key={q.id}
@@ -135,20 +140,21 @@ const QuotePicker: React.FC<{
                 className="inline-flex items-center gap-2 text-sm font-medium text-midnight-700 dark:text-ivory-200 hover:text-sky-600 transition"
                 title="Preview quote"
               >
-                <span aria-hidden>📄</span>
+                <Eye size={18} />
                 {q.quoteNumber}
               </button>
 
               {/* Download */}
-              <button
-                type="button"
-                onClick={() => download(q)}
-                className="text-gray-500 hover:text-midnight-800 dark:hover:text-ivory-100 transition"
-                title="Download PDF"
-                aria-label="Download"
-              >
-                ⬇️
-              </button>
+               <button
+                  type="button"
+                  onClick={() => download(q)}
+                  disabled={isDownloading}
+                  className={`text-gray-500 hover:text-midnight-800 dark:hover:text-ivory-100 transition ${isDownloading ? 'animate-bounce' : ''}`}
+                  title="Download PDF"
+                  aria-label="Download"
+                >
+                 <Download size={18} />
+                </button>
 
               {/* Set main */}
               <label className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 ml-2">
@@ -234,6 +240,7 @@ const LeadDetail: React.FC = () => {
     try {
       const res = await leadsService.getOne(id, token);
       setLead(res.lead);
+      console.log(res.lead)
     } catch (e: any) {
       setErr(e?.data?.message || 'Failed to load lead');
     } finally {
@@ -436,11 +443,13 @@ const LeadDetail: React.FC = () => {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h1 className="text-3xl font-bold text-midnight-900 dark:text-ivory-100 drop-shadow-lg">
-                    Lead #{lead.uniqueNumber}
+                    {lead.division}
                   </h1>
-                  <p className="text-midnight-800 dark:text-ivory-400 text-sm mt-1">
-                    {lead.division} • {lead.stage} • {lead.forecastCategory}
-                  </p>
+                 <div className="text-midnight-800 font-semibold dark:text-ivory-400 text-md mt-1">
+  <span className="font-extrabold">Lead #{lead.uniqueNumber}</span> | {lead.stage} • {lead.forecastCategory}
+</div>
+
+                  
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -463,32 +472,37 @@ const LeadDetail: React.FC = () => {
                   Lead Details
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-midnight-700 dark:text-ivory-200">
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Lead #:</span> {lead.uniqueNumber}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Stage:</span> {lead.stage}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Forecast:</span> {lead.forecastCategory}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Source:</span> {lead.source || '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Lead # : </span> {lead.uniqueNumber}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Stage : </span> {lead.stage}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Forecast : </span> {lead.forecastCategory}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Source : </span> {lead.source || '-'}</div>
 
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Company:</span> {lead.companyName || '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Company : </span> {lead.companyName || '-'}</div>
                   {/* <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Division:</span> {lead.division || '-'}</div> */}
 
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Quote #:</span> {lead.quoteNumber || '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Quote # : </span> {lead.quoteNumber || '-'}</div>
                   {/* <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Preview URL:</span> {lead.previewUrl || '-'}</div> */}
 
                   {lead?.nextFollowupAt && (
                     <div>
-                      <span className="font-medium text-midnight-500 dark:text-ivory-400">Next Follow-up:</span> {new Date(lead.nextFollowupAt).toLocaleString()}
+                      <span className="font-medium text-midnight-500 dark:text-ivory-400">Next Follow-up : </span> {new Date(lead.nextFollowupAt).toLocaleString()}
                     </div>
                   )}
 
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Lost Reason:</span> {lead.lostReason || '-'}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Actual Date:</span> {lead.actualDate ? new Date(lead.actualDate).toLocaleString() : '-'}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Created:</span> {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : '-'}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Updated:</span> {lead.updatedAt ? new Date(lead.updatedAt).toLocaleString() : '-'}</div>
+                  {lead.stage === 'Deal Lost' && (
+  <div>
+    <span className="font-medium text-midnight-500 dark:text-ivory-400">Lost Reason : </span> {lead.lostReason || '-'}
+  </div>
+)}
 
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Contact:</span> {lead.contactPerson || '-'}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Mobile:</span> {lead.mobile || '-'} {lead.mobileAlt ? `/ ${lead.mobileAlt}` : ''}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Email:</span> {lead.email || '-'}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">City:</span> {lead.city || '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Actual Date : </span> {lead.actualDate ? new Date(lead.actualDate).toLocaleString() : '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Created : </span> {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Updated : </span> {lead.updatedAt ? new Date(lead.updatedAt).toLocaleString() : '-'}</div>
+
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Contact : </span> {lead.contactPerson || '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Mobile : </span> {lead.mobile || '-'} {lead.mobileAlt ? `/ ${lead.mobileAlt}` : ''}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Email : </span> {lead.email || '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">City : </span> {lead.city || '-'}</div>
                   {/* <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Creator:</span> {lead.creatorType ? `${lead.creatorType}` : '-'}</div> */}
                 </div>
                 {lead.previewUrl && (
@@ -500,109 +514,120 @@ const LeadDetail: React.FC = () => {
                 )}
                 {lead.description && (
                   <div className="mt-4 text-sm text-midnight-700 dark:text-ivory-300 italic">
+                    <span className="font-medium text-midnight-500 dark:text-ivory-400">Description : </span>
                     {lead.description}
                   </div>
                 )}
               </div>
 
-{/* edited by mariyam */}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Followups */}
-                <div className="flex flex-col h-[400px]"> {/* set fixed height */}
-                  <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
-                      border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
-                      p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
-
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200">Followups</div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {/* Followups */}
+                              <div className="flex flex-col h-[400px]"> {/* set fixed height */}
+                                <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                                    border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
+                                    p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
+              
+                                  <div className="flex items-center justify-between mb-4">
+                                    <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200">Followups</div>
+                                    <Button
+                                      variant="secondary"
+                                      className="flex items-center px-5 py-2 rounded-xl 
+                                                  border border-cloud-300/40 text-gray-700 bg-midnight-200
+                                                  shadow-md transition"
+                                      onClick={() => setOpenFollowup(true)}
+                                    >
+                                      Add Followup
+                                    </Button>
+                                  </div>
+              
+                                  {/* Scrollable content */}
+                                  <div className="overflow-y-auto pr-2 space-y-3 flex-1">
+                                    {upcoming && (
+                                      <div className="mb-4 rounded-xl border-2 border-amber-400/70 bg-amber-50/70 dark:bg-amber-900/30 p-4 shadow-sm">
+                                        <div className="text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1">Upcoming</div>
+                                        <div className="text-sm text-midnight-800 dark:text-ivory-200">{upcoming.status}</div>
+                                        {upcoming.description && <div className="text-sm text-midnight-600 dark:text-ivory-400">{upcoming.description}</div>}
+                                        {upcoming.scheduledAt && (
+                                          <div className="text-xs text-midnight-400 dark:text-ivory-500">Scheduled: {new Date(upcoming.scheduledAt).toLocaleString()}</div>
+                                        )}
+                                      </div>
+                                    )}
+              
+                                    {others.length > 0 ? (
+                                      <ul className="space-y-3 text-sm">
+                                        {others.map((f) => (
+                                          <li key={f.id} className="border rounded-xl px-4 py-3 shadow-sm bg-cloud-100/40 dark:bg-midnight-800/40">
+                                            <div className="text-midnight-800 dark:text-ivory-200">{f.status}</div>
+                                            {f.description && <div className="text-midnight-600 dark:text-ivory-400">{f.description}</div>}
+                                            <div className="text-midnight-400 dark:text-ivory-500 text-xs">Scheduled: {new Date(f.scheduledAt!).toLocaleString()}</div>
+                                            <div className="text-midnight-300 dark:text-ivory-600 text-xs">{new Date(f.createdAt || '').toLocaleString()}</div>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      !upcoming && <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No followups.</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+              
+                              {/* Attachments */}
+                              <div className="flex flex-col h-[400px]">
+                                <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                                                border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
+                                                p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
+              
+                                  <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Attachments</div>
+                                  <div className="flex items-center justify-between mb-4">
+                                    <div className="text-xs text-midnight-500 dark:text-ivory-400">Upload related files</div>
+                                    <div className="flex items-center gap-2">
+                                      <input ref={fileInputRef} type="file" multiple onChange={e => onUpload(e.target.files)} className="hidden" />
+                                      <Button
+                                        variant="secondary"
+                                        className="flex items-center px-5 py-2 rounded-xl border border-cloud-300/40 
+                            text-gray-700 bg-midnight-200 shadow-md transition"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                      >
+                                        {uploading ? 'Uploading...' : 'Add'}
+                                      </Button>
+                                    </div>
+                                  </div>
+              
+                                  {/* Scrollable content */}
+                                  <div className="overflow-y-auto pr-2 flex-1">
+                                    {lead.attachments?.length ? (
+                                      <div className="flex flex-wrap gap-3">
+                                        {lead.attachments.map((a, i) => (
+                                          <AttachmentChip key={`${a.url}:${a.filename}:${i}`} filename={a.filename} url={a.url} />
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No attachments.</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+              
+                              {/* Quotes */}
+                              <div className="flex flex-col h-[400px]">
+                                 <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                                  border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
+                                  p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
+                    
+                    {/* --- THIS IS THE CORRECTED HEADER --- */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200">Quotes</div>
                       <Button
                         variant="secondary"
-                        className="flex items-center px-5 py-2 rounded-xl 
-                                    border border-cloud-300/40 text-gray-700 bg-midnight-200
-                                    shadow-md transition"
-                        onClick={() => setOpenFollowup(true)}
+                        className="flex items-center px-4 py-2 text-sm rounded-xl border border-cloud-300/40 text-gray-700 bg-midnight-200 shadow-sm transition"
+                        onClick={() => navigate(`/create-quote`)}
                       >
-                        Add Followup
+                        Create Quote
                       </Button>
                     </div>
+                    {/* --------------------------------- */}
 
-                    {/* Scrollable content */}
-                    <div className="overflow-y-auto pr-2 space-y-3 flex-1">
-                      {upcoming && (
-                        <div className="mb-4 rounded-xl border-2 border-amber-400/70 bg-amber-50/70 dark:bg-amber-900/30 p-4 shadow-sm">
-                          <div className="text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1">Upcoming</div>
-                          <div className="text-sm text-midnight-800 dark:text-ivory-200">{upcoming.status}</div>
-                          {upcoming.description && <div className="text-sm text-midnight-600 dark:text-ivory-400">{upcoming.description}</div>}
-                          {upcoming.scheduledAt && (
-                            <div className="text-xs text-midnight-400 dark:text-ivory-500">Scheduled: {new Date(upcoming.scheduledAt).toLocaleString()}</div>
-                          )}
-                        </div>
-                      )}
-
-                      {others.length > 0 ? (
-                        <ul className="space-y-3 text-sm">
-                          {others.map((f) => (
-                            <li key={f.id} className="border rounded-xl px-4 py-3 shadow-sm bg-cloud-100/40 dark:bg-midnight-800/40">
-                              <div className="text-midnight-800 dark:text-ivory-200">{f.status}</div>
-                              {f.description && <div className="text-midnight-600 dark:text-ivory-400">{f.description}</div>}
-                              <div className="text-midnight-400 dark:text-ivory-500 text-xs">Scheduled: {new Date(f.scheduledAt!).toLocaleString()}</div>
-                              <div className="text-midnight-300 dark:text-ivory-600 text-xs">{new Date(f.createdAt || '').toLocaleString()}</div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        !upcoming && <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No followups.</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Attachments */}
-                <div className="flex flex-col h-[400px]">
-                  <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
-                                  border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
-                                  p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
-
-                    <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Attachments</div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-xs text-midnight-500 dark:text-ivory-400">Upload related files</div>
-                      <div className="flex items-center gap-2">
-                        <input ref={fileInputRef} type="file" multiple onChange={e => onUpload(e.target.files)} className="hidden" />
-                        <Button
-                          variant="secondary"
-                          className="flex items-center px-5 py-2 rounded-xl border border-cloud-300/40 
-              text-gray-700 bg-midnight-200 shadow-md transition"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploading}
-                        >
-                          {uploading ? 'Uploading...' : 'Add'}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Scrollable content */}
-                    <div className="overflow-y-auto pr-2 flex-1">
-                      {lead.attachments?.length ? (
-                        <div className="flex flex-wrap gap-3">
-                          {lead.attachments.map((a, i) => (
-                            <AttachmentChip key={`${a.url}:${a.filename}:${i}`} filename={a.filename} url={a.url} />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No attachments.</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quotes */}
-                <div className="flex flex-col h-[400px]">
-                  <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
-                                  border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
-                                  p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
-
-                    <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Quotes</div>
                     <div className="overflow-y-auto flex-1">
                       <QuotePicker
                         leadId={lead.id}
@@ -613,37 +638,34 @@ const LeadDetail: React.FC = () => {
                       />
                     </div>
                   </div>
-                </div>
-
-                {/* Logs */}
-                <div className="flex flex-col h-[400px]">
-                  <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
-                              border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
-                              p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
-
-                    <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Logs</div>
-                    <div className="overflow-y-auto pr-2 flex-1">
-                      {((lead.logs as any[]) || []).length ? (
-                        <ul className="space-y-3 text-sm">
-                          {(lead.logs as any[]).map((lg: any) => (
-                            <li key={lg.id} className="border rounded-xl px-4 py-3 shadow-sm bg-cloud-100/40 dark:bg-midnight-800/40">
-                              <div className="text-midnight-800 dark:text-ivory-200">{lg.actorName} {formatAction(lg.action)}</div>
-                              <div className="text-midnight-600 dark:text-ivory-400">{lg.message}</div>
-                              <div className="text-midnight-400 dark:text-ivory-500 text-xs">{new Date(lg.createdAt).toLocaleString()}</div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No logs yet.</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-{/* edited by mariyam */}
-
-
+                
+                              </div>
+              
+                              {/* Logs */}
+                              <div className="flex flex-col h-[400px]">
+                                <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                                            border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
+                                            p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
+              
+                                  <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Logs</div>
+                                  <div className="overflow-y-auto pr-2 flex-1">
+                                    {((lead.logs as any[]) || []).length ? (
+                                      <ul className="space-y-3 text-sm">
+                                        {(lead.logs as any[]).map((lg: any) => (
+                                          <li key={lg.id} className="border rounded-xl px-4 py-3 shadow-sm bg-cloud-100/40 dark:bg-midnight-800/40">
+                                            <div className="text-midnight-800 dark:text-ivory-200">{lg.actorName} {formatAction(lg.action)}</div>
+                                            <div className="text-midnight-600 dark:text-ivory-400">{lg.message}</div>
+                                            <div className="text-midnight-400 dark:text-ivory-500 text-xs">{new Date(lg.createdAt).toLocaleString()}</div>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No logs yet.</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
 
               {/* Chat */}
               {lead && <ChatBox leadId={lead.id} />}

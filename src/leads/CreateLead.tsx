@@ -192,8 +192,6 @@ const CreateLead: React.FC = () => {
         contactId: contactId || undefined,
         salesmanId,
       };
-
-
       const out = await leadsService.create(payload, token);
       navigate(`/leads/${out.id}`, { replace: true });
     } catch (e: any) {

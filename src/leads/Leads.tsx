@@ -29,7 +29,7 @@ const Leads: React.FC = () => {
     const filterOptions = {
         stage: STAGES,
         forecastCategory: FORECASTS,
-        
+
     };
 
     // Effect to fetch initial salesmen list (only needed for admins)
@@ -122,7 +122,13 @@ const Leads: React.FC = () => {
                                 { key: 'salesman.name', header: 'Salesman' },
                                  { key: 'source', header: 'Source' },
                                   
-                                   { key: 'nextFollowupAt', header: 'Next Follow Up' },
+                                    {
+      key: 'nextFollowupAt',
+      header: 'nextFollowupAt',
+      render: (row: { nextFollowupAt?: string }) => 
+        row.nextFollowupAt ? <FormattedDateTime isoString={row.nextFollowupAt} /> : '-',
+      sortable: true
+    },
                                    {
       key: 'createdAt',
       header: 'Created At',
