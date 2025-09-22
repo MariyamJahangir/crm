@@ -638,8 +638,8 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         // 5. Create all QuoteItem records
         await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: createdQuote.id })));
 
-        if (lead.stage !== 'Quote') {
-            await lead.update({ stage: 'Quote' });
+        if (lead.stage !== 'Quote Negotiation') {
+            await lead.update({ stage: 'Quote Negotiation' });
         }
         
         if (initialStatus === 'PendingApproval') {

@@ -4,8 +4,7 @@ const { sequelize } = require('../config/database');
 const STAGES = [
   'Discover',
   'Solution Validation',
-  'Quote',
-  'Negotiation',
+  'Quote Negotiation',
   'Deal Closed',
   'Deal Lost',
   'Fake Lead'

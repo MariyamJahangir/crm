@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { leadsService, Lead } from '../services/leadsService';
 import { teamService, TeamUser } from '../services/teamService';
 import FormattedDateTime from '../components/FormattedDateTime'
-const STAGES = ['Discover', 'Solution Validation', 'Quote', 'Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'];
+const STAGES = ['Discover', 'Solution Validation', 'Quote Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'];
 const FORECASTS = ['Pipeline', 'BestCase', 'Commit'];
 
 const Leads: React.FC = () => {
