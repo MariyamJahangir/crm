@@ -390,6 +390,7 @@ const CreateQuote: React.FC = () => {
 
               <div className="border-t border-cloud-300/40 dark:border-midnight-700/40 pt-6">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  
                   <div>
                     <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
                       Customer Name
@@ -401,6 +402,7 @@ const CreateQuote: React.FC = () => {
                       onChange={(e) => setCustomerName(e.target.value)}
                     />
                   </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
                       Contact Person
@@ -420,6 +422,7 @@ const CreateQuote: React.FC = () => {
                       ))}
                     </select>
                   </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
                       Phone
@@ -430,7 +433,9 @@ const CreateQuote: React.FC = () => {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                     />
+                    
                   </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
                       Email
@@ -442,7 +447,9 @@ const CreateQuote: React.FC = () => {
                       onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
-                  <div>
+                  
+                  {/* address */}
+                  <div className='col-span-2'>
                     <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
                       Address
                     </label>
@@ -453,6 +460,7 @@ const CreateQuote: React.FC = () => {
                       onChange={(e) => setAddress(e.target.value)}
                     />
                   </div>
+
                   <div className="sm:col-span-3">
                     <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
                       Description

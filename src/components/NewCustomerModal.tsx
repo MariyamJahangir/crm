@@ -90,9 +90,9 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
         website: website || undefined,
         category: category || undefined,
       };
-       if (isAdmin && salesmanId) {
+      if (isAdmin && salesmanId) {
         payload.salesmanId = salesmanId;
-     }
+      }
 
 
       const out = await customerService.create(payload, token);
@@ -137,9 +137,9 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
           </Button>
 
           <Button
-    onClick={save}
-    disabled={saving || !companyName.trim()}
-    className={`
+            onClick={save}
+            disabled={saving || !companyName.trim()}
+            className={`
         px-4 py-2 rounded-lg 
         bg-blue-600 text-white 
         border border-blue-500
@@ -147,9 +147,9 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
         transition-all duration-300 ease-in-out
         ${saving || !companyName.trim() ? 'opacity-50 cursor-not-allowed' : ''}
     `}
->
-    {saving ? 'Saving...' : 'Create'}
-</Button>
+          >
+            {saving ? 'Saving...' : 'Create'}
+          </Button>
 
         </>
       }

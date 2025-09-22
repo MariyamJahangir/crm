@@ -23,6 +23,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
     email: '',
     mobile: '',
     fax: '',
+    social: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +95,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-sm p-6">
-      <div className="bg-white/30 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30
+      <div className="bg-white/50 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30
                       w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
 
@@ -122,103 +123,128 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
               </div>
             )}
 
+            
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 
-            {/* Customer */}
-            <div>
-              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Customer</label>
-              <select
-                value={selectedCustomerId}
-                onChange={handleCustomerChange}
-                required
-                className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
+                {/* Customer */}
+                <div>
+                  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Customer</label>
+                  <select
+                    value={selectedCustomerId}
+                    onChange={handleCustomerChange}
+                    required
+                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
                            bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100
                            shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-              >
-                <option value="" disabled>-- Select a Customer --</option>
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>{c.companyName}</option>
-                ))}
-              </select>
-            </div>
+                  >
+                    <option value="" disabled>-- Select a Customer --</option>
+                    {customers.map(c => (
+                      <option key={c.id} value={c.id}>{c.companyName}</option>
+                    ))}
+                  </select>
+                </div>
 
 
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Name</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
+                {/* Name */}
+                <div>
+                  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
                            bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100
                            shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-              />
-            </div>
+                  />
+                </div>
 
 
-            {/* ... other input fields ... */}
-            <div>
-              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Designation</label>
-              <input
-                type="text"
-                name="designation"
-                value={formData.designation}
-                onChange={handleChange}
-                className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                {/* ... other input fields ... */}
+                <div>
+                  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Designation</label>
+                  <input
+                    type="text"
+                    name="designation"
+                    value={formData.designation}
+                    onChange={handleChange}
+                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
                            bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                            shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Department</label>
-              <input
-                type="text"
-                name="department"
-                value={formData.department}
-                onChange={handleChange}
-                className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Department</label>
+                  <input
+                    type="text"
+                    name="department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
                            bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                            shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
                            bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                            shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Mobile</label>
-              <input
-                type="text"
-                name="mobile"
-                value={formData.mobile}
-                onChange={handleChange}
-                className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Mobile</label>
+                  <input
+                    type="text"
+                    name="mobile"
+                    value={formData.mobile}
+                    onChange={handleChange}
+                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
                            bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                            shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Fax</label>
-              <input
-                type="text"
-                name="fax"
-                value={formData.fax}
-                onChange={handleChange}
-                className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Fax</label>
+                  <input
+                    type="text"
+                    name="fax"
+                    value={formData.fax}
+                    onChange={handleChange}
+                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
                            bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                            shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-              />
-            </div>
+                  />
+                </div>
+
+{/* Edited by mariyam */}
+                <div>
+                  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">LinkedIn/Social</label>
+                  <input
+                    type="text"
+                    name="social"
+                    value={formData.social}
+                    onChange={handleChange}
+                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                           bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+                           shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
+                  />
+                </div>
+
+{/* Edited by mariyam */}        
+
+              </div>
+           
 
 
           </div>

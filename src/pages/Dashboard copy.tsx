@@ -33,47 +33,17 @@ function debounce(fn: Function, ms: number) {
 
 
 const Loader: React.FC = () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-indigo-600"></div>
-    </div>
-);
-
-const ChartCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="
-    bg-gradient-to-br from-midnight-400/70 to-cloud-100/60
-    backdrop-blur-lg
-    border border-cloud-300/60
-    shadow-xl hover:shadow-2xl hover:scale-[1.03]
-    transition-all duration-300
-    rounded-3xl
-    p-6
-    w-full h-full
-    flex flex-col
-    overflow-hidden
-    group
-    relative
-    "
-  >
-    <div className="absolute inset-0 pointer-events-none rounded-3xl border border-cloud-200/20" />
-    <h3 className="
-      text-xl font-semibold
-      text-cloud-800
-      mb-4
-      cursor-move
-      truncate
-      tracking-tight
-      transition-colors duration-200
-      group-hover:text-sky-500
-      "
-    >
-      {title}
-    </h3>
-    <div className="flex-grow relative w-full h-full">
-      {children}
-    </div>
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="animate-spin rounded-full h-24 w-24 border-t-4 border-b-4 border-indigo-600"></div>
   </div>
 );
 
+const ChartCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div className="bg-white p-4 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 w-full h-full flex flex-col overflow-hidden">
+        <h3 className="text-lg font-bold text-gray-800 mb-2 cursor-move truncate">{title}</h3>
+        <div className="flex-grow relative w-full h-full">{children}</div>
+    </div>
+);
 
 
 const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; color: string }> = ({ title, value, icon, color }) => (
@@ -154,7 +124,7 @@ const Dashboard: React.FC = () => {
             // { i: 'clients', x: 8, y: 12, w: 2, h: 4, minW: 2, minH: 3 },
             { i: 'completed', x: 8, y: 12, w: 2, h: 4, minW: 2, minH: 3 },
         ];
-
+        
         const defaultLayouts = {
             admin: { lg: [...baseItems, { i: 'admin-team-sales', x: 0, y: 0, w: 8, h: 8, minW: 4, minH: 6 }, { i: 'admin-monthly-sales', x: 0, y: 8, w: 8, h: 8, minW: 4, minH: 6 }] },
             member: { lg: [...baseItems, { i: 'member-daily-sales', x: 0, y: 0, w: 8, h: 8, minW: 4, minH: 6 }, { i: 'member-monthly-sales', x: 0, y: 8, w: 8, h: 8, minW: 4, minH: 6 }] }
@@ -195,7 +165,7 @@ const Dashboard: React.FC = () => {
         localStorage.setItem(`dashboard-layout-${user?.id}`, JSON.stringify(newLayouts)); // Save to LS
         debouncedSaveLayout(token!, newLayouts); // Save to backend
     };
-
+    
     const commonChartOptions = useMemo(() => ({
         responsive: true,
         maintainAspectRatio: false,
@@ -213,13 +183,13 @@ const Dashboard: React.FC = () => {
         },
         scales: {
             y: {
-                ticks: { color: '#4b5563', callback: (value: any) => typeof value === 'number' && value >= 1000 ? `${value / 1000}k` : `${value}` },
+                ticks: { color: '#4b5563', callback: (value: any) => typeof value === 'number' && value >= 1000 ? `${value / 1000}k` : `${value}`},
                 grid: { color: '#e5e7eb' },
             },
             x: { ticks: { color: '#4b5563' }, grid: { display: false } },
         },
     }), []);
-
+    
     const teamSalesTrendChart = useMemo(() => {
         if (!dashboardData?.teamSalesTrend) return { labels: [], datasets: [] };
         return {
@@ -259,7 +229,7 @@ const Dashboard: React.FC = () => {
             }]
         };
     }, [dashboardData]);
-
+    
     const memberMonthlySalesChart = useMemo(() => {
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const labels = [];
@@ -267,7 +237,7 @@ const Dashboard: React.FC = () => {
             const d = new Date(); d.setMonth(d.getMonth() - i);
             labels.push(`${monthNames[d.getMonth()]} ${d.getFullYear()}`);
         }
-
+        
         const values = Array(6).fill(0);
         if (dashboardData?.memberMonthlySales) {
             const salesMap = new Map(dashboardData.memberMonthlySales.map(d => [`${d.year}-${d.month}`, parseFloat(d.totalSales)]));
@@ -280,9 +250,9 @@ const Dashboard: React.FC = () => {
 
         return {
             labels,
-            datasets: [{
-                label: 'Your Monthly Sales',
-                data: values,
+            datasets: [{ 
+                label: 'Your Monthly Sales', 
+                data: values, 
                 backgroundColor: (ctx: ScriptableContext<"bar">) => {
                     if (!ctx.chart.chartArea) return 'rgba(22, 163, 74, 0.6)';
                     const gradient = ctx.chart.ctx.createLinearGradient(0, ctx.chart.chartArea.bottom, 0, ctx.chart.chartArea.top);
@@ -307,50 +277,38 @@ const Dashboard: React.FC = () => {
     if (isLoading || !dashboardData || !isLayoutInitialized) {
         return <div className="flex  min-h-screen"><Sidebar /><Loader /></div>;
     }
-
+    
     if (error) {
         return <div className="flex bg-gray-50 min-h-screen"><Sidebar /><main className="flex-1 p-8"><ErrorMessage message={error} /></main></div>;
     }
 
     const { isAdmin, overallStats, memberTargetAchievements } = dashboardData;
-
+    
     const dashboardItems = {
-
         'pipeline': (
             <ChartCard title="Lead Pipeline by Stage">
-                <Doughnut key="common-pipeline-chart" data={doughnutChartData} options={{ ...commonChartOptions, cutout: '70%', plugins: { ...commonChartOptions.plugins, legend: { position: 'right' } } }} />
+                <Doughnut key="common-pipeline-chart" data={doughnutChartData} options={{...commonChartOptions, cutout: '70%', plugins: {...commonChartOptions.plugins, legend: { position: 'right' }}}}/>
             </ChartCard>
         ),
-
-
-        'queries': <StatCard title="Total Leads" value={overallStats.queries} icon={<FileText size={20} />} color="text-blue-500" />,
-        
-        'progress': <StatCard title="In Progress" value={overallStats.inProgress} icon={<Briefcase size={20} />} color="text-amber-500" />,
+        'queries': <StatCard title="Total Leads" value={overallStats.queries} icon={<FileText size={20}/>} color="text-blue-500" />,
+        'progress': <StatCard title="In Progress" value={overallStats.inProgress} icon={<Briefcase size={20}/>} color="text-amber-500" />,
         // 'clients': <StatCard title="Active Clients" value={overallStats.clients} icon={<Users size={20}/>} color="text-green-500" />,
-        
-        'completed': <StatCard title="Deals Completed" value={overallStats.completed} icon={<CheckCircle size={20} />} color="text-violet-500" />,
-        
-
+        'completed': <StatCard title="Deals Completed" value={overallStats.completed} icon={<CheckCircle size={20}/>} color="text-violet-500" />,
         'admin-team-sales': (
             <ChartCard title="Team Daily Sales (Last 30 Days)">
                 <Line key="admin-team-sales-chart" data={teamSalesTrendChart} options={commonChartOptions} />
             </ChartCard>
         ),
-
-
         'admin-monthly-sales': (
             <ChartCard title="Monthly Sales (Last 6 Months)">
                 <Bar key="admin-monthly-sales-chart" data={adminMonthlySalesChart} options={commonChartOptions} />
             </ChartCard>
         ),
-
-
         'member-daily-sales': (
             <ChartCard title="Your Daily Sales (This Month)">
                 <Line key="member-daily-sales-chart" data={memberDailySalesChart} options={commonChartOptions} />
             </ChartCard>
         ),
-
         'member-monthly-sales': (
             <ChartCard title="Your Monthly Sales (Last 6 Months)">
                 <Bar key="member-monthly-sales-chart" data={memberMonthlySalesChart} options={commonChartOptions} />
@@ -362,13 +320,15 @@ const Dashboard: React.FC = () => {
 
     return (
 
+
+
         <div className="flex min-h-screen  z-10 transition-colors duration-300">
             <SetTargetModal isOpen={isTargetModalOpen} onClose={() => { setTargetModalOpen(false); setEditingTarget(null); fetchData(true); }} token={token} editTarget={editingTarget} />
             <Sidebar />
             <div className="font-sans flex-1 overflow-y-auto h-screen">
                 <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
 
-
+    
                     <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
                         <div>
                             <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
@@ -378,33 +338,20 @@ const Dashboard: React.FC = () => {
                             {isAdmin && <button onClick={() => setTargetModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-all hover:scale-105 active:scale-100"><span>Set Target</span></button>}
                             <button onClick={() => fetchData(true)} className="p-2 sm:px-4 sm:py-2 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-100 transition-all hover:scale-105 active:scale-100 flex items-center">
                                 <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
-
+                               
                             </button>
                         </div>
                     </header>
                     <div className={`transition-opacity duration-500 ${isRefreshing ? 'opacity-60' : 'opacity-100'}`}>
-
                         <div className="mb-8">
                             {isAdmin ? (
-                                <TargetAchievementSlider
-                                    data={memberTargetAchievements}
-                                    onEdit={handleEditTarget}
-                                />
+                                <TargetAchievementSlider data={memberTargetAchievements} onEdit={handleEditTarget} />
                             ) : (
                                 <div className="max-w-sm mx-auto">
-                                    {memberTargetAchievements.length > 0 ? (
-                                        <MemberTargetGauge
-                                            {...memberTargetAchievements[0]}
-                                        />
-                                    ) : (
-                                        <p className="text-center text-cloud-500 italic">
-                                            Your target is not set.
-                                        </p>
-                                    )}
+                                    {memberTargetAchievements.length > 0 ? <MemberTargetGauge {...memberTargetAchievements[0]} /> : <p className="text-center text-gray-500">Your target is not set.</p>}
                                 </div>
                             )}
                         </div>
-
 
                         <ResponsiveGridLayout
                             className="layout"

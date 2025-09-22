@@ -37,43 +37,66 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBack, onSuccess }) =>
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        <div className="text-center mb-8">
-          <button onClick={onBack} className="absolute top-4 left-4 text-gray-500 hover:text-gray-700 p-2">
-            <ArrowLeft size={20} />
-          </button>
-          <div className="bg-orange-100 p-3 rounded-full w-fit mx-auto mb-4">
-            <Mail className="h-8 w-8 text-orange-600" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Forgot Password</h1>
-          <p className="text-gray-600 mt-2">Enter your email address and we'll send you a reset code</p>
+return (
+  <div
+    className="min-h-screen flex items-center justify-center bg-cover bg-center p-4 relative"
+  >
+    {/* overlay */}
+    <div className="absolute inset-0 bg-midnight-900/40"></div>
+
+    <div className="bg-cloud-800/30 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20 relative z-10">
+      <div className="text-center mb-8">
+        {/* back button */}
+        <button
+          onClick={onBack}
+          className="absolute top-4 left-4 text-cloud-300 hover:text-sky-400 transition p-2"
+        >
+          <ArrowLeft size={20} />
+        </button>
+
+        {/* icon */}
+        <div className="bg-sky-700/30 p-3 rounded-full w-fit mx-auto mb-4 shadow-md">
+          <Mail className="h-8 w-8 text-sky-300" />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Input
-            label="Email Address"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={error}
-            placeholder="Enter your email"
-          />
+        <h1 className="text-3xl font-bold text-ivory-100">Forgot Password</h1>
+        <p className="text-cloud-200 mt-2">
+          Enter your email address and we'll send you a reset code
+        </p>
+      </div>
 
-          <Button type="submit" loading={loading} className="w-full">
-            Send Reset Code
-          </Button>
-        </form>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        
+        <Input
+          label="Email Address"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          error={error}
+          placeholder="Enter your email"
+        />
 
-        <div className="mt-6 text-center">
-          <button onClick={onBack} className="text-blue-600 hover:text-blue-700 font-medium">
-            Back to Sign In
-          </button>
-        </div>
+        <Button
+          type="submit"
+          loading={loading}
+          className="w-full bg-sky-600 hover:bg-sky-500 text-midnight-900 font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-md"
+        >
+          Send Reset Code
+        </Button>
+      </form>
+
+      <div className="mt-6 text-center">
+        <button
+          onClick={onBack}
+          className="text-sky-400 hover:text-sky-300 font-medium transition"
+        >
+          Back to Sign In
+        </button>
       </div>
     </div>
-  );
+  </div>
+);
+
 };
 
 export default ForgotPassword;

@@ -38,7 +38,7 @@ const QuotePicker: React.FC<{
     (async () => {
       try {
         const res = await quotesService.listByLead(leadId, token);
-                console.log('--- Quotes Loaded from Server ---', res.quotes);
+        console.log('--- Quotes Loaded from Server ---', res.quotes);
 
         setQuotes(res.quotes);
       } catch (e: any) {
@@ -52,7 +52,7 @@ const QuotePicker: React.FC<{
     try {
       const html = await quotesService.previewHtml(q.leadId, q.id, token);
       console.log(html.html)
-      setPreview({ open: true, html:html.html , quote: q, downloading: false });
+      setPreview({ open: true, html: html.html, quote: q, downloading: false });
     } catch (e: any) {
       setErr(e?.data?.message || 'Failed to build preview');
     }
@@ -91,31 +91,31 @@ const QuotePicker: React.FC<{
   };
 
 
-const selectMain = async (q: Quote) => {
-  const originalMainNumber = currentMain;
-  onMainChange(q.quoteNumber); // Optimistic UI update
-  setBusy(q.id);
+  const selectMain = async (q: Quote) => {
+    const originalMainNumber = currentMain;
+    onMainChange(q.quoteNumber); // Optimistic UI update
+    setBusy(q.id);
 
-  try {
-    // This correctly sends the string "Q-2025-..." to the backend
-    await quotesService.setMainQuote(leadId, q.quoteNumber, token);
-    
-    // The backend will now find the quote and update the lead successfully.
+    try {
+      // This correctly sends the string "Q-2025-..." to the backend
+      await quotesService.setMainQuote(leadId, q.quoteNumber, token);
 
-  } catch (e: any) {
-    setErr(e?.data?.message || 'Failed to set main quote');
-    onMainChange(originalMainNumber || null); // Revert on failure
-  } finally {
-    setBusy(null);
-  }
-};
+      // The backend will now find the quote and update the lead successfully.
+
+    } catch (e: any) {
+      setErr(e?.data?.message || 'Failed to set main quote');
+      onMainChange(originalMainNumber || null); // Revert on failure
+    } finally {
+      setBusy(null);
+    }
+  };
 
   if (err) return <div className="text-red-600">{err}</div>;
   if (!quotes.length) return <div className="text-sm text-gray-600">No quotes yet.</div>;
 
 
   return (
-     <>
+    <>
       <div className="flex flex-wrap gap-3">
         {quotes.map((q) => {
           const isMain = currentMain === q.quoteNumber;
@@ -125,8 +125,8 @@ const selectMain = async (q: Quote) => {
               className={`flex items-center gap-3 px-4 py-2 rounded-xl shadow-md border 
                           backdrop-blur-md transition
                           ${isMain
-                            ? "bg-sky-100/70 dark:bg-sky-900/40 border-sky-400"
-                            : "bg-white/50 dark:bg-midnight-800/40 border-gray-300/30 hover:shadow-lg"}`}
+                  ? "bg-sky-100/70 dark:bg-sky-900/40 border-sky-400"
+                  : "bg-white/50 dark:bg-midnight-800/40 border-gray-300/30 hover:shadow-lg"}`}
             >
               {/* Preview button */}
               <button
@@ -377,7 +377,7 @@ const LeadDetail: React.FC = () => {
   const AttachmentChip = ({ filename, url }: { filename: string; url: string }) => {
     const href = toFileHref(url);
     const ext = (filename.split('.').pop() || '').toLowerCase();
-    const isImg = ['png','jpg','jpeg','gif','webp','bmp'].includes(ext);
+    const isImg = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].includes(ext);
     const label = ext === 'pdf' ? 'PDF' : (ext || 'FILE').toUpperCase();
     return (
       <div className="relative">
@@ -423,7 +423,7 @@ const LeadDetail: React.FC = () => {
 
 
   return (
-  <div className="flex min-h-screen  z-10 transition-colors duration-300">
+    <div className="flex min-h-screen  z-10 transition-colors duration-300">
       <Sidebar />
       <div className="flex-1 overflow-y-auto h-screen">
         <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -505,117 +505,145 @@ const LeadDetail: React.FC = () => {
                 )}
               </div>
 
-              {/* Followups */}
-              <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl p-5 shadow-lg mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200">Followups</div>
-                  <Button
-                    variant="secondary"
-                    className="flex items-center px-5 py-2 rounded-xl 
-                 border border-cloud-300/40 
-                 text-gray-700 
-                 bg-midnight-200
-                 shadow-md transition"
-                    onClick={() => setOpenFollowup(true)}
-                  >
-                    Add Followup
-                  </Button>
-                </div>
+{/* edited by mariyam */}
 
-                {upcoming && (
-                  <div className="mb-4 rounded-xl border-2 border-amber-400/70 bg-amber-50/70 dark:bg-amber-900/30 p-4 shadow-sm">
-                    <div className="text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1">Upcoming</div>
-                    <div className="text-sm text-midnight-800 dark:text-ivory-200">{upcoming.status}</div>
-                    {upcoming.description && <div className="text-sm text-midnight-600 dark:text-ivory-400">{upcoming.description}</div>}
-                    {upcoming.scheduledAt && (
-                      <div className="text-xs text-midnight-400 dark:text-ivory-500">Scheduled: {new Date(upcoming.scheduledAt).toLocaleString()}</div>
-                    )}
-                  </div>
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Followups */}
+                <div className="flex flex-col h-[400px]"> {/* set fixed height */}
+                  <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                      border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
+                      p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
 
-                {others.length > 0 ? (
-                  <ul className="space-y-3 text-sm">
-                    {others.map((f) => (
-                      <li key={f.id} className="border rounded-xl px-4 py-3 shadow-sm bg-cloud-100/40 dark:bg-midnight-800/40">
-                        <div className="text-midnight-800 dark:text-ivory-200">{f.status}</div>
-                        {f.description && <div className="text-midnight-600 dark:text-ivory-400">{f.description}</div>}
-                        <div className="text-midnight-400 dark:text-ivory-500 text-xs">Scheduled: {new Date(f.scheduledAt!).toLocaleString()}</div>
-                        <div className="text-midnight-300 dark:text-ivory-600 text-xs">{new Date(f.createdAt || '').toLocaleString()}</div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  !upcoming && <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No followups.</div>
-                )}
-              </div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200">Followups</div>
+                      <Button
+                        variant="secondary"
+                        className="flex items-center px-5 py-2 rounded-xl 
+                                    border border-cloud-300/40 text-gray-700 bg-midnight-200
+                                    shadow-md transition"
+                        onClick={() => setOpenFollowup(true)}
+                      >
+                        Add Followup
+                      </Button>
+                    </div>
 
-              {/* Attachments */}
-              <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl p-5 shadow-lg mb-6">
-                <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Attachments</div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-xs text-midnight-500 dark:text-ivory-400">Upload related files</div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      onChange={e => onUpload(e.target.files)}
-                      className="hidden"
-                    />
-                    <Button
-                      variant="secondary"
-                      className="flex items-center px-5 py-2 rounded-xl 
-                 border border-cloud-300/40 
-                 text-gray-700 
-                 bg-midnight-200
-                 shadow-md transition"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                    >
-                      {uploading ? 'Uploading...' : 'Add'}
-                    </Button>
+                    {/* Scrollable content */}
+                    <div className="overflow-y-auto pr-2 space-y-3 flex-1">
+                      {upcoming && (
+                        <div className="mb-4 rounded-xl border-2 border-amber-400/70 bg-amber-50/70 dark:bg-amber-900/30 p-4 shadow-sm">
+                          <div className="text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1">Upcoming</div>
+                          <div className="text-sm text-midnight-800 dark:text-ivory-200">{upcoming.status}</div>
+                          {upcoming.description && <div className="text-sm text-midnight-600 dark:text-ivory-400">{upcoming.description}</div>}
+                          {upcoming.scheduledAt && (
+                            <div className="text-xs text-midnight-400 dark:text-ivory-500">Scheduled: {new Date(upcoming.scheduledAt).toLocaleString()}</div>
+                          )}
+                        </div>
+                      )}
+
+                      {others.length > 0 ? (
+                        <ul className="space-y-3 text-sm">
+                          {others.map((f) => (
+                            <li key={f.id} className="border rounded-xl px-4 py-3 shadow-sm bg-cloud-100/40 dark:bg-midnight-800/40">
+                              <div className="text-midnight-800 dark:text-ivory-200">{f.status}</div>
+                              {f.description && <div className="text-midnight-600 dark:text-ivory-400">{f.description}</div>}
+                              <div className="text-midnight-400 dark:text-ivory-500 text-xs">Scheduled: {new Date(f.scheduledAt!).toLocaleString()}</div>
+                              <div className="text-midnight-300 dark:text-ivory-600 text-xs">{new Date(f.createdAt || '').toLocaleString()}</div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        !upcoming && <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No followups.</div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                {lead.attachments?.length ? (
-                  <div className="flex flex-wrap gap-3">
-                    {lead.attachments.map((a, i) => (
-                      <AttachmentChip key={`${a.url}:${a.filename}:${i}`} filename={a.filename} url={a.url} />
-                    ))}
+
+                {/* Attachments */}
+                <div className="flex flex-col h-[400px]">
+                  <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                                  border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
+                                  p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
+
+                    <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Attachments</div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-xs text-midnight-500 dark:text-ivory-400">Upload related files</div>
+                      <div className="flex items-center gap-2">
+                        <input ref={fileInputRef} type="file" multiple onChange={e => onUpload(e.target.files)} className="hidden" />
+                        <Button
+                          variant="secondary"
+                          className="flex items-center px-5 py-2 rounded-xl border border-cloud-300/40 
+              text-gray-700 bg-midnight-200 shadow-md transition"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploading}
+                        >
+                          {uploading ? 'Uploading...' : 'Add'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Scrollable content */}
+                    <div className="overflow-y-auto pr-2 flex-1">
+                      {lead.attachments?.length ? (
+                        <div className="flex flex-wrap gap-3">
+                          {lead.attachments.map((a, i) => (
+                            <AttachmentChip key={`${a.url}:${a.filename}:${i}`} filename={a.filename} url={a.url} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No attachments.</div>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No attachments.</div>
-                )}
+                </div>
+
+                {/* Quotes */}
+                <div className="flex flex-col h-[400px]">
+                  <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                                  border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
+                                  p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
+
+                    <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Quotes</div>
+                    <div className="overflow-y-auto flex-1">
+                      <QuotePicker
+                        leadId={lead.id}
+                        currentMain={lead.quoteNumber || null}
+                        onMainChange={(qnum) =>
+                          setLead(prev => prev ? ({ ...prev, quoteNumber: qnum || undefined }) : prev)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logs */}
+                <div className="flex flex-col h-[400px]">
+                  <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                              border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl 
+                              p-5 shadow-lg mb-6 flex flex-col flex-1 overflow-hidden">
+
+                    <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Logs</div>
+                    <div className="overflow-y-auto pr-2 flex-1">
+                      {((lead.logs as any[]) || []).length ? (
+                        <ul className="space-y-3 text-sm">
+                          {(lead.logs as any[]).map((lg: any) => (
+                            <li key={lg.id} className="border rounded-xl px-4 py-3 shadow-sm bg-cloud-100/40 dark:bg-midnight-800/40">
+                              <div className="text-midnight-800 dark:text-ivory-200">{lg.actorName} {formatAction(lg.action)}</div>
+                              <div className="text-midnight-600 dark:text-ivory-400">{lg.message}</div>
+                              <div className="text-midnight-400 dark:text-ivory-500 text-xs">{new Date(lg.createdAt).toLocaleString()}</div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No logs yet.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Quotes */}
-              <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl p-5 shadow-lg mb-6">
-                <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Quotes</div>
-                <QuotePicker
-                  leadId={lead.id}
-                  currentMain={lead.quoteNumber || null}
-                  onMainChange={(qnum) =>
-                    setLead(prev => prev ? ({ ...prev, quoteNumber: qnum || undefined }) : prev)
-                  }
-                />
-              </div>
+{/* edited by mariyam */}
 
-              {/* Logs */}
-              <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl p-5 shadow-lg mb-6">
-                <div className="text-base font-semibold text-midnight-700 dark:text-ivory-200 mb-3">Logs</div>
-                {((lead.logs as any[]) || []).length ? (
-                  <ul className="space-y-3 text-sm">
-                    {(lead.logs as any[]).map((lg: any) => (
-                      <li key={lg.id} className="border rounded-xl px-4 py-3 shadow-sm bg-cloud-100/40 dark:bg-midnight-800/40">
-                        <div className="text-midnight-800 dark:text-ivory-200">{lg.actorName} {formatAction(lg.action)}</div>
-                        <div className="text-midnight-600 dark:text-ivory-400">{lg.message}</div>
-                        <div className="text-midnight-400 dark:text-ivory-500 text-xs">{new Date(lg.createdAt).toLocaleString()}</div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No logs yet.</div>
-                )}
-              </div>
+
 
               {/* Chat */}
               {lead && <ChatBox leadId={lead.id} />}

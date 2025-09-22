@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { teamService, TeamUser } from '../services/teamService';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { Pencil, Trash2, RefreshCw,ListRestart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, RefreshCw, ListRestart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 type SortKey = 'name' | 'email' | 'designation' | 'createdAt' | 'status';
 type SortDir = 'asc' | 'desc';
@@ -234,12 +234,16 @@ const Users: React.FC = () => {
   );
 
   return (
-    <div className="relative min-h-screen  transition-colors duration-300">
 
-      <div className="flex z-10 h-screen">
-        <Sidebar />
-        <main className="flex-1 transition-all duration-300 
-               ml-2 group-hover:ml-56 max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+// code updated by mariyam
+
+    <div className="flex min-h-screen  z-10 transition-colors duration-300">
+      <Sidebar />
+      <div className="flex-1 overflow-y-auto h-screen">
+        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+
+{/* code updated by mariyam */}
+
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-extrabold text-midnight-600 dark:text-ivory-100 drop-shadow-lg">
@@ -256,13 +260,13 @@ const Users: React.FC = () => {
                   Create User
                 </Button>
               )}
-              
+
               <Button
                 variant="secondary"
                 onClick={load}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
               >
-                <RefreshCw /> 
+                <RefreshCw />
               </Button>
               {/* <Button
                 variant="secondary"
@@ -271,7 +275,7 @@ const Users: React.FC = () => {
               >
                 Export CSV
               </Button> */}
-{/* 
+              {/* 
               {isAdmin && (
                 <Button className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl"
                   onClick={() => navigate('/sales-report')}>
@@ -281,7 +285,7 @@ const Users: React.FC = () => {
             </div>
           </div>
 
-         
+
           <div className="bg-cloud-100/30 dark:bg-midnight-800/30 backdrop-blur-xl border border-cloud-300/40 dark:border-midnight-600/40 rounded-2xl p-5 mb-6 shadow-lg">
             <div className="flex flex-col md:flex-row md:items-center gap-3">
               <input
