@@ -316,11 +316,11 @@ const Dashboard: React.FC = () => {
     const currentLayoutForRender = layouts.lg || [];
 
     return (
-        <>
+       <div className="flex min-h-screen  z-10 transition-colors duration-300">
             <SetTargetModal isOpen={isTargetModalOpen} onClose={() => { setTargetModalOpen(false); setEditingTarget(null); fetchData(true); }} token={token} editTarget={editingTarget} />
-            <div className="flex font-sans">
-                <Sidebar />
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 min-h-screen">
+            <Sidebar />
+            <div className="font-sans flex-1 overflow-y-auto h-screen">
+                <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                     <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
                         <div>
                             <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
@@ -364,7 +364,7 @@ const Dashboard: React.FC = () => {
                     </div>
                 </main>
             </div>
-        </>
+        </div>
     );
 };
 

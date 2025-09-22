@@ -21,7 +21,7 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
 
         const timer = setInterval(() => {
             handleNext();
-        }, 2000); // Slide every 2 seconds
+        }, 5000); // Slide every 2 seconds
 
         return () => clearInterval(timer);
     }, [data.length, isSliderActive]);

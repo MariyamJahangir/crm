@@ -29,7 +29,7 @@ const customSelectStyles = {
     }),
     singleValue: (provided: any) => ({
         ...provided,
-        color: '#E2E8F0', // slate-200
+        color: '#2e2e2eff', // slate-200
     }),
     menu: (provided: any) => ({
         ...provided,
@@ -124,7 +124,7 @@ const SetTargetModal: React.FC<SetTargetModalProps> = ({ isOpen, onClose, token,
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur flex items-center justify-center z-50 p-4">
             <div className="bg-white/10 dark:bg-midnight-800/50 backdrop-blur-lg border border-white/20 dark:border-midnight-700/40 rounded-2xl shadow-2xl p-6 w-full max-w-md transform transition-all">
                 
                 <div className="flex justify-between items-center border-b border-white/20 dark:border-midnight-700/40 pb-3 mb-5">
@@ -149,7 +149,7 @@ const SetTargetModal: React.FC<SetTargetModalProps> = ({ isOpen, onClose, token,
                 ...customSelectStyles,
                 placeholder: (provided) => ({
                     ...provided,
-                    color: '#CBD5E1', // A darker, more visible gray (slate-300)
+                    color: '#413c3cff', // A darker, more visible gray (slate-300)
                 }),
             }}
             placeholder="Select a member..."
@@ -172,10 +172,10 @@ const SetTargetModal: React.FC<SetTargetModalProps> = ({ isOpen, onClose, token,
         />
     </div>
 
-    {message && <p className={`text-sm font-semibold text-center ${message.toLowerCase().includes('success') ? 'text-green-400' : 'text-red-400'}`}>{message}</p>}
+    {message && <p className={`text-sm font-semibold text-center ${message.toLowerCase().includes('success') ? 'text-green-800' : 'text-red-400'}`}>{message}</p>}
 
     <div className="flex justify-end space-x-4 pt-4">
-        <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 bg-white/10 text-ivory-100 rounded-lg hover:bg-white/20 border border-white/20 transition-colors disabled:opacity-50">Cancel</button>
+        <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 bg-slate-200 text-gray-700 rounded-lg hover:bg-white/20 border border-white/20 transition-colors disabled:opacity-50">Cancel</button>
         <button type="submit" disabled={isLoading || !targetAmount} className="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors disabled:bg-sky-800 disabled:opacity-60 disabled:cursor-not-allowed">
             {isLoading ? 'Saving...' : 'Save Target'}
         </button>

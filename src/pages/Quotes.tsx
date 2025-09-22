@@ -87,6 +87,7 @@ useEffect(() => {
             setErr(null);
             try {
                 const res = await quotesService.listAll(token);
+             
                 setMasterQuotes(res.quotes);
                 setQuotes(res.quotes); // Initially display all quotes
             } catch (e: any) {
@@ -151,6 +152,7 @@ useEffect(() => {
     setPreview({ open: true, html: '<div>Loading preview...</div>' });
     try {
       const res = await quotesService.previewHtml(quote.leadId, quote.id, token);
+
       if (res.success) {
         setPreview({ open: true, html: res.html });
       } else {

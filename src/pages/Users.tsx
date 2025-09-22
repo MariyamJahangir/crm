@@ -13,7 +13,7 @@ type SortDir = 'asc' | 'desc';
 const Users: React.FC = () => {
   const { token, user } = useAuth();
   const navigate = useNavigate();
-
+    const [isRefreshing, setIsRefreshing] = useState(false);
   const [items, setItems] = useState<TeamUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,10 +37,11 @@ const Users: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(10);
   const [page, setPage] = useState<number>(1);
 
-  const load = async () => {
+   const load = async (isManualRefresh) => {
     if (!token) return;
     setError(null);
     setLoading(true);
+    if (isManualRefresh) setIsRefreshing(true);
     try {
       const res = await teamService.list(token);
       setItems(res.users || []);
@@ -48,8 +49,11 @@ const Users: React.FC = () => {
       setError(e?.data?.message || 'Failed to load users');
     } finally {
       setLoading(false);
+      // Add this line to stop the refreshing animation
+      setIsRefreshing(false);
     }
   };
+
 
   useEffect(() => {
     load();
@@ -234,12 +238,10 @@ const Users: React.FC = () => {
   );
 
   return (
-    <div className="relative min-h-screen  transition-colors duration-300">
-
-      <div className="flex z-10 h-screen">
-        <Sidebar />
-        <main className="flex-1 transition-all duration-300 
-               ml-2 group-hover:ml-56 max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+     <div className="flex min-h-screen  z-10 transition-colors duration-300">
+      <Sidebar />
+      <div className="flex-1 overflow-y-auto h-screen">
+        <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-extrabold text-midnight-600 dark:text-ivory-100 drop-shadow-lg">
@@ -262,7 +264,7 @@ const Users: React.FC = () => {
                 onClick={load}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-cloud-200/50 dark:bg-midnight-700/50 backdrop-blur-md text-midnight-700 dark:text-ivory-300 hover:bg-cloud-300/70 dark:hover:bg-midnight-600/70 shadow-md rounded-xl transition"
               >
-                <RefreshCw /> 
+                   <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
               </Button>
               {/* <Button
                 variant="secondary"
