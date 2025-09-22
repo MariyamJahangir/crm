@@ -10,9 +10,11 @@ import {
   Store,
   Contact,
   Bell,
+   Sofa,
   LogOut,
   Users,
   Building2,
+  Armchair,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import Button from './Button';
@@ -78,7 +80,7 @@ const Sidebar: React.FC = () => {
             `${linkBase} ${isActive ? linkActive : linkInactive}`
           }
         >
-          <LayoutDashboard size={18} className="mr-3 flex-shrink-0" />
+          <Armchair size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             Dashboard
           </span>

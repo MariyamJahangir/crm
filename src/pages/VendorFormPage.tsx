@@ -154,7 +154,7 @@ return (
           <div className="flex gap-4 border-b border-cloud-300/40 dark:border-midnight-700/40 pb-3">
             <TabButton tab="basic" label="Basic Info" />
             <TabButton tab="contacts" label="Contacts" />
-            <TabButton tab="business" label="Business & Financial" />
+            <TabButton tab="business" label="Business" />
           </div>
 
           {/* Basic Info */}
@@ -436,7 +436,7 @@ return (
                 </select>
               </div>
 
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
                   Payment Terms
                 </label>
@@ -455,30 +455,17 @@ return (
                     </option>
                   ))}
                 </select>
-              </div>
+              </div> */}
+
+             
 
               <div>
                 <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
-                  GST No.
-                </label>
-                <input
-                  name="gstNo"
-                  placeholder="GST No."
-                  value={vendor.gstNo || ""}
-                  onChange={handleChange}
-                  className="w-full h-11 px-4 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50
-                             bg-white/70 dark:bg-midnight-800/60 text-midnight-900 dark:text-ivory-100
-                             shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
-                  PAN No.
+                 VAT No.
                 </label>
                 <input
                   name="panNo"
-                  placeholder="PAN No."
+                  placeholder="VAT No."
                   value={vendor.panNo || ""}
                   onChange={handleChange}
                   className="w-full h-11 px-4 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50

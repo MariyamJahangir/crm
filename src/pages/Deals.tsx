@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { dealsService, DealDetailsType } from '../services/dealsService';
 import DataTable from '../components/DataTable';
 import { Eye } from 'lucide-react';
-
+import FormattedDateTime from '../components/FormattedDateTime';
 const Deals: React.FC = () => {
   const { token, user } = useAuth();
   const isAdmin = user?.type === 'ADMIN';
@@ -29,9 +29,15 @@ const Deals: React.FC = () => {
     const baseCols = [
       { key: 'uniqueNumber', header: 'Lead ID' },
       { key: 'customer.companyName', header: 'Company' },
-      { key: 'updatedAt', header: 'Date Closed', render: (r: DealDetailsType) => new Date(r.updatedAt!).toLocaleDateString() },
-      { key: 'quote.grandTotal', header: 'Deal Value', render: (r: DealDetailsType) => `$${Number(r.quote?.grandTotal || 0).toFixed(2)}` },
+     { key: 'quote.grandTotal', header: 'Deal Value', render: (r: DealDetailsType) => `$${Number(r.quote?.grandTotal || 0).toFixed(2)}` },
       { key: 'quote.invoice.invoiceNumber', header: 'Invoice #' },
+                                         {
+      key: 'updatedAt',
+      header: 'Date Closed',
+      render: (row: { updatedAt?: string }) => 
+        row.updatedAt ? <FormattedDateTime isoString={row.updatedAt} /> : '-',
+      sortable: true
+    },
       {
         key: 'actions',
         header: 'Actions',

@@ -27,7 +27,7 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+const [companyName, setCompanyName] = useState(''); 
   useEffect(() => {
     if (open && contactId) {
       (async () => {
@@ -35,6 +35,7 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
         setError(null);
         try {
           const res = await contactsService.getOne(contactId, token);
+        setCompanyName(res.contact.Customer?.companyName || 'N/A');
           setForm({
             name: res.contact.name || '',
             designation: res.contact.designation || '',
@@ -51,7 +52,8 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
         }
       })();
     } else {
-      setForm(initialForm); // Reset form when modal is closed or no ID
+      setForm(initialForm); // Reset form when modal is closed
+      setCompanyName(''); // Also reset the company name
     }
   }, [open, contactId, token]);
 
@@ -85,7 +87,7 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-sm p-6">
-      <div className="bg-white/30 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30
+      <div className="bg-white/50 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30
                       w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
         {/* Header */}
@@ -114,33 +116,53 @@ const EditContactModal: React.FC<Props> = ({ open, contactId, onClose, onSuccess
                     {error}
                   </div>
                 )}
+
                 
-                {/* Reusable Input Style */}
-                {[
-                  { key: 'name', label: 'Name', required: true },
-                  { key: 'designation', label: 'Designation', required: true },
-                  { key: 'department', label: 'Department' },
-                  { key: 'mobile', label: 'Mobile', required: true },
-                  { key: 'email', label: 'Email', type: 'email' },
-                  { key: 'fax', label: 'Fax' },
-                  { key: 'social', label: 'LinkedIn/Social' },
-                ].map(field => (
-                  <div key={field.key}>
-                    <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
-                      {field.label}{field.required && '*'}
-                    </label>
-                    <input
-                      value={form[field.key as keyof UpdateContactPayload]}
-                      onChange={handleChange(field.key as keyof UpdateContactPayload)}
-                      placeholder={`${field.label}${field.required ? '*' : ''}`}
-                      type={field.type || 'text'}
-                      required={field.required}
-                      className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                      <div>
+                      <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                        Customer
+                      </label>
+                      <input
+                        value={companyName}
+                        disabled
+                        className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
+                                   bg-cloud-200/50 dark:bg-midnight-800/80 text-midnight-600 dark:text-ivory-400
+                                   shadow-sm focus:outline-none cursor-not-allowed text-sm transition"
+                      />
+                    </div>
+
+                    {/* Reusable Input Style */}
+                    {[
+                    
+                      { key: 'name', label: 'Name', required: true },
+                      { key: 'designation', label: 'Designation', required: true },
+                      { key: 'department', label: 'Department' },
+                      { key: 'mobile', label: 'Mobile', required: true },
+                      { key: 'email', label: 'Email', type: 'email' },
+                      { key: 'fax', label: 'Fax' },
+                      { key: 'social', label: 'LinkedIn/Social' },
+                    ].map(field => (
+                      <div key={field.key}>
+                        <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+                          {field.label}{field.required && '*'}
+                        </label>
+                        <input
+                          value={form[field.key as keyof UpdateContactPayload]}
+                          onChange={handleChange(field.key as keyof UpdateContactPayload)}
+                          placeholder={`${field.label}${field.required ? '*' : ''}`}
+                          type={field.type || 'text'}
+                          required={field.required}
+                          className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
                                  bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100
                                  shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-                    />
+                        />
+                      </div>
+                    ))}
+
                   </div>
-                ))}
+                
+
               </div>
 
               {/* Footer */}

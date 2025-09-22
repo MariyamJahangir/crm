@@ -155,7 +155,7 @@ const NewContactModal: React.FC<Props> = ({ open, onClose, customerId, onCreated
                       placeholder-slate-400 backdrop-blur-sm"
               value={mobile}
               onChange={e => setMobile(e.target.value)}
-              placeholder="+91 98xxxxxxx*"
+              placeholder="+971 98xxxxxxx*"
               required
             />
           </div>

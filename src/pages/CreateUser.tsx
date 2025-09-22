@@ -78,7 +78,7 @@ const CreateUser: React.FC = () => {
         if (!isValid) {
             return; // Stop submission if validation fails
         }
-
+ navigate('/users', { replace: true });
         setSubmitting(true);
         try {
             await teamService.create({
@@ -87,7 +87,7 @@ const CreateUser: React.FC = () => {
                 password: form.password,
                 designation: 'Sales',
             }, token);
-            navigate('/users', { replace: true });
+           
         } catch (e: any) {
             setApiError(e?.data?.message || 'Failed to create user. The email may already be in use.');
         } finally {

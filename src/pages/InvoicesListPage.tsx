@@ -10,7 +10,7 @@ import DataTable from '../components/DataTable';
 import StatusDropdown from '../components/StatusDropdown';
 import PreviewModal from '../components/PreviewModal';
 import { Filter } from '../components/FilterDropdown'; // Ensure this path is correct
-
+import FormattedDateTime from '../components/FormattedDateTime';
 // Service and Type Imports
 import { invoiceService, Invoice } from '../services/invoiceService';
 
@@ -171,10 +171,11 @@ const InvoicesListPage: React.FC = () => {
                                     )
                                 },
                                 { key: 'salesmanName', header: 'Salesman' },
-                                { key: 'invoiceDate', header: 'Date', render: (r) => new Date(r.invoiceDate).toLocaleDateString() },
                                 { key: 'grandTotal', header: 'Amount', render: (r) => `$${Number(r.grandTotal || 0).toFixed(2)}` },
                                 { key: 'status', header: 'Status', render: (r) => <StatusDropdown invoice={r} onStatusChange={handleStatusChange} /> },
-                                {
+                               
+                                 { key: 'invoiceDate', header: 'Date',  render: (row) => <FormattedDateTime isoString={row.invoiceDate} /> },
+                               {
                                     key: 'action',
                                     header: 'Actions',
                                     sortable: false,

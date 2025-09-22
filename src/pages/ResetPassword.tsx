@@ -96,79 +96,123 @@ const resend = async () => {
     if (errors[name as keyof FormErrors]) setErrors(prev => ({ ...prev, [name]: undefined }));
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        <div className="text-center mb-8">
-          <button onClick={onBack} className="absolute top-4 left-4 text-gray-500 hover:text-gray-700 p-2">
-            <ArrowLeft size={20} />
-          </button>
-          <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-4">
-            <Lock className="h-8 w-8 text-green-600" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Reset Password</h1>
-          <p className="text-gray-600 mt-2">Enter the code sent to your email and set a new password</p>
+return (
+  <div className="min-h-screen flex items-center justify-center bg-cover bg-center p-4 relative">
+    {/* overlay */}
+    <div className="absolute inset-0 bg-midnight-900/40"></div>
+
+    <div className="bg-cloud-800/30 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20 relative z-10">
+      <div className="text-center mb-8">
+        {/* back button */}
+        <button
+          onClick={onBack}
+          className="absolute top-4 left-4 text-cloud-300 hover:text-sky-400 transition p-2"
+        >
+          <ArrowLeft size={20} />
+        </button>
+
+        {/* icon */}
+        <div className="bg-green-700/30 p-3 rounded-full w-fit mx-auto mb-4 shadow-md">
+          <Lock className="h-8 w-8 text-green-300" />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <h1 className="text-3xl font-bold text-ivory-100">Reset Password</h1>
+        <p className="text-cloud-200 mt-2">
+          Enter the code sent to your email and set a new password
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Input
+          label="OTP Code"
+          type="text"
+          name="otp"
+          value={formData.otp}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              otp: e.target.value.replace(/\D/g, "").slice(0, 6),
+            }))
+          }
+          error={errors.otp}
+          placeholder="Enter 6-digit code"
+          className="text-center text-xl font-mono tracking-widest"
+          maxLength={6}
+        />
+
+        <div className="relative">
           <Input
-            label="OTP Code"
-            type="text"
-            name="otp"
-            value={formData.otp}
-            onChange={(e) => setFormData(prev => ({ ...prev, otp: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
-            error={errors.otp}
-            placeholder="Enter 6-digit code"
-            className="text-center text-xl font-mono tracking-widest"
-            maxLength={6}
+            label="New Password"
+            type={showPassword ? "text" : "password"}
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            placeholder="Enter new password"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((p) => !p)}
+            className="absolute right-3 top-9 text-cloud-400 hover:text-sky-300 transition"
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
 
-          <div className="relative">
-            <Input
-              label="New Password"
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              error={errors.password}
-              placeholder="Enter new password"
-            />
-            <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-9 text-gray-500 hover:text-gray-700">
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
+        <div className="relative">
+          <Input
+            label="Confirm New Password"
+            type={showConfirmPassword ? "text" : "password"}
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            error={errors.confirmPassword}
+            placeholder="Confirm new password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword((p) => !p)}
+            className="absolute right-3 top-9 text-cloud-400 hover:text-sky-300 transition"
+          >
+            {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
+
+        {errors.general && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+            {errors.general}
           </div>
+        )}
 
-          <div className="relative">
-            <Input
-              label="Confirm New Password"
-              type={showConfirmPassword ? 'text' : 'password'}
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              error={errors.confirmPassword}
-              placeholder="Confirm new password"
-            />
-            <button type="button" onClick={() => setShowConfirmPassword(p => !p)} className="absolute right-3 top-9 text-gray-500 hover:text-gray-700">
-              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
+        <Button
+          type="submit"
+          loading={loading}
+          className="w-full bg-sky-600 hover:bg-sky-500 text-midnight-900 font-medium py-2 px-4 rounded-lg transition-all duration-300 shadow-md"
+        >
+          Reset Password
+        </Button>
+      </form>
+
+      <div className="mt-6 text-center">
+        <div className="text-sm text-cloud-200">
+          Didn’t get a code?{" "}
+          <button
+            type="button"
+            disabled={cooldown > 0}
+            onClick={resend}
+            className="text-sky-400 hover:text-sky-300 font-medium transition"
+          >
+            {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend"}
+          </button>
+          <div className="text-xs text-cloud-300 mt-1">
+            Code expires in 10 minutes.
           </div>
-
-          {errors.general && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">{errors.general}</div>}
-
-          <Button type="submit" loading={loading} className="w-full">
-            Reset Password
-          </Button>
-        </form>
-        <div className="text-sm text-gray-600">
-  Didn’t get a code? <button type="button" disabled={cooldown>0} onClick={resend} className="text-blue-600">
-    {cooldown>0 ? `Resend in ${cooldown}s` : 'Resend'}
-  </button>
-  <div className="text-xs text-gray-500 mt-1">Code expires in 10 minutes.</div>
-</div>
-
+        </div>
       </div>
     </div>
-  );
+  </div>
+);
+
 };
 
 export default ResetPassword;

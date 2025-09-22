@@ -12,13 +12,12 @@ const { createOrUpdateOtp, verifyOtp, canResend } = require('../utils/otp.sql');
 const router = express.Router();
 const sign = (subjectType, subjectId) =>
   jwt.sign({ subjectType, subjectId }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '24h' });
-
+ 
 
 router.post('/login', [ body('email').isEmail(), body('password').isLength({ min: 1 }) ], async (req, res) => {
   try {
     const errors = validationResult(req); if (!errors.isEmpty())
       return res.status(400).json({ success:false, message:'Validation failed', errors: errors.array() });
-
     const { email, password } = req.body;
 
     let subjectType = 'ADMIN';
