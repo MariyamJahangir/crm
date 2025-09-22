@@ -34,6 +34,7 @@ const Vendors: React.FC = () => {
     setLoading(true);
     try {
       const res = await vendorService.list(token, query);
+      console.log(res)
       setRows(res.vendors);
     } catch (e: any) {
       setError(e?.data?.message || 'Failed to load vendors');

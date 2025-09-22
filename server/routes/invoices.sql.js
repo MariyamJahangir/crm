@@ -393,6 +393,7 @@ router.get('/', authenticateToken, async (req, res) => {
                 salesmanName: plainInvoice.salesman?.name || 'N/A',
                 creatorName: creator?.name || 'N/A',
                 previewUrl: plainInvoice.quote?.lead?.previewUrl || null
+                
             };
         });
 

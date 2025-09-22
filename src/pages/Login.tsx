@@ -5,7 +5,7 @@ import Input from '../components/Input';
 import Button from '../components/Button';
 import { authService } from '../services/authService';
 import { useNavigate } from 'react-router-dom';
-
+import Logo from '../../public/New Logo.png'
 interface LoginProps {
   onSwitchToSignup?: () => void;
   onForgotPassword?: () => void;
@@ -76,19 +76,22 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
-      
+      className="min-h-screen flex items-center justify-center bg-cover bg-center p-4" 
     >
-
       <div className="absolute inset-0 bg-midnight-900/20"></div>
 
       <div className="bg-cloud-800/30 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-white/20">
-        <div className="text-center mb-8">
-          <div className="bg-sky-700/30 p-3 rounded-full w-fit mx-auto mb-4 shadow-md">
-            
+        <div className="rounded-full w-fit mx-auto">
+            <div className="w-40 h-20 overflow-hidden">
+  <img
+    src={Logo}
+    alt="logo"
+    className="object-cover w-full h-full object-center"
+  />
+</div>
           </div>
-          <h1 className="text-3xl font-bold text-ivory-100">Welcome </h1>
-          <p className="text-cloud-200 mt-2">Sign in to your account</p>
+        <div className="text-center mb-8">
+          <p className="text-cloud-800 mt-2">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -115,7 +118,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
             <button
               type="button"
               onClick={() => setShowPassword((p) => !p)}
-              className="absolute right-3 top-9 text-cloud-300 hover:text-sky-400 transition"
+              className="absolute right-3 top-11 text-cloud-300 hover:text-sky-400 transition"
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
@@ -141,7 +144,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToSignup, onForgotPassword }) => 
               <button
                 type="button"
                 onClick={onForgotPassword}
-                className="text-sm text-sky-400 hover:text-sky-300 transition"
+                className="text-sm text-blue-800 hover:text-blue-700 transition"
               >
                 Forgot password?
               </button>

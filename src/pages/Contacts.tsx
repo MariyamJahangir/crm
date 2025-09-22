@@ -10,7 +10,7 @@ import DataTable from '../components/DataTable';
 import AddContactModal from '../components/AddContactModal';
 import EditContactModal from '../components/EditContactModal';
 import { Filter } from '../components/FilterDropdown'; // Make sure this path is correct
-
+import FormattedDateTime from '../components/FormattedDateTime';
 const Contacts: React.FC = () => {
     const { token, user } = useAuth();
     const isAdmin = user?.type === 'ADMIN';
@@ -157,6 +157,8 @@ const navigate = useNavigate();
                                 { key: 'mobile', header: 'Mobile' },
                                 
                                 { key: 'Customer.salesman.name', header: 'Salesman' },
+                                 { key: 'createdAt', header: 'Created', render: (row) => <FormattedDateTime isoString={row.createdAt} /> },
+                               
                                 { key: 'actions', header: 'Actions', width: '80px', sortable: false, render: (r: ContactRow) => (
                                      <div className="flex justify-center gap-2">
                                             <button 

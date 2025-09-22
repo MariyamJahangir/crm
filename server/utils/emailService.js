@@ -1,7 +1,8 @@
 const nodemailer = require('nodemailer');
-const Admin = require('../models/Admin'); // Assuming you have an Admin model
+const Admin = require('../models/Admin'); 
+const dotenv = require('dotenv');
+dotenv.config();
 
-// Create a single, reusable transporter for sending emails
 const transporter = nodemailer.createTransport({
     service: process.env.EMAIL_SERVICE,
     auth: {

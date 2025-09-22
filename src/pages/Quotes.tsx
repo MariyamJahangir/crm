@@ -9,7 +9,7 @@ import DataTable from '../components/DataTable';
 import PreviewModal from '../components/PreviewModal';
 import { Eye, Download } from 'lucide-react'; // 👈 added icons
 import { Filter } from '../components/FilterDropdown';
-
+import FormattedDateTime from '../components/FormattedDateTime';
 // --- Rejection Dialog Sub-component ---
 const RejectDialog: React.FC<{
   open: boolean;
@@ -87,6 +87,7 @@ useEffect(() => {
             setErr(null);
             try {
                 const res = await quotesService.listAll(token);
+             console.log(res.quotes);
              
                 setMasterQuotes(res.quotes);
                 setQuotes(res.quotes); // Initially display all quotes
@@ -233,7 +234,7 @@ useEffect(() => {
     const hasInvoice = !!quote.invoiceId;
 
     return (
-      <div className="flex items-center gap-2 justify-end flex-wrap mr-8">
+      <div className="flex items-center gap-1 justify-end flex-wrap mr-5">
         {isAccepted && !hasInvoice && (
           <Button size="sm" variant="success" onClick={() => convertToInvoice(quote)} disabled={isBusy} className='px-3'>
             {isBusy ? 'Converting...' : 'Convert to Invoice'}
@@ -315,11 +316,12 @@ return (
             { key: 'quoteNumber', header: 'Quote #' },
             { key: 'customerName', header: 'Company' },
             { key: 'salesmanName', header: 'SalesMan' },
-            {
-              key: 'quoteDate',
-              header: 'Date',
-              render: (r) => new Date(r.quoteDate).toLocaleDateString(),
-            },
+ { 
+  key: 'profitPercent', 
+  header: 'Profit', 
+  render: (row) => `${parseFloat(row.profitPercent).toFixed(2)}%`
+},
+
             {
               key: 'status',
               header: 'Status',
@@ -348,6 +350,16 @@ return (
               header: 'Total',
               render: (r) => Number(r.grandTotal || 0).toFixed(2),
               width: '120px',
+            },
+             {
+              key: 'validityUntil',
+              header: 'Date',
+             render: (row) => <FormattedDateTime isoString={row.validityUntil} />,
+            },
+            {
+              key: 'createdAt',
+              header: 'Date',
+             render: (row) => <FormattedDateTime isoString={row.createdAt} />,
             },
             {
               key: 'actions',

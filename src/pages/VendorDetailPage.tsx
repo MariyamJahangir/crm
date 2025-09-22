@@ -106,8 +106,8 @@ const VendorDetailPage: React.FC = () => {
                 <div>
                   <DetailItem label="Industry" value={vendor.industry} />
                   <DetailItem label="Category" value={vendor.category} />
-                  <DetailItem label="GST No." value={vendor.gstNo} />
-                  <DetailItem label="PAN No." value={vendor.panNo} />
+                  {/* <DetailItem label="GST No." value={vendor.gstNo} /> */}
+                  <DetailItem label="VAT No." value={vendor.panNo} />
                   <DetailItem label="Assigned To" value={vendor.assignedMember?.name} />
                   <DetailItem label="Created On" value={<FormattedDateTime isoString={vendor.createdAt} />} />
                 </div>
