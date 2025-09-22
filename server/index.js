@@ -76,7 +76,7 @@ async function seedAdmins() {
     applyAssociations();
     await connectDB();
     if (process.env.DB_SYNC === 'true') {
-      // await sequelize.sync({ alter: true });
+       await sequelize.sync({ alter: true });
       console.log('Sequelize synced');
     }
     await seedAdmins();

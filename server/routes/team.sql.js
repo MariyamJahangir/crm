@@ -172,7 +172,7 @@ router.delete('/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Block user - admin only
+
 router.post('/users/:id/block', authenticateToken, async (req, res) => {
   try {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -190,7 +190,6 @@ router.post('/users/:id/block', authenticateToken, async (req, res) => {
   }
 });
 
-// Unblock user - admin only
 router.post('/users/:id/unblock', authenticateToken, async (req, res) => {
   try {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
