@@ -537,11 +537,8 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
     body('items.*.product').trim().notEmpty(),
     body('items.*.quantity').isFloat({ gt: 0 }),
 ], async (req, res) => {
-    // Optional: Uncomment these lines for debugging if issues arise
-    // console.log('--- QUOTE REQUEST BODY ---', JSON.stringify(req.body, null, 2));
-    const errors = validationResult(req);
+     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        // console.log('--- QUOTE VALIDATION ERRORS ---', errors.array());
         return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
 
@@ -552,7 +549,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         }
 
         const { items, discountMode, discountValue,  salesmanId, vatPercent } = req.body;
-        console.log(req.body)
+       
         let quoteSubtotal = 0;
         let quoteTotalCost = 0;
 
@@ -638,8 +635,8 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         // 5. Create all QuoteItem records
         await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: createdQuote.id })));
 
-        if (lead.stage !== 'Quote Negotiation') {
-            await lead.update({ stage: 'Quote Negotiation' });
+        if (lead.stage !== 'Quote') {
+            await lead.update({ stage: 'Quote' });
         }
         
         if (initialStatus === 'PendingApproval') {
@@ -865,7 +862,7 @@ router.put('/leads/:leadId/quotes/:quoteId', authenticateToken, [
 // THIS IS FOR DEBUGGING - THE FINAL CODE IS IN PART 2
 
 router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, res) => {
-  console.log(`[PDF DEBUG] - 1. Request received for quote ${req.params.quoteId}`);
+ 
   try {
     const quote = await Quote.findByPk(req.params.quoteId, { include: [{ model: QuoteItem, as: 'items' }] });
     if (!quote || String(quote.leadId) !== String(req.params.leadId)) {

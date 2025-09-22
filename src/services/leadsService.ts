@@ -5,7 +5,7 @@ export type SalesmanUser = { id: string; name: string; email?: string };
 
 export type Lead = {
   id: string;
-  stage: 'Discover' | 'Solution Validation' | 'Quote Negotiation' | 'Deal Closed' | 'Deal Lost' | 'Fake Lead';
+  stage: 'Discover' | 'Solution Validation' | 'Quote' | 'Negotiation' | 'Deal Closed' | 'Deal Lost' | 'Fake Lead';
   forecastCategory: 'Pipeline' | 'BestCase' | 'Commit';
   division: string;
   source?: string;
