@@ -549,7 +549,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         }
 
         const { items, discountMode, discountValue,  salesmanId, vatPercent } = req.body;
-       
+        console.log(req.body)
         let quoteSubtotal = 0;
         let quoteTotalCost = 0;
 

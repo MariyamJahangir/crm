@@ -4,7 +4,7 @@ import Button from './Button';
 import { customerService } from '../services/customerService';
 import { useAuth } from '../contexts/AuthContext';
 import { teamService, TeamUser } from '../services/teamService';
-
+import { Toaster, toast } from 'react-hot-toast';
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -31,11 +31,10 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
 
   const [loadingTeam, setLoadingTeam] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  //const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setErr(null);
     setSaving(false);
     if (!token) return;
 
@@ -49,32 +48,45 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
         const me = users.find(u => String(u.id) === String(user?.id));
         setSalesmanId(me?.id ? String(me.id) : (users.length ? String(users[0].id) : ''));
       } catch {
-        // ignore
+         toast.error("Failed to load team members.");
       } finally {
         setLoadingTeam(false);
       }
     })();
   }, [open, token, user?.id]);
-
+const getErrorMessage = (error: any, defaultMessage: string): string => {
+    if (typeof error?.response?.data?.message === 'string') {
+        return error.response.data.message;
+    }
+    return defaultMessage;
+  };
   const save = async () => {
     if (!token) return;
-    setErr(null);
+   
 
-    if (!companyName.trim()) {
-      setErr('Company name is required');
+   if (!companyName.trim()) {
+      toast.error('Company name is required');
       return;
     }
+    
+    // 1. New validation rule: Enforce Email or Contact Number
+    if (!email.trim() && !contactNumber.trim()) {
+      toast.error('Please provide either an email or a contact number.');
+      return;
+    }
+
     if (email && !/^\S+@\S+\.\S+$/.test(email)) {
-      setErr('Please provide a valid email');
+      toast.error('Please provide a valid email');
       return;
     }
-    // UPDATED: Relax website validation to allow 'www.'
+    
     if (website && !/^(https?:\/\/|www\.).+/i.test(website)) {
-      setErr('Website must start with http://, https://, or www.');
+      toast.error('Website must start with http://, https://, or www.');
       return;
     }
+  
     if (isAdmin && !salesmanId) {
-      setErr('Please select a salesman');
+       toast.error('Please select a salesman');
       return;
     }
 
@@ -96,6 +108,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
 
 
       const out = await customerService.create(payload, token);
+      toast.success('Customer created successfully!');
       onCreated(out.customerId);
       onClose();
 
@@ -109,7 +122,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
       setWebsite('');
       setCategory('');
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to create customer');
+         toast.error(getErrorMessage(e, 'Failed to create customer'));
     } finally {
       setSaving(false);
     }
@@ -154,27 +167,21 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
         </>
       }
     >
-      {err && (
-        <div className="bg-red-500/10 border border-red-400/50 text-red-300 
-                    px-3 py-2 rounded-lg mb-3
-                    backdrop-blur-sm shadow-[0_0_10px_rgba(248,113,113,0.4)]">
-          {err}
-        </div>
-      )}
+      
 
       <div className="max-h-[60vh] overflow-y-auto pr-1">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Reusable glass input style */}
           {[
             {
-              label: 'Company Name',
+              label: 'Company Name*',
               value: companyName,
               setter: setCompanyName,
               placeholder: 'Apex Engineering Pvt Ltd',
               required: true,
             },
             {
-              label: 'Contact Number',
+              label: 'Contact Number*',
               value: contactNumber,
               setter: setContactNumber,
               placeholder: '+971 44xxxxxxx',

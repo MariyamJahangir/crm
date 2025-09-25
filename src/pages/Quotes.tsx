@@ -10,6 +10,7 @@ import PreviewModal from '../components/PreviewModal';
 import { Eye, Download } from 'lucide-react'; // 👈 added icons
 import { Filter } from '../components/FilterDropdown';
 import FormattedDateTime from '../components/FormattedDateTime';
+import {toast} from 'react-hot-toast';
 // --- Rejection Dialog Sub-component ---
 const RejectDialog: React.FC<{
   open: boolean;
@@ -71,9 +72,9 @@ const Quotes: React.FC = () => {
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+
   const [search, setSearch] = useState('');
-      const [masterQuotes, setMasterQuotes] = useState<Quote[]>([]);
+  const [masterQuotes, setMasterQuotes] = useState<Quote[]>([]);
   const [preview, setPreview] = useState<{ open: boolean; html?: string }>({ open: false });
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [rejectFor, setRejectFor] = useState<Quote | null>(null);
@@ -84,7 +85,7 @@ useEffect(() => {
         if (!token) return;
         (async () => {
             setLoading(true);
-            setErr(null);
+     
             try {
                 const res = await quotesService.listAll(token);
              console.log(res.quotes);
@@ -92,7 +93,7 @@ useEffect(() => {
                 setMasterQuotes(res.quotes);
                 setQuotes(res.quotes); // Initially display all quotes
             } catch (e: any) {
-                setErr(e?.data?.message || 'Failed to load quotes');
+                 toast.error(e?.data?.message || 'Failed to load quotes');
             } finally {
                 setLoading(false);
             }
@@ -129,7 +130,7 @@ useEffect(() => {
   const handleDownload = async (quote: Quote) => {
     if (!token) return;
     setPendingAction(quote.id);
-    setErr(null);
+   
     try {
       const blob = await quotesService.downloadPdf(quote.leadId, quote.id, token);
       const url = window.URL.createObjectURL(blob);
@@ -140,10 +141,12 @@ useEffect(() => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+         toast.success('Quote download started')
     } catch (e: any) {
-      setErr(e.message || 'Failed to download PDF.');
+       toast.error(e.message || 'Failed to download PDF.');
     } finally {
       setPendingAction(null);
+    
     }
   };
 
@@ -162,6 +165,7 @@ useEffect(() => {
     } catch (e: any) {
       const errorMessage = e?.message || 'Failed to load preview.';
       setPreview({ open: true, html: `<div style="color:red;padding:20px;">${errorMessage}</div>` });
+         toast.error('Quote preview failed')
     }
   };
 
@@ -172,9 +176,10 @@ useEffect(() => {
       await quotesService.approve(q.leadId, q.id, token);
       setQuotes(prev => prev.map(p => p.id === q.id ? { ...p, status: 'Draft', isApproved: true, rejectNote: null } : p));
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to approve quote');
+      toast.error(e?.data?.message || 'Failed to approve quote');
     } finally {
       setPendingAction(null);
+      toast.success('Quote approved')
     }
   };
 
@@ -185,10 +190,11 @@ useEffect(() => {
       await quotesService.reject(q.leadId, q.id, { note }, token);
       setQuotes(prev => prev.map(p => p.id === q.id ? { ...p, status: 'Rejected', isApproved: false, rejectNote: note } : p));
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to reject quote');
+      toast.error(e?.data?.message || 'Failed to reject quote');
     } finally {
       setPendingAction(null);
       setRejectFor(null);
+      toast.error('Quote rejected')
     }
   };
   
@@ -199,16 +205,17 @@ useEffect(() => {
       await quotesService.update(q.leadId, q.id, { status: newStatus }, token);
       setQuotes(prev => prev.map(p => p.id === q.id ? { ...p, status: newStatus } : p));
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to update status');
+      toast.error(e?.data?.message || 'Failed to update status');
     } finally {
       setPendingAction(null);
+      toast.success('Quote status updated')
     }
   };
 
   const convertToInvoice = async (q: Quote) => {
     if (!token) return;
     setPendingAction(q.id);
-    setErr(null);
+   
     try {
       const res = await invoiceService.create({ quoteId: q.id }, token);
       if (res.success && res.invoice) {
@@ -217,9 +224,10 @@ useEffect(() => {
         throw new Error(res.message || 'Failed to convert quote.');
       }
     } catch (e: any) {
-      setErr(e?.data?.message || e.message || 'An error occurred during conversion.');
+      toast.error(e?.data?.message || e.message || 'An error occurred during conversion.');
     } finally {
       setPendingAction(null);
+      toast.success('Quote converted to invoice')
     }
   };
 
@@ -304,12 +312,6 @@ return (
         </div>
 
         {loading && <div>Loading quotes...</div>}
-        {err && (
-          <div className="text-red-600 p-3 bg-red-50 rounded mb-3">
-            {err}
-          </div>
-        )}
-
         <DataTable
           rows={quotes}
           columns={[

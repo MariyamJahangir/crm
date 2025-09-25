@@ -27,10 +27,23 @@ import SalesReport from './pages/SalesReport';
 import CustomerDetail from './pages/CustomerDetials';
 import CustomerContactDetail from './pages/CustomerContactDetail';
 import VendorDetailPage from './pages/VendorDetailPage';
+import { Toaster } from 'react-hot-toast';
 function App() {
   return (
     <AuthProvider>
-        
+         <Toaster 
+        position="top-right" 
+       
+        containerClassName="z-[9999]"
+        toastOptions={{
+          success: {
+            duration: 3000,
+          },
+          error: {
+            duration: 5000,
+          },
+        }}
+      />
       <BrowserRouter>
         <Routes>
           {/* Guests only: if logged in, will be redirected to /dashboard */}

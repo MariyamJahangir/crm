@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Button from './Button';
-
+import {toast} from 'react-hot-toast';
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -16,12 +16,12 @@ const FollowupModal: React.FC<Props> = ({ open, onClose, onSubmit, leadNumber, s
   const [description, setDescription] = useState('');
   const [scheduledAt, setScheduledAt] = useState<string>(''); // local datetime
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+ 
 
   if (!open) return null;
 
   const save = async () => {
-    setErr(null);
+    
     setSaving(true);
     try {
       await onSubmit({
@@ -29,13 +29,14 @@ const FollowupModal: React.FC<Props> = ({ open, onClose, onSubmit, leadNumber, s
         description: description || undefined,
         scheduledAt: scheduledAt || undefined
       });
+      toast.success('Follow added succesfully')
       onClose();
       // reset after close
       setStatus('Followup');
       setDescription('');
       setScheduledAt('');
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to add followup');
+      toast.error(e?.data?.message || 'Failed to add followup');
     } finally {
       setSaving(false);
     }
@@ -58,13 +59,9 @@ const FollowupModal: React.FC<Props> = ({ open, onClose, onSubmit, leadNumber, s
         </button>
       </div>
 
-      {/* Body */}
+
       <div className="px-6 py-6 space-y-2 backdrop-blur-sm overflow-auto flex-1">
-        {err && (
-          <div className="bg-red-50/30 dark:bg-red-900/30 border border-red-200/30 dark:border-red-700/30 text-red-700 dark:text-red-400 px-4 py-2 rounded-xl text-sm shadow-sm backdrop-blur-sm">
-            {err}
-          </div>
-        )}
+       
 
         <div className="text-sm text-midnight-700 dark:text-ivory-200">
           Lead Number: <span className="font-medium">{leadNumber}</span>

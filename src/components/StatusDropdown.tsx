@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { invoiceService, Invoice } from '../services/invoiceService';
-
+import { toast } from 'react-hot-toast';
 
 interface StatusDropdownProps {
   invoice: Invoice;
@@ -21,8 +21,9 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({ invoice, onStatusChange
       const res = await invoiceService.updateStatus(invoice.id, newStatus, token);
       if (res.success) {
         onStatusChange(res.invoice);
+        toast.success('Invoice status updated')
       } else {
-        alert(res.message); // Or use a more elegant notification system
+        toast.error('Invoice status not updated')
       }
     } catch (err) {
       alert('Failed to update status.');

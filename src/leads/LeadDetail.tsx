@@ -11,7 +11,7 @@ import { quotesService, Quote } from '../services/quotesService';
 import PreviewModal from '../components/PreviewModal';
 import ChatBox from '../components/ChatBox';
 import { Download, Eye } from 'lucide-react';
-
+import { toast } from 'react-hot-toast';
 type Followup = {
   id: string;
   status: 'Followup' | 'Meeting Scheduled' | 'No Requirement' | 'No Response';
@@ -28,7 +28,7 @@ const QuotePicker: React.FC<{
 }> = ({ leadId, currentMain, onMainChange }) => {
   const { token } = useAuth();
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [err, setErr] = useState<string | null>(null);
+
   const [busy, setBusy] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ open: boolean; html?: string; quote?: Quote; downloading?: boolean }>({ open: false });
 const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -42,7 +42,7 @@ const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
         setQuotes(res.quotes);
       } catch (e: any) {
-        setErr(e?.data?.message || 'Failed to load quotes');
+          toast.error(e?.data?.message || 'Failed to load quotes');
       }
     })();
   }, [leadId, token]);
@@ -54,7 +54,7 @@ const [downloadingId, setDownloadingId] = useState<string | null>(null);
       console.log(html.html)
       setPreview({ open: true, html:html.html , quote: q, downloading: false });
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to build preview');
+        toast.error(e?.data?.message || 'Failed to build preview');
     }
   };
 
@@ -69,7 +69,7 @@ const [downloadingId, setDownloadingId] = useState<string | null>(null);
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => window.URL.revokeObjectURL(url), 1200);
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to download PDF');
+        toast.error(e?.data?.message || 'Failed to download PDF');
     }finally {
       setDownloadingId(null); // Clear the downloading ID
     }
@@ -88,7 +88,7 @@ const [downloadingId, setDownloadingId] = useState<string | null>(null);
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => window.URL.revokeObjectURL(url), 1200);
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to download PDF');
+        toast.error(e?.data?.message || 'Failed to download PDF');
     } finally {
       setPreview(prev => ({ ...prev, downloading: false }));
     }
@@ -107,14 +107,14 @@ const selectMain = async (q: Quote) => {
     // The backend will now find the quote and update the lead successfully.
 
   } catch (e: any) {
-    setErr(e?.data?.message || 'Failed to set main quote');
+      toast.error(e?.data?.message || 'Failed to set main quote');
     onMainChange(originalMainNumber || null); // Revert on failure
   } finally {
     setBusy(null);
   }
 };
 
-  if (err) return <div className="text-red-600">{err}</div>;
+
   if (!quotes.length) return <div className="text-sm text-gray-600">No quotes yet.</div>;
 
 
@@ -197,7 +197,7 @@ const LeadDetail: React.FC = () => {
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
+
 
 
   const socket = useSocket();
@@ -236,13 +236,13 @@ const LeadDetail: React.FC = () => {
   const loadLead = async () => {
     if (!id || !token) return;
     setLoading(true);
-    setErr(null);
+ 
     try {
       const res = await leadsService.getOne(id, token);
       setLead(res.lead);
       console.log(res.lead)
     } catch (e: any) {
-      setErr(e?.data?.message || 'Failed to load lead');
+      toast.error(e?.data?.message || 'Failed to load lead');
     } finally {
       setLoading(false);
     }
@@ -360,10 +360,11 @@ const LeadDetail: React.FC = () => {
       );
       if (res.attachments?.length) {
         await loadLead();
+           toast.success(`${res.attachments.length} file(s) uploaded successfully!`);
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (e: any) {
-      setErr(e?.data?.message || 'Upload failed');
+      toast.error(e?.data?.message || 'Upload failed');
     } finally {
       setUploading(false);
     }
@@ -376,7 +377,7 @@ const LeadDetail: React.FC = () => {
       await api.post<{ success: boolean }>(`/leads/${id}/attachments/delete`, { filename: att.filename, url: att.url }, token);
       setLead(prev => prev ? ({ ...prev, attachments: (prev.attachments || []).filter(a => !(a.filename === att.filename && a.url === att.url)) }) : prev);
     } catch (e: any) {
-      setErr(e?.data?.message || 'Delete failed');
+      toast.error(e?.data?.message || 'Delete failed');
     }
   };
 
@@ -435,7 +436,7 @@ const LeadDetail: React.FC = () => {
       <div className="flex-1 overflow-y-auto h-screen">
         <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
           {loading && <div>Loading...</div>}
-          {err && <div className="text-red-600">{err}</div>}
+         
 
           {lead && (
             <>

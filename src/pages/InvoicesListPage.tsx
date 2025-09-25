@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, Download, Plus } from 'lucide-react';
-
+import { toast } from 'react-hot-toast';
 // Component Imports
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
@@ -29,7 +29,7 @@ const InvoicesListPage: React.FC = () => {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  
     
     // State for the filters
     const [appliedFilters, setAppliedFilters] = useState<Filter[]>([]);
@@ -50,10 +50,10 @@ const InvoicesListPage: React.FC = () => {
                     setMasterInvoices(res.invoices);
                     setInvoices(res.invoices);
                 } else {
-                    setError('Failed to load invoices.');
+                    toast.error('Failed to load invoices.');
                 }
             })
-            .catch(e => setError(e?.data?.message || 'An error occurred.'))
+            .catch(e =>   toast.error(e?.data?.message || 'An error occurred.'))
             .finally(() => setLoading(false));
     }, [token]);
 
@@ -109,7 +109,7 @@ const InvoicesListPage: React.FC = () => {
     const handleDownload = async (invoice: Invoice) => {
         if (!token) return;
         setDownloadingId(invoice.id);
-        setError(null);
+        
         try {
             const pdfBlob = await invoiceService.downloadPdf(invoice.id, token);
             const url = window.URL.createObjectURL(pdfBlob);
@@ -120,8 +120,9 @@ const InvoicesListPage: React.FC = () => {
             a.click();
             window.URL.revokeObjectURL(url);
             a.remove();
+            toast.success('Invoice download started')
         } catch (e: any) {
-            setError(e?.message || 'Failed to download invoice.');
+              toast.error(e?.message || 'Failed to download invoice.');
         } finally {
             setDownloadingId(null);
         }
@@ -149,9 +150,9 @@ const InvoicesListPage: React.FC = () => {
                     </div>
 
                     {loading && <div className="text-midnight-700 dark:text-ivory-300">Loading invoices...</div>}
-                    {error && <div className="text-red-600">{error}</div>}
+                  
 
-                    {!loading && !error && (
+                    {!loading  && (
                         <DataTable
                             rows={invoices}
                             columns={[

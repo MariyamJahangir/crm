@@ -5,7 +5,7 @@ import Button from './Button';
 import { useAuth } from '../contexts/AuthContext';
 import { customerService, Customer } from '../services/customerService';
 import NewCustomerModal from './NewCustomerModal';
-
+import { toast } from 'react-hot-toast';
 
 
 interface Props {
@@ -30,7 +30,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
     social: '',
   });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [isNewCustomerModalOpen, setIsNewCustomerModalOpen] = useState(false);
 
 
@@ -41,7 +41,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
       const res = await customerService.list(token);
       setCustomers(res.customers);
     } catch {
-      setError('Could not load customers.');
+      toast.error('Could not load customers.');
     }
   };
 
@@ -59,7 +59,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
         fax: '',
         social:'',
       });
-      setError(null);
+      
     }
   }, [open, isNewCustomerModalOpen]);
 
@@ -102,24 +102,42 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !selectedCustomerId || !formData.name) {
-      setError('Customer and Name are required.');
-      return;
+      if (!selectedCustomerId) {
+        toast.error('Please select a customer.');
+        return;
     }
 
+    // 2. Check for a contact name
+    if (!formData.name.trim()) {
+        toast.error('Contact name is required.');
+        return;
+    }
 
+    // 3. Check for EITHER mobile or email
+    if (!formData.mobile.trim() && !formData.email.trim()) {
+        toast.error('Either a mobile number or an email is required.');
+        return;
+    }
+    if (formData.mobile.trim() && !/^\+?[0-9]{7,15}$/.test(formData.mobile.trim())) {
+        toast.error('Please enter a valid phone number (only digits and an optional +).');
+        return;
+    }
+    // 4. (Optional but recommended) Validate email format if it exists
+    if (formData.email.trim() && !/^\S+@\S+\.\S+$/.test(formData.email)) {
+        toast.error('Please provide a valid email address.');
+        return;
+    }
 
     setSubmitting(true);
-    setError(null);
-
-
-
+   
     try {
+
       await customerService.addContact(selectedCustomerId, formData, token);
       onSuccess(); // reload data in parent
+        toast.success(`Contact added succesfully`)
       onClose();   // close modal
     } catch (err: any) {
-      setError(err?.data?.message || 'Failed to add contact.');
+        toast.error(err?.data?.message || 'Failed to add contact.');
     } finally {
       setSubmitting(false);
     }
@@ -134,7 +152,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
   return (
     <>
       {/* Main Modal - hidden when NewCustomerModal is open */}
-      <div className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-sm p-6 ${isNewCustomerModalOpen ? 'hidden' : ''}`}>
+      <div className={`fixed inset-0 z-[99] flex items-center justify-center bg-black/10 backdrop-blur-sm p-6 ${isNewCustomerModalOpen ? 'hidden' : ''}`}>
         <div className="bg-white/50 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30
                         w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
 
@@ -154,12 +172,6 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
           <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
             {/* Body */}
             <div className="px-6 py-6 space-y-4 overflow-auto flex-1">
-              {error && (
-                <div className="bg-red-50/30 dark:bg-red-900/30 border border-red-200/30 dark:border-red-700/30
-                                 text-red-700 dark:text-red-400 px-4 py-2 rounded-xl text-sm shadow-sm">
-                  {error}
-                </div>
-              )}
               
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 
@@ -170,7 +182,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                     <select
                       value={selectedCustomerId}
                       onChange={handleCustomerChange}
-                      required
+                     
                       className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
                                  bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100
                                  shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
@@ -199,7 +211,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    required
+                 
                     className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
                                bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100
                                shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"

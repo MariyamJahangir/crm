@@ -7,7 +7,7 @@ type Props = {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
-  // Allow footer to be either a ReactNode (JSX) or a structured object
+ 
   footer?: React.ReactNode | {
     onCancel?: () => void;
     onConfirm?: () => void;
@@ -33,10 +33,10 @@ const Modal: React.FC<Props> = ({ open, title, onClose, children, footer, size }
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99] flex items-center bg-black/10 backdrop-blur-sm  justify-center p-4">
           {/* Overlay */}
           <motion.div
-            className="absolute inset-0 text-midnight-200"
+            className="absolute inset-0 bg-white/40 backdrop-blur-xl text-midnight-200"
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

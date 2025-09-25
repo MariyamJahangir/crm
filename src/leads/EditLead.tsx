@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { leadsService, Lead } from '../services/leadsService';
 import { customerService } from '../services/customerService';
 import { teamService, TeamUser } from '../services/teamService';
-
+import {toast} from 'react-hot-toast';
 const STAGES = ['Discover', 'Solution Validation', 'Quote', 'Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'] as const;
 const FORECASTS = ['Pipeline', 'BestCase', 'Commit'] as const;
 const SOURCES = ['Website', 'Referral', 'Advertisement', 'Event', 'Cold Call', 'Other'] as const;
@@ -22,7 +22,7 @@ const EditLead: React.FC = () => {
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
 
   const [stage, setStage] = useState<typeof STAGES[number]>('Discover');
   const [forecastCategory, setForecastCategory] = useState<typeof FORECASTS[number]>('Pipeline');
@@ -47,7 +47,7 @@ const EditLead: React.FC = () => {
 
     const load = async () => {
       setLoading(true);
-      setError(null);
+    
       try {
         const [leadRes, custs, team] = await Promise.all([
           leadsService.getOne(id, token),
@@ -73,7 +73,7 @@ const EditLead: React.FC = () => {
         setDescription(currentLead.description || '');
         setLostReason(currentLead.lostReason || '');
       } catch (e: any) {
-        setError(e?.data?.message || 'Failed to load lead');
+        toast.error(e?.data?.message || 'Failed to load lead');
       } finally {
         setLoading(false);
       }
@@ -86,7 +86,7 @@ const EditLead: React.FC = () => {
     e.preventDefault();
     if (!id) return;
     setSaving(true);
-    setError(null);
+   
 
     try {
       const payload: any = {
@@ -109,9 +109,10 @@ const EditLead: React.FC = () => {
       }
 
       await leadsService.update(id, payload, token);
+       toast.success('Lead updated succesfully')
       navigate(`/leads/${id}`, { replace: true });
     } catch (e: any) {
-      setError(e?.data?.message || 'Failed to update lead');
+       toast.error(e?.data?.message || 'Failed to update lead');
     } finally {
       setSaving(false);
     }
@@ -151,12 +152,7 @@ useLayoutEffect(() => {
         </div>
 
         {loading && <div className="text-midnight-600 dark:text-ivory-300">Loading...</div>}
-        {error && (
-          <div className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 
-            text-stone-700 dark:text-stone-200 px-4 py-3 rounded-lg mb-6 shadow-sm">
-            {error}
-          </div>
-        )}
+        
 
         {!loading && lead && (
            <form
