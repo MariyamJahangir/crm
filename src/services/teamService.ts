@@ -17,9 +17,12 @@ export type CreateTeamResponse = { success: boolean; user: TeamUser };
 
 export const teamService = {
   list: (token?: string | null) =>
-    api.get<ListTeamResponse>('/team/users', token),
+    api.get<ListTeamResponse>(`/team/users`, token),
+  listForSelection: (token: string) => {
+        return api.get<{ success: boolean; users: TeamUser[] }>('/team/for-selection', token);
+    },
   create: (payload: CreateTeamPayload, token?: string | null) =>
-    api.post<CreateTeamResponse>('/team/users', payload, token),
+    api.post<CreateTeamResponse>(`/team/users`, payload, token),
   getOne: (id: string, token?: string | null) =>
     api.get<{ success: boolean; user: TeamUser }>(`/team/users/${id}`, token),
   update: (id: string, payload: Partial<CreateTeamPayload>, token?: string | null) =>

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { teamService } from '../services/teamService';
 import { Eye, EyeOff } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const passwordMinLength = 8;
 
@@ -23,14 +24,14 @@ const CreateUser: React.FC = () => {
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
-    const [errors, setErrors] = useState<Record<string, string>>({});
     const [isFormValid, setIsFormValid] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [apiError, setApiError] = useState<string | null>(null);
     
-    // --- THIS IS THE KEY ---
     // State to track if the user has tried to submit the form
     const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+    
+    // State for validation errors
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
@@ -67,33 +68,37 @@ const CreateUser: React.FC = () => {
         setForm((prev) => ({ ...prev, [name]: value }));
     };
 
-    const onSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setApiError(null);
-        
-        // Mark that a submission has been attempted
-        setHasAttemptedSubmit(true);
+const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setHasAttemptedSubmit(true);
 
-        const isValid = validateForm();
-        if (!isValid) {
-            return; // Stop submission if validation fails
-        }
- navigate('/users', { replace: true });
-        setSubmitting(true);
-        try {
-            await teamService.create({
-                name: form.name,
-                email: form.email,
-                password: form.password,
-                designation: 'Sales',
-            }, token);
-           
-        } catch (e: any) {
-            setApiError(e?.data?.message || 'Failed to create user. The email may already be in use.');
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    const isValid = validateForm();
+    if (!isValid) {
+        return;
+    }
+    
+    setSubmitting(true);
+
+    try {
+        await teamService.create({
+            name: form.name,
+            email: form.email,
+            password: form.password,
+            designation: 'Sales',
+        }, token);
+
+        // 1. Pass the success message in the navigation state
+        navigate('/users', { 
+            replace: true, 
+            state: { message: 'User created successfully!' } 
+        });
+
+    } catch (e: any) {
+        toast.error(e?.data?.message || 'Failed to create user. The email may already be in use.');
+    } finally {
+        setSubmitting(false);
+    }
+}
 
     return (
         <div className="flex min-h-screen z-10 transition-colors duration-300">
@@ -104,12 +109,6 @@ const CreateUser: React.FC = () => {
                         <h1 className="text-3xl font-bold text-midnight-600 dark:text-ivory-100">Create User</h1>
                         <p className="text-gray-700 dark:text-ivory-400 mt-1">Add a new sales team member to your account.</p>
                     </div>
-
-                    {apiError && (
-                        <div className="bg-red-100 dark:bg-red-800/30 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-6 shadow-sm">
-                            {apiError}
-                        </div>
-                    )}
 
                     <form onSubmit={onSubmit} className="space-y-4 bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl p-6 rounded-2xl shadow-xl border border-cloud-300/30 dark:border-midnight-700/30" autoComplete="off">
                         {/* Name */}
@@ -157,7 +156,7 @@ const CreateUser: React.FC = () => {
                             <Button type="button" variant="secondary" onClick={() => navigate('/users')}>
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={hasAttemptedSubmit && !isFormValid || submitting}>
+                            <Button type="submit" disabled={(hasAttemptedSubmit && !isFormValid) || submitting}>
                                 {submitting ? 'Creating...' : 'Create User'}
                             </Button>
                         </div>

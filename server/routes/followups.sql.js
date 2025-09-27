@@ -1,3 +1,4 @@
+// routes/leadFollowup.js
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { authenticateToken, isAdmin } = require('../middleware/auth');
@@ -5,9 +6,8 @@ const Lead = require('../models/Lead');
 const Member = require('../models/Member');
 const LeadFollowup = require('../models/LeadFollowup');
 const LeadLog = require('../models/LeadLog');
-const { notifyLeadUpdate  } = require('../utils/emailService')
+const { notifyLeadUpdate, scheduleFollowupReminders } = require('../utils/emailService');
 const router = express.Router();
-
 
 function canViewLead(req, lead) {
   if (isAdmin(req)) return true;
@@ -18,7 +18,6 @@ function canViewLead(req, lead) {
   );
 }
 
-
 function canModifyLead(req, lead) {
   if (isAdmin(req)) return true;
   const userId = String(req.subjectId);
@@ -28,16 +27,10 @@ function canModifyLead(req, lead) {
   );
 }
 
-/**
- * Get textual label for actor type.
- */
 function actorLabel(req) {
   return req?.subjectType === 'ADMIN' ? 'Admin' : 'Member';
 }
 
-/**
- * Resolve actor's display name for logs.
- */
 async function resolveActorName(req) {
   if (req.subjectType === 'ADMIN') return 'Admin';
   if (req.subjectType === 'MEMBER') {
@@ -47,9 +40,6 @@ async function resolveActorName(req) {
   return 'System';
 }
 
-/**
- * Write a log entry for lead action and emit via socket.
- */
 async function writeLeadLog(req, leadId, action, message) {
   const actorName = await resolveActorName(req);
   const logEntry = await LeadLog.create({
@@ -100,6 +90,7 @@ router.get('/:leadId', authenticateToken, async (req, res) => {
         status: fu.status,
         description: fu.description || '',
         scheduledAt: fu.scheduledAt,
+        scheduleReminder: fu.scheduleReminder,
         createdAt: fu.createdAt,
       })),
     });
@@ -120,11 +111,16 @@ router.post(
     body('status').trim().isIn(['Followup', 'Meeting Scheduled', 'No Requirement', 'No Response']),
     body('description').optional().isString(),
     body('scheduledAt').optional().isISO8601(),
+    // Validate the new reminder field
+    body('scheduleReminder').optional().isIn(['30m', '1hr', '3hr', '5hr', '7hr', '10hr', '12hr', '24hr']),
   ],
   async (req, res) => {
     try {
       const lead = await Lead.findByPk(req.params.leadId, {
-        include: [{ model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] }],
+        include: [
+          { model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] },
+          { model: Member, as: 'creator', attributes: ['id', 'name', 'email'] }
+        ],
       });
       if (!lead) return res.status(404).json({ success: false, message: 'not found' });
 
@@ -134,17 +130,33 @@ router.post(
       if (!errors.isEmpty())
         return res.status(400).json({ success: false, message: 'validation failed', errors: errors.array() });
 
-      const { status, description, scheduledAt } = req.body;
+      const { status, description, scheduledAt, scheduleReminder } = req.body;
       const newFollowup = await LeadFollowup.create({
         leadId: lead.id,
         status,
         description: description || '',
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        scheduleReminder: scheduleReminder || null,
         createdByType: req.subjectType,
         createdById: req.subjectId,
       });
 
       await writeLeadLog(req, lead.id, 'FOLLOWUP_ADDED', `${actorLabel(req)} added follow-up: ${status}`);
+
+       if (newFollowup.scheduledAt) {
+        // Determine recipients for the reminder emails
+        const recipients = new Set();
+        if (lead.salesman?.email) {
+            recipients.add(lead.salesman.email);
+        }
+        if (lead.creatorType === 'MEMBER' && lead.creator?.email) {
+            recipients.add(lead.creator.email);
+        }
+
+        if (recipients.size > 0) {
+            await scheduleFollowupReminders(newFollowup, lead, Array.from(recipients));
+        }
+      }
 if (isAdmin(req) && lead.salesman && lead.salesman.id !== req.subjectId) {
                 await notifyLeadUpdate(lead.salesman, lead, 'new follow-up');
             }
@@ -155,6 +167,7 @@ if (isAdmin(req) && lead.salesman && lead.salesman.id !== req.subjectId) {
           status: newFollowup.status,
           description: newFollowup.description || '',
           scheduledAt: newFollowup.scheduledAt,
+          scheduleReminder: newFollowup.scheduleReminder,
           createdAt: newFollowup.createdAt,
         },
       });
@@ -166,6 +179,7 @@ if (isAdmin(req) && lead.salesman && lead.salesman.id !== req.subjectId) {
           status: newFollowup.status,
           description: newFollowup.description || '',
           scheduledAt: newFollowup.scheduledAt,
+          scheduleReminder: newFollowup.scheduleReminder,
           createdAt: newFollowup.createdAt,
         },
       });

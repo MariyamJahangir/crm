@@ -32,7 +32,9 @@ router.post('/login', [ body('email').isEmail(), body('password').isLength({ min
 
     const ok = await bcrypt.compare(password, u.password);
     if (!ok) return res.status(400).json({ success:false, message:'Invalid credentials' });
-
+ if (subjectType === 'MEMBER' && u.isDeleted) {
+      return res.status(404).json({ success:false, message:'User not found' });
+    }
     // Double-check after compare as well (defense in depth if desired)
     if (subjectType === 'MEMBER' && u.isBlocked) {
       return res.status(403).json({ success:false, message:'Account is blocked. Contact the administrator.' });

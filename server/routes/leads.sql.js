@@ -21,11 +21,23 @@ const STAGES = Lead.STAGES;
 const FORECASTS = Lead.FORECASTS;
 const { sequelize } = require('../config/database');
 const Counter = require('../models/Counter');
+const ShareGp= require('../models/ShareGp')
 
-function canViewLead(req, lead) {
+async function canViewLead(req, lead) {
   if (isAdmin(req)) return true;
-  const self = String(req.subjectId);
-  return (String(lead.creatorId) === self && lead.creatorType === 'MEMBER') || (String(lead.salesmanId) === self);
+  const currentUserId = String(req.subjectId);
+
+  if (String(lead.creatorId) === currentUserId || String(lead.salesmanId) === currentUserId) {
+    return true;
+  }
+  const share = await ShareGp.findOne({
+    where: {
+      leadId: lead.id,
+      sharedMemberId: currentUserId,
+    },
+  });
+
+  return !!share;
 }
 
 function canModifyLead(req, lead) {
@@ -36,27 +48,22 @@ function canModifyLead(req, lead) {
 
 const { upload, toPublicUrl } = makeUploader('lead_attachments');
 
-async function generateUniqueLeadNumber() {
-  const result = await sequelize.transaction(async (t) => {
-    // Find the counter and lock the row to prevent race conditions
+async function generateUniqueLeadNumber(transaction) {
     const counter = await Counter.findOne({
       where: { name: 'leadNumber' },
-      lock: t.LOCK.UPDATE, 
-      transaction: t,
+      lock: transaction.LOCK.UPDATE,
+      transaction: transaction,
     });
 
     if (!counter) {
       throw new Error('The "leadNumber" counter has not been initialized in the database.');
     }
 
-    // Increment, save, and return the new formatted number
     counter.currentValue += 1;
-    await counter.save({ transaction: t });
+    await counter.save({ transaction: transaction });
     return `L-${String(counter.currentValue).padStart(6, '0')}`;
-  });
-
-  return result;
 }
+
 
 // Logging helpers
 function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
@@ -418,281 +425,291 @@ router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const lead = await Lead.findByPk(req.params.id, {
       include: [
-        { model: Member, as:'salesman', attributes:['id','name','email'] },
-        { model: Customer, as:'customer', attributes:['id','companyName'] },
+        { 
+          model: Member, 
+          as: 'salesman', 
+          attributes: ['id', 'name', 'email'] 
+        },
+        { 
+          model: Customer, 
+          as: 'customer', 
+          attributes: ['id', 'companyName'] 
+        },
+        // --- UPDATED: Eagerly load the shares and the associated member details ---
+        {
+          model: ShareGp,
+          as: 'shares',
+          include: [{
+            model: Member,
+            as: 'sharedWithMember',
+            attributes: ['id', 'name']
+          }]
+        }
       ],
     });
-    if (!lead) return res.status(404).json({ success:false, message:'Not found' });
-    if (!canViewLead(req, lead)) return res.status(403).json({ success:false, message:'Forbidden' });
 
-    const followups = await LeadFollowup.findAll({
-      where: { leadId: lead.id },
-      order: [['createdAt','DESC']]
-    });
+    if (!lead) {
+      return res.status(404).json({ success: false, message: 'Not found' });
+    }
 
-    const logs = await LeadLog.findAll({
-      where: { leadId: lead.id },
-      order: [['createdAt','DESC']]
-    });
+    if (!canViewLead(req, lead)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    // Fetch follow-ups and logs in parallel for efficiency
+    const [followups, logs] = await Promise.all([
+      LeadFollowup.findAll({
+        where: { leadId: lead.id },
+        order: [['createdAt', 'DESC']]
+      }),
+      LeadLog.findAll({
+        where: { leadId: lead.id },
+        order: [['createdAt', 'DESC']]
+      })
+    ]);
 
     const nextFollowupAt = nearestFutureFollowup(followups);
 
-    res.json({ success:true, lead: {
-      id: lead.id,
-
-      // core status
-      stage: lead.stage,
-      forecastCategory: lead.forecastCategory,
-
-      // identity and numbers
-      uniqueNumber: lead.uniqueNumber,
-      quoteNumber: lead.quoteNumber,
-
-      // customer/company
-      customerId: lead.customer?.id,
-      division: lead.customer ? lead.customer.companyName : '',
-      companyName: lead.companyName || (lead.customer ? lead.customer.companyName : ''),
-
-      // source and preview
-      source: lead.source,
-      previewUrl: lead.previewUrl,
-
-      // dates
-      actualDate: lead.actualDate,
-      createdAt: lead.createdAt,
-      updatedAt: lead.updatedAt,
-
-      // contact snapshot
-      contactPerson: lead.contactPerson,
-      mobile: lead.mobile,
-      mobileAlt: lead.mobileAlt,
-      email: lead.email,
-      city: lead.city,
-
-      // attachments
-      attachments: Array.isArray(lead.attachmentsJson) ? lead.attachmentsJson : [],
-
-      // owner/sales
-      salesman: lead.salesman ? { id: lead.salesman.id, name: lead.salesman.name, email: lead.salesman.email } : null,
-      creatorType: lead.creatorType,
-      creatorId: lead.creatorId,
-
-      // description
-      description: lead.description,
-
-      // computed next follow-up
-      nextFollowupAt,
-
-      // followups and logs
-      followups: followups.map(f => ({
-        id: f.id,
-        status: f.status,
-        description: f.description || '',
-        scheduledAt: f.scheduledAt,
-        createdAt: f.createdAt
-      })),
-      logs: logs.map(l => ({
-        id: l.id,
-        action: l.action,
-        message: l.message,
-        actorType: l.actorType,
-        actorId: l.actorId,
-        actorName: l.actorName,
-        createdAt: l.createdAt
-      })),
-    }});
+    // Construct the final, detailed response object
+    res.json({
+      success: true,
+      lead: {
+        id: lead.id,
+        stage: lead.stage,
+        forecastCategory: lead.forecastCategory,
+        uniqueNumber: lead.uniqueNumber,
+        quoteNumber: lead.quoteNumber,
+        companyName: lead.companyName || (lead.customer ? lead.customer.companyName : ''),
+        contactPerson: lead.contactPerson,
+        mobile: lead.mobile,
+        mobileAlt: lead.mobileAlt,
+        email: lead.email,
+        city: lead.city,
+        country: lead.country,
+        address: lead.address,
+        source: lead.source,
+        previewUrl: lead.previewUrl,
+        description: lead.description,
+        lostReason: lead.lostReason,
+        createdAt: lead.createdAt,
+        updatedAt: lead.updatedAt,
+        creatorId: lead.creatorId,
+        salesman: lead.salesman,
+        customer: lead.customer,
+        nextFollowupAt,
+        // --- FINAL: Map the included shares to the response ---
+        shares: (lead.shares || []).map(share => ({
+          id: share.id,
+          sharedWithMember: {
+            id: share.sharedWithMember?.id,
+            name: share.sharedWithMember?.name || 'Unknown',
+          }
+        })),
+        followups: followups.map(f => ({
+          id: f.id,
+          status: f.status,
+          description: f.description || '',
+          scheduledAt: f.scheduledAt,
+          createdAt: f.createdAt
+        })),
+        logs: logs.map(l => ({
+          id: l.id,
+          action: l.action,
+          message: l.message,
+          actorName: l.actorName,
+          createdAt: l.createdAt
+        })),
+      }
+    });
   } catch (e) {
     console.error('Get Lead Error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
 // Create lead
-router.post('/', authenticateToken, [
-    body('customerId').trim().notEmpty(),
-    body('stage').optional().isIn(STAGES),
-    body('forecastCategory').optional().isIn(FORECASTS),
-], async (req, res) => {
+router.post(
+  '/',
+  authenticateToken,
+  [
+    body('customerId').trim().notEmpty().withMessage('Customer is required.'),
+    body('shareGpData.sharedMemberId').optional().isUUID().withMessage('A valid member must be selected for sharing.'),
+  ],
+ async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+    }
+
+    const t = await sequelize.transaction();
+
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
-        }
-
         let resolvedSalesmanId = null;
-        let assignedSalesman = null;
-
+        let assignedSalesman=null
         if (isAdmin(req)) {
-            const requested = String(req.body.salesmanId || '').trim();
-            if (!requested) {
-                return res.status(400).json({ success: false, message: 'Salesman is required for admin-created leads' });
+            
+            if (!req.body.salesmanId) {
+                await t.rollback();
+                return res.status(400).json({ success: false, message: 'Salesman is required for admin-created leads.' });
             }
-            // FIX: Fetch id, name, and email for the notification
-            assignedSalesman = await Member.findByPk(requested, {
-                attributes: ['id', 'name', 'email']
-            });
+             assignedSalesman = await Member.findByPk(req.body.salesmanId, { transaction: t });
             if (!assignedSalesman) {
-                return res.status(400).json({ success: false, message: 'Invalid salesman (not found in members)' });
+                await t.rollback();
+                return res.status(400).json({ success: false, message: 'Invalid primary salesman.' });
             }
             resolvedSalesmanId = assignedSalesman.id;
         } else {
-            const self = await Member.findByPk(String(req.subjectId));
-            if (!self) {
-                return res.status(400).json({ success: false, message: 'Current member not found in system' });
-            }
-            if (req.body.salesmanId && String(req.body.salesmanId) !== String(self.id)) {
-                return res.status(403).json({ success: false, message: 'Members can only assign themselves as salesman' });
-            }
-            resolvedSalesmanId = self.id;
+            // Member is assigned as the primary salesman for their own lead
+            resolvedSalesmanId = req.subjectId;
         }
 
-        const customer = await Customer.findByPk(req.body.customerId);
+        const customer = await Customer.findByPk(req.body.customerId, { transaction: t });
         if (!customer) {
-            return res.status(400).json({ success: false, message: 'Invalid customer' });
+            await t.rollback();
+            return res.status(400).json({ success: false, message: 'Invalid customer.' });
         }
 
-        const snap = {
-            contactPerson: req.body.contactPerson || '',
-            mobile: req.body.mobile || '',
-            mobileAlt: req.body.mobileAlt || '',
-            email: req.body.email || '',
-            city: req.body.city || '',
-        };
+        const uniqueNumber = await generateUniqueLeadNumber(t);
 
-        if (!req.body.contactPerson) {
-            let selected = null;
-            if (req.body.contactId) {
-                selected = await CustomerContact.findOne({ where: { id: req.body.contactId, customerId: customer.id } });
-            } else {
-                selected = await CustomerContact.findOne({ where: { customerId: customer.id }, order: [['createdAt', 'ASC']] });
-            }
-            if (selected) {
-                if (!snap.contactPerson) snap.contactPerson = selected.name || '';
-                if (!snap.mobile) snap.mobile = selected.mobile || '';
-                if (!snap.email) snap.email = selected.email || '';
-            }
-        }
-
-        const uniqueNumber = await generateUniqueLeadNumber();
-        const lead = await Lead.create({
+        const leadData = {
             stage: req.body.stage || 'Discover',
             forecastCategory: req.body.forecastCategory || 'Pipeline',
             customerId: customer.id,
             companyName: customer.companyName,
             source: req.body.source || 'Website',
             uniqueNumber,
-            quoteNumber: req.body.quoteNumber || '',
-            previewUrl: req.body.previewUrl || '',
-            actualDate: new Date(),
-            ...snap,
+            contactPerson: req.body.contactPerson,
+            mobile: req.body.mobile,
+            email: req.body.email,
+            city: req.body.city,
+            country: req.body.country,
+            address: req.body.address,
             salesmanId: resolvedSalesmanId,
-            description: req.body.description || '',
+            description: req.body.description,
             creatorType: req.subjectType,
             creatorId: req.subjectId,
-        });
+        };
 
-        const marker = String(resolvedSalesmanId);
-        const arr = Array.isArray(customer.contactedBy) ? customer.contactedBy : [];
-        if (!arr.includes(marker)) {
-            arr.push(marker);
-            customer.contactedBy = arr;
-            await customer.save();
-        }
+        const lead = await Lead.create(leadData, { transaction: t });
 
-        notifyAdmins(req.app.get('io'), {
-            event: 'LEAD_CREATED',
-            entityType: 'LEAD',
-            entityId: String(lead.id),
-            title: `Lead #${lead.uniqueNumber} created`,
-            message: `${actorLabel(req)} created a lead`,
-        });
+        // --- CORRECTED SHARE LOGIC FOR ALL ROLES ---
+        const { shareGpData } = req.body;
+        if (shareGpData && shareGpData.sharedMemberId) {
+            
+            // The creator of the share is the primary salesman, not necessarily the logged-in user.
+            const shareCreatorId = resolvedSalesmanId;
 
-        if (isAdmin(req) && String(resolvedSalesmanId) !== String(req.subjectId)) {
-            await createNotification({
-                toType: 'MEMBER',
-                toId: resolvedSalesmanId,
-                event: 'LEAD_ASSIGNED',
-                entityType: 'LEAD',
-                entityId: lead.id,
-                title: `New lead #${lead.uniqueNumber}`,
-                message: `Assigned by admin`,
-            }, req.app.get('io'));
-
-            // FIX: Use the 'assignedSalesman' object that contains the email
-            if (assignedSalesman) {
-                await notifyAssignment(assignedSalesman, 'Lead', lead);
+            // Prevent sharing a lead with the primary salesman
+            if (shareGpData.sharedMemberId === shareCreatorId) {
+                await t.rollback();
+                return res.status(400).json({ success: false, message: 'Cannot accompany the lead with the primary salesman.' });
             }
-        }
 
-        await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`);
-        res.status(201).json({ success: true, id: lead.id, uniqueNumber: lead.uniqueNumber });
+            await ShareGp.create({
+                leadId: lead.id,
+                memberId: shareCreatorId, // This is always a valid Member ID now
+                sharedMemberId: shareGpData.sharedMemberId,
+            }, { transaction: t });
+        }
+      writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`);
+
+      await t.commit(); // Commit transaction
+
+      res.status(201).json({ success: true, id: lead.id, uniqueNumber: lead.uniqueNumber });
 
     } catch (e) {
-        console.error('Create Lead Error:', e.message);
-        res.status(500).json({ success: false, message: 'Server error' });
+      await t.rollback(); // Rollback on any error
+      console.error('Create Lead Error:', e.message);
+      res.status(500).json({ success: false, message: 'Server error during lead creation.' });
     }
-});
-// Update lead
+  }
+);
+
+
 router.put('/:id', authenticateToken, async (req, res) => {
+  const t = await sequelize.transaction();
+
   try {
-    const lead = await Lead.findByPk(req.params.id);
-    if (!lead) return res.status(404).json({ success:false, message:'Not found' });
-
-    const memberCan = (!isAdmin(req)) && ((String(lead.creatorId) === String(req.subjectId) && lead.creatorType === 'MEMBER') || String(lead.salesmanId) === String(req.subjectId));
-    if (!isAdmin(req) && !memberCan) return res.status(403).json({ success:false, message:'Forbidden' });
-
-    if (req.body.stage === 'Deal Lost' && !req.body.lostReason && !lead.lostReason) {
-      return res.status(400).json({ success:false, message:'Lost reason is required when stage is Deal Lost' });
+    const lead = await Lead.findByPk(req.params.id, { transaction: t });
+    if (!lead) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Lead not found.' });
     }
 
-    const up = {};
-    ['stage','forecastCategory','source','quoteNumber','previewUrl','contactPerson','mobile','mobileAlt','email','city','description','lostReason']
-      .forEach(k => { if (req.body[k] !== undefined) up[k] = req.body[k]; });
+    const isOwner = String(lead.creatorId) === String(req.subjectId);
+    const isSalesman = String(lead.salesmanId) === String(req.subjectId);
 
-    if (req.body.customerId) {
-      const newCustomer = await Customer.findByPk(req.body.customerId);
-      if (!newCustomer) return res.status(400).json({ success:false, message:'Invalid customer' });
-      up.customerId = newCustomer.id;
-      up.companyName = newCustomer.companyName;
+    if (!isAdmin(req) && !isOwner && !isSalesman) {
+      await t.rollback();
+      return res.status(403).json({ success: false, message: 'Forbidden: You do not have permission to edit this lead.' });
     }
 
-    if (req.body.salesmanId) {
-      if (isAdmin(req)) {
-        const sm = await Member.findByPk(req.body.salesmanId);
-        if (!sm) return res.status(400).json({ success:false, message:'Invalid salesman' });
-        up.salesmanId = sm.id;
-      } else {
-        if (String(req.body.salesmanId) !== String(req.subjectId)) return res.status(403).json({ success:false, message:'Members can only assign themselves as salesman' });
-        up.salesmanId = req.subjectId;
+    const updatableFields = [
+      'stage', 'forecastCategory', 'source', 'quoteNumber', 'previewUrl',
+      'contactPerson', 'mobile', 'mobileAlt', 'email', 'city', 'country', 'address',
+      'description', 'lostReason'
+    ];
+    const updateData = {};
+    updatableFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    });
+
+    if (isAdmin(req)) {
+      if (req.body.customerId) {
+        const newCustomer = await Customer.findByPk(req.body.customerId, { transaction: t });
+        if (!newCustomer) {
+          await t.rollback();
+          return res.status(400).json({ success: false, message: 'Invalid customer.' });
+        }
+        updateData.customerId = newCustomer.id;
+        updateData.companyName = newCustomer.companyName;
+      }
+      if (req.body.salesmanId) {
+        const sm = await Member.findByPk(req.body.salesmanId, { transaction: t });
+        if (!sm) {
+          await t.rollback();
+          return res.status(400).json({ success: false, message: 'Invalid salesman.' });
+        }
+        updateData.salesmanId = sm.id;
       }
     }
 
-    await lead.update(up);
+    await lead.update(updateData, { transaction: t });
+
+    // --- FINAL CORRECTION: Provide BOTH memberId and sharedMemberId ---
+    const canManageShares = isOwner || isAdmin(req);
+    const existingShare = await ShareGp.findOne({ where: { leadId: lead.id }, transaction: t });
+
+    if (canManageShares && !existingShare && req.body.accompaniedMemberId) {
+      const { accompaniedMemberId } = req.body;
+      const memberToShareWith = await Member.findByPk(accompaniedMemberId, { transaction: t });
+
+      if (memberToShareWith) {
+        await ShareGp.create({
+          leadId: lead.id,
+          memberId: accompaniedMemberId,       // The user the lead is being shared WITH
+          sharedMemberId: accompaniedMemberId, // The user the lead is being shared WITH
+          sharedById: req.subjectId,         // The user who is INITIATING the share
+        }, { transaction: t });
+      }
+    }
+    // --- END OF CORRECTION ---
+
+    await t.commit();
 
     await writeLeadLog(req, lead.id, 'LEAD_UPDATED', `${actorLabel(req)} updated lead details`);
-    notifyAdmins(req.app.get('io'), {
-      event: 'LEAD_UPDATED',
-      entityType: 'LEAD',
-      entityId: String(lead.id),
-      title: `Lead #${lead.uniqueNumber} updated`,
-      message: `${actorLabel(req)} updated a lead`,
-    });
+   
 
-    if (isAdmin(req) && req.body.salesmanId) {
-      await createNotification({
-        toType: 'MEMBER',
-        toId: up.salesmanId || req.body.salesmanId,
-        event: 'LEAD_ASSIGNED',
-        entityType: 'LEAD',
-        entityId: lead.id,
-        title: `Lead #${lead.uniqueNumber} assigned`,
-        message: `Assigned by admin`,
-      }, req.app.get('io'));
-    }
-    res.json({ success:true });
+    res.json({ success: true });
+
   } catch (e) {
+    if (t && !t.finished) {
+      await t.rollback();
+    }
     console.error('Update Lead Error:', e.message);
-    res.status(500).json({ success:false, message:'Server error' });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
@@ -705,6 +722,57 @@ router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
     order: [['createdAt', 'DESC']],
   });
   res.json({ success:true, quotes });
+});
+router.post('/:id/share', authenticateToken, [
+    body('sharedMemberId').isUUID().withMessage('A valid member must be selected.'),
+    body('profitPercentage').optional({ checkFalsy: true }).isFloat({ min: 0, max: 100 }).withMessage('Profit percentage must be between 0 and 100.'),
+    body('profitAmount').optional({ checkFalsy: true }).isFloat({ min: 0 }).withMessage('Profit amount must be a positive number.'),
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: "Validation failed", errors: errors.array() });
+    }
+
+    try {
+        const lead = await Lead.findByPk(req.params.id);
+        if (!lead) {
+            return res.status(404).json({ success: false, message: 'Lead not found.' });
+        }
+
+        // --- PERMISSION: Only the creator of the lead can share it ---
+        if (String(lead.creatorId) !== String(req.subjectId)) {
+            return res.status(403).json({ success: false, message: 'Forbidden: Only the lead creator can perform this action.' });
+        }
+
+        const { sharedMemberId, profitPercentage, profitAmount, quoteId } = req.body;
+        
+        // Prevent sharing with oneself
+        if(sharedMemberId === String(req.subjectId)) {
+            return res.status(400).json({ success: false, message: "You cannot share a lead with yourself." });
+        }
+
+        const [share, created] = await ShareGp.findOrCreate({
+            where: { leadId: lead.id, sharedMemberId: sharedMemberId },
+            defaults: {
+                leadId: lead.id,
+                memberId: req.subjectId, // The user performing the action
+                sharedMemberId,
+                profitPercentage,
+                profitAmount,
+                quoteId: quoteId || null,
+            }
+        });
+
+        if (!created) {
+            return res.status(409).json({ success: false, message: 'This lead is already shared with the selected member.' });
+        }
+        
+        res.status(201).json({ success: true, message: 'Lead shared successfully.', data: share });
+
+    } catch (e) {
+        console.error("Share Lead Error:", e.message);
+        res.status(500).json({ success: false, message: 'An error occurred while sharing the lead.' });
+    }
 });
 
 module.exports = router;

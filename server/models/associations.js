@@ -11,6 +11,7 @@ const Invoice = require('./Invoices');
 const InvoiceItem = require('./InvoiceItem');
 const SalesTarget = require('./SalesTarget');
 const Admin = require('./Admin');
+const ShareGp= require('./ShareGp')
 
 function applyAssociations() {
     // --- Customer & Salesman Associations ---
@@ -27,6 +28,10 @@ function applyAssociations() {
     Lead.belongsTo(Member, { as: 'salesman', foreignKey: 'salesmanId', constraints: false });
     Member.hasMany(Lead, { as: 'assignedLeads', foreignKey: 'salesmanId' });
     
+    // THIS IS THE NEW ASSOCIATION TO FIX THE ERROR
+    Lead.belongsTo(Member, { as: 'creator', foreignKey: 'creatorId', constraints: false });
+    Member.hasMany(Lead, { as: 'createdLeads', foreignKey: 'creatorId' });
+
     Lead.belongsTo(Customer, { as: 'customer', foreignKey: 'customerId', constraints: false });
     Customer.hasMany(Lead, { as: 'leads', foreignKey: 'customerId' });
 
@@ -45,6 +50,21 @@ function applyAssociations() {
     // --- Quote & QuoteItem Associations ---
     Quote.hasMany(QuoteItem, { foreignKey: 'quoteId', as: 'items', onDelete: 'CASCADE' });
     QuoteItem.belongsTo(Quote, { foreignKey: 'quoteId' });
+
+    Lead.hasMany(ShareGp, { as: 'shares', foreignKey: 'leadId', onDelete: 'CASCADE' });
+    ShareGp.belongsTo(Lead, { foreignKey: 'leadId' });
+
+    // A share can optionally be linked to a Quote
+    Quote.hasMany(ShareGp, { foreignKey: 'quoteId' });
+    ShareGp.belongsTo(Quote, { foreignKey: 'quoteId' });
+
+    // Link to the member who is sharing
+    Member.hasMany(ShareGp, { as: 'initiatedShares', foreignKey: 'memberId' });
+    ShareGp.belongsTo(Member, { as: 'sharingMember', foreignKey: 'memberId' });
+
+    // Link to the member receiving the share
+    Member.hasMany(ShareGp, { as: 'receivedShares', foreignKey: 'sharedMemberId' });
+    ShareGp.belongsTo(Member, { as: 'sharedWithMember', foreignKey: 'sharedMemberId' });
 
     // --- Sales Target Associations ---
     Member.hasMany(SalesTarget, { foreignKey: 'memberId', as: 'salesTargets' });

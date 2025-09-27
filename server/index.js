@@ -53,6 +53,11 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+//newly added for attachments
+app.use(express.static(path.join(__dirname, '..', 'client', 'build')));
+
+
+
 async function seedAdmins() {
   const bcrypt = require('bcryptjs');
   const seedJson = process.env.ADMIN_SEED_JSON;
@@ -76,7 +81,7 @@ async function seedAdmins() {
     applyAssociations();
     await connectDB();
     if (process.env.DB_SYNC === 'true') {
-      // await sequelize.sync({ alter: true });
+      //await sequelize.sync({ alter: true });
       console.log('Sequelize synced');
     }
     await seedAdmins();
@@ -156,7 +161,9 @@ const [counter, created] = await Counter.findOrCreate({
     app.use('/api/contacts', contactsRouter);
     app.use('/api/targets', targetRoutes);
     app.get('/api/health', (req, res) => res.json({ message: 'Server is up and running!' }));
-
+app.get(/^(?!\/api).*/, (req, res) => {
+  res.sendFile(path.resolve(__dirname, '..', 'client', 'build', 'index.html'));
+});
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
   } catch (e) {

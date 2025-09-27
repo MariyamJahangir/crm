@@ -622,7 +622,7 @@ const LeadDetail: React.FC = () => {
                       <Button
                         variant="secondary"
                         className="flex items-center px-4 py-2 text-sm rounded-xl border border-cloud-300/40 text-gray-700 bg-midnight-200 shadow-sm transition"
-                        onClick={() => navigate(`/create-quote`)}
+                        onClick={() => navigate(`/create-quote/${lead.id}`)} 
                       >
                         Create Quote
                       </Button>

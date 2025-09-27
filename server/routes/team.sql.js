@@ -6,7 +6,7 @@ const Member = require('../models/Member');
 const { notifyUserCreated} = require('../utils/emailService')
 const router = express.Router();
 
-// Create new user (members) - admin only
+
 router.post(
   '/users',
   authenticateToken,
@@ -59,19 +59,37 @@ await notifyUserCreated(created, password);
   }
 );
 
-// List users: admin sees all, members only themselves
+router.get('/for-selection', authenticateToken, async (req, res) => {
+    try {
+        const users = await Member.findAll({
+            where: {
+                isBlocked: false, 
+            },
+            attributes: ['id', 'name', 'isBlocked'], // Send only necessary data
+            order: [['name', 'ASC']],
+        });
+        res.json({ success: true, users });
+    } catch (e) {
+        console.error("Fetch members for selection error:", e);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
 router.get('/users', authenticateToken, async (req, res) => {
   try {
+      const whereClause = { isDeleted: false}; 
     if (isAdmin(req)) {
-      const users = await Member.findAll({
-        attributes: ['id', 'name', 'email', 'designation', 'parentAdmin', 'isBlocked', 'createdAt'],
-        order: [['createdAt', 'DESC']],
-      });
-      return res.json({ success: true, users });
+     const users = await Member.findAll({
+                where: whereClause,
+                attributes: ['id', 'name', 'email', 'designation', 'parentAdmin', 'isBlocked', 'createdAt'],
+                order: [['createdAt', 'DESC']],
+            });
+            return res.json({ success: true, users });
     } else {
-      const user = await Member.findByPk(req.subjectId, {
-        attributes: ['id', 'name', 'email', 'designation', 'parentAdmin', 'isBlocked', 'createdAt'],
-      });
+    whereClause.id = req.subjectId; // Non-admin can only see themselves
+            const user = await Member.findOne({
+                where: whereClause,
+                attributes: ['id', 'name', 'email', 'designation', 'parentAdmin', 'isBlocked', 'createdAt'],
+            });
       if (!user) return res.status(404).json({ success: false, message: 'User not found' });
       return res.json({ success: true, users: [user] });
     }
@@ -88,10 +106,13 @@ router.get('/users/:id', authenticateToken, async (req, res) => {
     const user = await Member.findByPk(req.params.id, {
       attributes: ['id', 'name', 'email', 'designation', 'parentAdmin', 'createdAt', 'isBlocked'],
     });
-    if (!user) return res.status(404).json({ success: false, message: 'Not found' });
+     if (!user || user.isDeleted) {
+            return res.status(404).json({ success: false, message: 'Not found' });
+        }
     if (!isAdmin(req) && String(user.id) !== String(req.subjectId))
       return res.status(403).json({ success: false, message: 'Forbidden' });
-    res.json({ success: true, user });
+     const { password, isDeleted, ...userData } = user.get({ plain: true });
+        res.json({ success: true, user: userData });
   } catch (e) {
     console.error('Get user error:', e);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -111,7 +132,10 @@ router.put(
   async (req, res) => {
     try {
       const user = await Member.findByPk(req.params.id);
-      if (!user) return res.status(404).json({ success: false, message: 'Not found' });
+      
+        if (!user || user.isDeleted) {
+            return res.status(404).json({ success: false, message: 'Not found' });
+        }
 
       const ownUser = String(user.id) === String(req.subjectId);
       if (!isAdmin(req) && !ownUser) return res.status(403).json({ success: false, message: 'Forbidden' });
@@ -163,8 +187,10 @@ router.delete('/users/:id', authenticateToken, async (req, res) => {
   try {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
     const user = await Member.findByPk(req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: 'Not found' });
-    await user.destroy();
+     if (!user || user.isDeleted) {
+            return res.status(404).json({ success: false, message: 'Not found' });
+        }
+         await user.update({ isDeleted: true });
     res.status(204).send();
   } catch (e) {
     console.error('Delete user error:', e);
@@ -177,7 +203,9 @@ router.post('/users/:id/block', authenticateToken, async (req, res) => {
   try {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
     const user = await Member.findByPk(req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!user || user.isDeleted) {
+            return res.status(404).json({ success: false, message: 'Not found' });
+        }
     if (String(user.id) === String(req.subjectId))
       return res.status(400).json({ success: false, message: 'Cannot block yourself' });
     if (!user.isBlocked) {
@@ -194,7 +222,9 @@ router.post('/users/:id/unblock', authenticateToken, async (req, res) => {
   try {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
     const user = await Member.findByPk(req.params.id);
-    if (!user) return res.status(404).json({ success: false, message: 'Not found' });
+  if (!user || user.isDeleted) {
+            return res.status(404).json({ success: false, message: 'Not found' });
+        }
     if (user.isBlocked) {
       await user.update({ isBlocked: false });
     }

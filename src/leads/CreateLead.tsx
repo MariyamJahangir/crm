@@ -14,7 +14,7 @@ import {toast} from 'react-hot-toast';
 type CustomerLite = { id: string; companyName: string };
 
 
-const STAGES = ['Discover', 'Solution Validation', 'Quote', 'Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'] as const;
+const STAGES = ['Discover', 'Solution Validation', 'Quote Negotiation', 'Deal Closed', 'Deal Lost', 'Fake Lead'] as const;
 const FORECASTS = ['Pipeline', 'BestCase', 'Commit'] as const;
 const SOURCES = ['Website', 'Referral', 'Advertisement', 'Event', 'Cold Call', 'Other'] as const;
 
@@ -28,7 +28,9 @@ const CreateLead: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const [salesmen, setSalesmen] = useState<TeamUser[]>([]);
+  const [allSalesmen, setAllSalesmen] = useState<TeamUser[]>([]); // To store the full list
+  const [salesmanId, setSalesmanId] = useState(isAdmin ? '' : user?.id || '');
+
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
   const [contacts, setContacts] = useState<{ id: string; name: string; mobile?: string; email?: string }[]>([]);
 
@@ -40,7 +42,8 @@ const CreateLead: React.FC = () => {
   const [customerId, setCustomerId] = useState('');
   const [contactId, setContactId] = useState<string>('');
   const [source, setSource] = useState('Website');
-
+    const [country, setCountry] = useState(''); // New field
+    const [address, setAddress] = useState(''); 
 
   const [contactPerson, setContactPerson] = useState('');
   const [mobile, setMobile] = useState('');
@@ -49,12 +52,12 @@ const CreateLead: React.FC = () => {
   const [city, setCity] = useState('');
 
 
-  const [salesmanId, setSalesmanId] = useState('');
   const [description, setDescription] = useState('');
 
 
   const [submitting, setSubmitting] = useState(false);
-
+    const [accompanySalesman, setAccompanySalesman] = useState(false);
+    const [accompaniedMemberId, setAccompaniedMemberId] = useState('');
 
   const [openNewCustomer, setOpenNewCustomer] = useState(false);
   const [openNewContact, setOpenNewContact] = useState(false);
@@ -66,18 +69,13 @@ const CreateLead: React.FC = () => {
     (async () => {
       try {
         const [teamRes, customersRes] = await Promise.all([
-          teamService.list(token),
+          teamService.listForSelection(token),
           customerService.list(token),
         ]);
         
-        setSalesmen(teamRes.users);
-        if (!isAdmin) {
-          setSalesmanId(user?.id || '');
-        } else if (teamRes.users.length > 0) {
-          // Default to first salesman for admin if none selected
-          setSalesmanId(teamRes.users[0].id);
-        }
-        
+         setAllSalesmen(teamRes.users);
+      
+        console.log(teamRes)
         const liteCustomers = customersRes.customers.map((c) => ({ id: c.id, companyName: c.companyName }));
         setCustomers(liteCustomers);
 
@@ -163,47 +161,55 @@ const CreateLead: React.FC = () => {
   };
 
 
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
-   
-    if (!customerId) {
-      toast.error('Please select a customer.');
-      return;
-    }
-    if (!contactId) {
-      toast.error('Please select a contact.');
-      return;
-    }
-    if (isAdmin && !salesmanId) {
-       toast.error('Please select a salesman.');
-      return;
-    }
+const save = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!customerId || !contactId || (isAdmin && !salesmanId)) {
+            toast.error('Please fill all required fields: Company, Contact, and Salesman.');
+            return;
+        }
 
-    setSubmitting(true);
-    try {
-      const payload: any = {
-        stage,
-        forecastCategory,
-        customerId,
-        source,
-        contactPerson: contactPerson || undefined,
-        mobile: mobile || undefined,
-        mobileAlt: mobileAlt || undefined,
-        email: emailField || undefined,
-        city: city || undefined,
-        description: description || undefined,
-        contactId: contactId || undefined,
-        salesmanId,
-      };
-      const out = await leadsService.create(payload, token);
-      toast.success('Lead created succesfully')
-      navigate(`/leads/${out.id}`, { replace: true });
-    } catch (e: any) {
-       toast.error(e?.data?.message || 'Failed to create lead');
-    } finally {
-      setSubmitting(false);
+        setSubmitting(true);
+        try {
+            const payload: any = {
+                stage, forecastCategory, customerId, source,
+                contactPerson: contactPerson || undefined,
+                mobile: mobile || undefined, mobileAlt: mobileAlt || undefined,
+                email: emailField || undefined, city: city || undefined,
+                country: country || undefined, address: address || undefined,
+                description: description || undefined, contactId: contactId || undefined,
+                salesmanId,
+            };
+
+            // --- SIMPLIFIED: Conditionally add accompanied salesman ID ---
+            if (accompanySalesman && accompaniedMemberId) {
+                payload.shareGpData = {
+                    sharedMemberId: accompaniedMemberId,
+                };
+            }
+
+            const out = await leadsService.create(payload, token);
+            toast.success('Lead created successfully');
+            navigate(`/leads/${out.id}`, { replace: true });
+        } catch (e: any) {
+            toast.error(e?.data?.message || 'Failed to create lead');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+console.log(allSalesmen)
+const availableForAccompaniment = allSalesmen.filter(member => {
+    // Rule 1: Exclude any member who is blocked.
+    if (member.isBlocked) {
+        return false;
     }
-  };
+    // Rule 2: Exclude the member who is already the primary salesman for this lead.
+    if (member.id === salesmanId) {
+        return false;
+    }
+    // If neither exclusion rule applies, include the member.
+    return true;
+});
+
 
 
   return (
@@ -343,26 +349,47 @@ const CreateLead: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Salesman</label>
               {isAdmin ? (
-                <select
-                  value={salesmanId}
-                  onChange={(e) => setSalesmanId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
-                   bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm"
-                  required
-                >
-                  <option value="" disabled>-- Select Salesman --</option>
-                  {salesmen.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  value={user?.name || ''}
-                  disabled
-                  className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
-                   bg-gray-100 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm"
-                />
-              )}
+  <select
+     value={salesmanId}
+    onChange={(e) => {
+        setSalesmanId(e.target.value);
+        // If the user selects a primary salesman who was also chosen for accompaniment,
+        // reset the accompaniment selection to avoid conflict.
+        if (e.target.value === accompaniedMemberId) {
+            setAccompaniedMemberId('');
+        }
+    }}
+    className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+               bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm"
+    required
+  >
+    <option value="" disabled>-- Select Salesman --</option>
+    {allSalesmen.map((s) => (
+      <option
+        key={s.id}
+        value={s.id}
+        // Disable the option if the salesman is blocked
+        disabled={s.isBlocked}
+        // Apply styling for disabled/blocked options
+        style={{
+          color: s.isBlocked ? '#999' : 'inherit',
+          cursor: s.isBlocked ? 'not-allowed' : 'default',
+        }}
+      >
+        {/* Append '(Blocked)' to the name if blocked */}
+        {s.name} {s.isBlocked ? '(Blocked)' : ''}
+      </option>
+    ))}
+  </select>
+) : (
+  <input
+    value={user?.name || ''}
+    disabled
+    className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
+               bg-gray-100 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm"
+  />
+)}
+
             </div>
           </div>
 
@@ -392,12 +419,21 @@ const CreateLead: React.FC = () => {
                 className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
                  bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">City</label>
-              <input value={city} onChange={(e) => setCity(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50 
-                 bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm" />
-            </div>
+           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4 border-t border-cloud-200/40 dark:border-midnight-700/40">
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">City</label>
+                                <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full h-10 px-3 rounded-xl ..."/>
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Country</label>
+                                <input value={country} onChange={(e) => setCountry(e.target.value)} className="w-full h-10 px-3 rounded-xl ..."/>
+                            </div>
+                            <div className="sm:col-span-2">
+                                <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Address</label>
+                                <input value={address} onChange={(e) => setAddress(e.target.value)} className="w-full h-10 px-3 rounded-xl ..."/>
+                            </div>
+                        </div>
           </div>
 
           {/* Description */}
@@ -411,6 +447,34 @@ const CreateLead: React.FC = () => {
                bg-white/60 dark:bg-midnight-800/60 text-midnight-800 dark:text-ivory-100 shadow-sm"
             />
           </div>
+            <div className="p-4 border border-cloud-300 dark:border-midnight-700 rounded-lg space-y-4">
+                            <div className="flex items-center">
+                                <input
+                                    id="accompany-salesman-checkbox"
+                                    type="checkbox"
+                                    checked={accompanySalesman}
+                                    onChange={(e) => setAccompanySalesman(e.target.checked)}
+                                    className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor="accompany-salesman-checkbox" className="ml-3 block text-sm font-medium">
+                                    Accompany another Salesman
+                                </label>
+                            </div>
+
+                            {accompanySalesman && (
+                                <div className="border-t pt-4">
+                                    <label className="block text-sm font-medium mb-1">Select Member to Accompany</label>
+                                    <select value={accompaniedMemberId} onChange={e => setAccompaniedMemberId(e.target.value)} required={accompanySalesman} className="w-full sm:w-1/2 h-10 px-3 rounded-xl ...">
+                                        <option value="" disabled>-- Select Member --</option>
+                                       {availableForAccompaniment.map(s => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.name}
+                                        </option>
+                                    ))}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
 
           {/* Buttons */}
           <div className="flex justify-end gap-4 pt-4">
