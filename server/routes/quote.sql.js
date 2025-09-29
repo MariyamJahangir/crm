@@ -553,7 +553,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         let quoteSubtotal = 0;
         let quoteTotalCost = 0;
 
-        // 1. Calculate detailed metrics for each line item
+       
         const computedItems = items.map((it, index) => {
             const qty = Number(it.quantity || 0);
             const cost = Number(it.itemCost || 0);
@@ -636,7 +636,7 @@ router.post('/leads/:leadId/quotes', authenticateToken, [
         await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: createdQuote.id })));
 
         if (lead.stage !== 'Quote') {
-            await lead.update({ stage: 'Quote' });
+            await lead.update({ stage: 'Quote Negotiation' });
         }
         
         if (initialStatus === 'PendingApproval') {

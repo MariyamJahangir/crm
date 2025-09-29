@@ -6,7 +6,7 @@ import { teamService, TeamUser } from '../services/teamService';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Pencil, Trash2, RefreshCw,ListRestart, Eye, ChevronLeft, ChevronRight } from "lucide-react";
-
+import {toast} from 'react-hot-toast';
 type SortKey = 'name' | 'email' | 'designation' | 'createdAt' | 'status';
 type SortDir = 'asc' | 'desc';
 
@@ -16,9 +16,7 @@ const Users: React.FC = () => {
     const [isRefreshing, setIsRefreshing] = useState(false);
   const [items, setItems] = useState<TeamUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // delete dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [targetId, setTargetId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -39,17 +37,16 @@ const Users: React.FC = () => {
 
    const load = async (isManualRefresh) => {
     if (!token) return;
-    setError(null);
     setLoading(true);
     if (isManualRefresh) setIsRefreshing(true);
     try {
       const res = await teamService.list(token);
       setItems(res.users || []);
     } catch (e: any) {
-      setError(e?.data?.message || 'Failed to load users');
+      toast.error(e?.data?.message || 'Failed to load users');
     } finally {
       setLoading(false);
-      // Add this line to stop the refreshing animation
+    
       setIsRefreshing(false);
     }
   };
@@ -57,7 +54,7 @@ const Users: React.FC = () => {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [token]);
 
   const askDelete = (id: string) => {
@@ -78,6 +75,7 @@ const Users: React.FC = () => {
       setItems((prev) => prev.filter((u) => u.id !== targetId));
       setPage((p) => Math.max(1, p));
     } catch (e: any) {
+      toast.error(e?.data?.message || 'Failed to delete user')
       console.error(e?.data?.message || 'Failed to delete user');
     } finally {
       setDeleting(false);
@@ -328,22 +326,10 @@ const Users: React.FC = () => {
               Loading...
             </div>
           )}
-          {error && (
-            <div className="flex items-center justify-between bg-red-200/40 dark:bg-red-900/40 backdrop-blur-md border border-red-400/50 dark:border-red-700/50 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl mb-4 shadow-lg">
-              <div className="truncate">{error}</div>
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => setError(null)}>
-                  Dismiss
-                </Button>
-                <Button variant="secondary" onClick={load}>
-                  Retry
-                </Button>
-              </div>
-            </div>
-          )}
+      
 
           {/* Table */}
-          {!loading && !error && (
+          {!loading  && (
             <div className="bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl border border-cloud-300/30 dark:border-midnight-700/30 rounded-2xl overflow-hidden shadow-2xl">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-cloud-300/40 dark:divide-midnight-700/40">
@@ -562,7 +548,7 @@ const Users: React.FC = () => {
             </div>
           )}
 
-          {!loading && !error && filtered.length === 0 && (
+          {!loading  && filtered.length === 0 && (
             <div className="flex items-center justify-between bg-ivory-200/40 dark:bg-midnight-700/40 backdrop-blur-md border border-ivory-300/40 dark:border-midnight-600/40 text-midnight-700 dark:text-ivory-300 px-4 py-3 rounded-xl mt-4 shadow-lg select-none">
               <div>{isAdmin ? 'No users match the current filters.' : 'No data available.'}</div>
               <div className="flex gap-2">

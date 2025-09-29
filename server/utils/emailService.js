@@ -127,6 +127,41 @@ async function notifyAdminsOfSuccess(subject, message) {
     const html = `<div style="font-family: Arial, sans-serif; line-height: 1.6;"><p>${message}</p></div>`;
     await sendEmail(admins.map(a => a.email), subject, html);
 }
+async function scheduleFollowupReminders(followup, lead, recipients) {
+    if (!followup.scheduledAt || !recipients.length) {
+        return;
+    }
+
+    const scheduledTime = new Date(followup.scheduledAt).getTime();
+    const now = Date.now();
+
+    // --- Mandatory 3-Hour Reminder ---
+    const threeHourReminderTime = scheduledTime - (3 * 60 * 60 * 1000);
+    if (threeHourReminderTime > now) {
+        const delay = threeHourReminderTime - now;
+        setTimeout(() => {
+            sendFollowupReminderEmail(recipients, lead, followup);
+        }, delay);
+        console.log(`Scheduled a 3-hour reminder for followup ${followup.id} to be sent to ${recipients.join(', ')}`);
+    }
+
+    // --- Optional User-Set Reminder ---
+    if (followup.scheduleReminder) {
+        const customReminderMillis = reminderToMilliseconds(followup.scheduleReminder);
+        const customReminderTime = scheduledTime - customReminderMillis;
+
+        if (customReminderTime > now) {
+            // Ensure we don't send a duplicate email if the custom time is also 3 hours
+            if (customReminderMillis !== (3 * 60 * 60 * 1000)) {
+                const delay = customReminderTime - now;
+                setTimeout(() => {
+                    sendFollowupReminderEmail(recipients, lead, followup);
+                }, delay);
+                console.log(`Scheduled a custom reminder for followup ${followup.id} (${followup.scheduleReminder} before)`);
+            }
+        }
+    }
+}
 
 module.exports = {
     sendOTPEmail,
@@ -136,4 +171,5 @@ module.exports = {
     notifyAdminsOfApprovalRequest,
     notifyMemberOfQuoteDecision,
     notifyAdminsOfSuccess,
+    scheduleFollowupReminders,
 };

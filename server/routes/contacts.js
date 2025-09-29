@@ -33,6 +33,7 @@ router.get('/', authenticateToken, async (req, res) => {
                     // UPDATED: Nested include to get the salesman (creator) from the Customer model
                     include: [{
                         model: Member,
+                        
                         as: 'salesman', // Use the alias defined in your Customer model association
                         attributes: ['id', 'name', 'email']
                     }]

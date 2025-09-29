@@ -171,12 +171,20 @@ const CreateQuote: React.FC = () => {
       try {
         const team = await teamService.list(token);
         setSalesmen(team.users);
-        const me = team.users.find(u => String(u.id) === String(user?.id));
-        setSalesmanId(me?.id || team.users[0]?.id || '');
+        
+        // MODIFICATION: Set initial salesman based on user role
+        if (isAdmin) {
+          setSalesmanId(''); // Admins start with no selection
+        } else {
+          const me = team.users.find(u => String(u.id) === String(user?.id));
+          setSalesmanId(me?.id || ''); // Members default to themselves
+        }
       } catch { 
-       toast.error('Failed to load team data.'); }
+        toast.error('Failed to load team data.'); 
+      }
     })();
-  }, [token, user]);
+  }, [token, user, isAdmin]); // Added isAdmin to the dependency array
+
 
   useEffect(() => {
     if (routeLeadId) setSelectedLeadId(routeLeadId);
@@ -193,42 +201,117 @@ const CreateQuote: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!token || !selectedLeadId) return;
+    if (!token) return;
     (async () => {
-      
+      try {
+        const team = await teamService.list(token);
+        setSalesmen(team.users);
+        if (!isAdmin) {
+          const me = team.users.find(u => String(u.id) === String(user?.id));
+          setSalesmanId(me?.id || '');
+        }
+      } catch { 
+        toast.error('Failed to load team data.'); 
+      }
+    })();
+  }, [token, user, isAdmin]);
+
+  // Effect to sync selectedLeadId from URL parameter
+  useEffect(() => {
+    if (routeLeadId) setSelectedLeadId(routeLeadId);
+  }, [routeLeadId]);
+
+  // ** START: THE MAIN DATA LOADING LOGIC **
+  // This is the primary effect for fetching and populating all lead-related data.
+  useEffect(() => {
+    if (!token || !selectedLeadId) return;
+
+    // Helper to reset fields to a clean state
+    const resetAllFields = () => {
+      setContacts([]);
+      setContactId(undefined);
+      setContactPerson('');
+      setPhone('');
+      setEmail('');
+      setAddress('');
+      setCustomerName('');
+      setCustomerId(null);
+      // Reset salesman only if admin, as non-admins have a default
+      if (isAdmin) {
+          setSalesmanId('');
+      }
+    };
+
+    (async () => {
       try {
         const leadRes = await leadsService.getOne(selectedLeadId, token);
         const { lead } = leadRes;
+
+        // Populate basic lead info
         setLeadNumber(lead.uniqueNumber || '');
-        setCustomerId(lead.customerId || null);
-        setCustomerName(lead.division || '');
+        setCustomerId(lead.customer?.id || null);
+
+        // Prefill salesman if an admin is viewing
+        if (isAdmin && lead.salesman?.id) {
+          setSalesmanId(lead.salesman.id);
+        }
         
-        if (lead.customerId) {
+        // ** Case 1: Lead is linked to a Customer **
+        if (lead.customer && lead.customer.id) {
           const [contactsResp, custResp] = await Promise.all([
-            customerService.getContacts(lead.customerId, token),
-            customerService.getOne(lead.customerId, token),
+            customerService.getContacts(lead.customer.id, token),
+            customerService.getOne(lead.customer.id, token),
           ]);
-          setContacts(contactsResp.contacts || []);
+          
+          setCustomerName(custResp.customer.companyName || '');
+          const allCustomerContacts = contactsResp.contacts || [];
+          setContacts(allCustomerContacts);
           setAddress(custResp.customer.address || '');
-          const preferredContact = contactsResp.contacts.find(c => c.name === lead.contactPerson) || contactsResp.contacts[0];
+
+          const preferredContact = allCustomerContacts.find(c => c.name === lead.contactPerson) || allCustomerContacts[0];
+
           if (preferredContact) {
-            onSelectContact(preferredContact.id);
+            setContactId(preferredContact.id);
+            setContactPerson(preferredContact.name);
+            setPhone(preferredContact.mobile || '');
+            setEmail(preferredContact.email || '');
           } else {
+            // No contacts found, clear contact fields
             setContactId(undefined);
             setContactPerson('');
             setPhone('');
             setEmail('');
           }
-        } else {
-          setContacts([]);
-          setContactId(undefined);
-          setAddress('');
+        } 
+        // ** Case 2: Standalone Lead (not linked to a customer) **
+        else {
+          setCustomerName(lead.companyName || ''); // Use lead's own company name
+          if (lead.contactPerson) {
+            const standaloneContact = {
+              id: lead.id, // Use lead ID as a unique key for the dropdown
+              name: lead.contactPerson,
+              mobile: lead.mobile || '',
+              email: lead.email || '',
+            };
+            setContacts([standaloneContact]);
+            setAddress(lead.city || '');
+            setContactId(standaloneContact.id);
+            setContactPerson(standaloneContact.name);
+            setPhone(standaloneContact.mobile || '');
+setEmail(standaloneContact.email || '');
+          } else {
+            // Standalone lead with no contact info, clear all fields
+            resetAllFields();
+            setCustomerName(lead.companyName || ''); // Keep customer name
+          }
         }
       } catch (e: any) {
-           toast.error(e?.data?.message || 'Failed to load lead details');
+        toast.error(e?.data?.message || 'Failed to load lead details.');
+        resetAllFields();
       }
     })();
-  }, [token, selectedLeadId]);
+  }, [token, selectedLeadId, isAdmin]); 
+
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -401,22 +484,40 @@ const CreateQuote: React.FC = () => {
                     onChange={(e) => setValidityUntil(e.target.value)}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
-                    Salesman
-                  </label>
-                  <select
-                    value={salesmanId}
-                    className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 bg-white/70 dark:bg-midnight-800/60 text-midnight-900 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
-                    onChange={(e) => setSalesmanId(e.target.value)}
-                  >
-                    {salesmen.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+<div>
+  <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">
+    Salesman
+  </label>
+  {isAdmin ? (
+    <select
+      value={salesmanId}
+      className="w-full h-11 px-4 rounded-xl border border-cloud-300/50 dark:border-midnight-600/50 bg-white/70 dark:bg-midnight-800/60 text-midnight-900 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+      onChange={(e) => setSalesmanId(e.target.value)}
+      required
+    >
+      <option value="" disabled>Select salesman</option>
+      {salesmen.map((s) => (
+        <option key={s.id} value={s.id} disabled={s.isBlocked}>
+          {s.name}{s.isBlocked ? ' (Blocked)' : ''}
+        </option>
+      ))}
+    </select>
+  ) : (
+    <input
+      value={(() => {
+        const assignedSalesman = salesmen.find(s => String(s.id) === String(user?.id));
+        const name = user?.name || '';
+        return assignedSalesman?.isBlocked ? `${name} (Blocked)` : name;
+      })()}
+      disabled
+      className="w-full h-11 px-4 rounded-xl border border-cloud-200/40 dark:border-midnight-600/40 
+                 bg-cloud-100/60 dark:bg-midnight-800/60 
+                 text-midnight-700 dark:text-ivory-300 shadow-sm"
+    />
+  )}
+</div>
+
+
               </div>
 
               <div className="border-t border-cloud-300/40 dark:border-midnight-700/40 pt-6">

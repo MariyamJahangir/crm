@@ -20,7 +20,9 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
   const [email, setEmail] = useState('');
   const [vatNo, setVatNo] = useState('');
   const [address, setAddress] = useState('');
-
+  const [country, setCountry] = useState('');
+  const [sizeOfCompany, setSizeOfCompany] = useState('');
+  const [note, setNote] = useState('');
   // New fields on Customer
   const [industry, setIndustry] = useState('');
   const [website, setWebsite] = useState('');
@@ -46,7 +48,7 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
         setSalesmen(users);
         // Set the current user as the default salesman
         const me = users.find(u => String(u.id) === String(user?.id));
-        setSalesmanId(me?.id ? String(me.id) : (users.length ? String(users[0].id) : ''));
+      //  setSalesmanId(me?.id ? String(me.id) : (users.length ? String(users[0].id) : ''));
       } catch {
          toast.error("Failed to load team members.");
       } finally {
@@ -101,6 +103,9 @@ const getErrorMessage = (error: any, defaultMessage: string): string => {
         industry: industry || undefined,
         website: website || undefined,
         category: category || undefined,
+        country: country || undefined,
+      sizeOfCompany: sizeOfCompany || undefined,
+      note: note || undefined,
       };
        if (isAdmin && salesmanId) {
         payload.salesmanId = salesmanId;
@@ -282,19 +287,39 @@ const getErrorMessage = (error: any, defaultMessage: string): string => {
               <option value="Individual" className='bg-cloud-100'>Individual</option>
             </select>
           </div>
+          <div>
+          <label>Country</label>
+          <input value={country} onChange={(e) => setCountry(e.target.value)} />
+        </div>
+        <div>
+          <label>Company Size</label>
+          <select value={sizeOfCompany} onChange={(e) => setSizeOfCompany(e.target.value)}>
+            <option value="">-- Select --</option>
+            <option value="1-10">1-10</option>
+            <option value="11-50">11-50</option>
+            <option value="51-200">51-200</option>
+            <option value="201-500">201-500</option>
+            <option value="500+">500+</option>
+          </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label>Note</label>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+        
 
           {/* Conditional salesman field */}
           <div className="sm:col-span-2">
             <label className="text-sm font-medium text-midnight-400">Salesman</label>
-            {isAdmin ? (
+     {isAdmin ? (
               <>
                 <select
                   className="w-full rounded-lg px-3 py-2 
-                         bg-white/50 border border-white/20 text-midnight-900/90
-                         backdrop-blur-sm
-                         focus:outline-none focus:border-white/50
-                         hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
-                         transition-all"
+                             bg-white/50 border border-white/20 text-midnight-900/90
+                             backdrop-blur-sm
+                             focus:outline-none focus:border-white/50
+                             hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
+                             transition-all"
                   value={salesmanId}
                   onChange={e => setSalesmanId(e.target.value)}
                   required={isAdmin}
@@ -302,7 +327,9 @@ const getErrorMessage = (error: any, defaultMessage: string): string => {
                 >
                   <option value="" disabled>Select salesman</option>
                   {salesmen.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
+                    <option key={s.id} value={s.id} disabled={s.isBlocked}>
+                      {s.name}{s.isBlocked ? ' (Blocked)' : ''}
+                    </option>
                   ))}
                 </select>
                 <div className="text-xs text-white/60 mt-1">
@@ -313,9 +340,13 @@ const getErrorMessage = (error: any, defaultMessage: string): string => {
               <>
                 <input
                   className="w-full rounded-lg px-3 py-2 
-                         bg-gray-500/20 border border-white/20 text-white/90
-                         backdrop-blur-sm cursor-not-allowed"
-                  value={user?.name || ''}
+                             bg-gray-500/20 border border-white/20 text-white/90
+                             backdrop-blur-sm cursor-not-allowed"
+                  value={(() => {
+                    const assignedSalesman = salesmen.find(s => String(s.id) === String(user?.id));
+                    const name = user?.name || '';
+                    return assignedSalesman?.isBlocked ? `${name} (Blocked)` : name;
+                  })()}
                   disabled
                 />
                 <div className="text-xs text-white/60 mt-1">
@@ -323,13 +354,13 @@ const getErrorMessage = (error: any, defaultMessage: string): string => {
                 </div>
               </>
             )}
+
           </div>
         </div>
       </div>
     </Modal>
 
   );
-
 
 
 };

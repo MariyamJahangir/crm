@@ -4,8 +4,7 @@ const { sequelize } = require('../config/database');
 const STAGES = [
   'Discover',
   'Solution Validation',
-  'Quote',
-  'Negotiation',
+  'Quote Negotiation',
   'Deal Closed',
   'Deal Lost',
   'Fake Lead'
@@ -58,7 +57,14 @@ Lead.init(
     creatorType: { type: DataTypes.ENUM('ADMIN', 'MEMBER'), allowNull: false },
     creatorId: { type: DataTypes.UUID, allowNull: false },
     companyName: { type: DataTypes.STRING(200), allowNull: false, defaultValue: '' },
-
+  country: {
+      type: DataTypes.STRING(120),
+      allowNull: true,
+    },
+    address: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     attachmentsJson: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -83,7 +89,7 @@ Lead.init(
     indexes: [
       {
         unique: true,
-        fields: ['uniqueNumber'], // ✅ enforce uniqueness properly
+        fields: ['uniqueNumber'], 
       },
     ],
   }

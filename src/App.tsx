@@ -69,6 +69,7 @@ function App() {
 <Route path="/customers/:id/edit" element={<EditCustomer />} />
 <Route path="/quote" element={<Quote />} />
 <Route path="/create-quote" element={<CreateQuote />} />
+<Route path="/create-quote/:id" element={<CreateQuote />} />
 <Route path="/contacts" element={<Contact />} />
 <Route path="/vendors" element={<VendorsPage />} />
 <Route path="/vendors/new" element={<VendorFormPage />} />
@@ -83,7 +84,7 @@ function App() {
 
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* <Route path="*" element={<Navigate to="/dashboard" replace />} /> */}
         </Routes>
       </BrowserRouter>
      

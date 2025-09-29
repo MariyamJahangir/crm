@@ -29,7 +29,7 @@ function makeUploader(subdir = '') {
 
   const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, destDir),
-    filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+    filename: (req, file, cb) => cb(null, file.originalname),
   });
 
   const upload = multer({

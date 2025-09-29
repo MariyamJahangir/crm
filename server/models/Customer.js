@@ -29,7 +29,33 @@ category: {                                                        // Customer C
     defaultValue: [], // array of strings (member IDs or names)
   },
 
-  // Also updated this for consistency
+ // New Fields
+    country: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    sizeOfCompany: {
+      type: DataTypes.ENUM('1-10', '11-50', '51-200', '201-500', '500+'),
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM('active', 'inactive', 'on-hold', 'closed'),
+      allowNull: false,
+      defaultValue: 'active',
+    },
+    note: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+     social: { // <-- ADDED
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    attachments: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: [], // Default to an empty array
+    },
   salesmanId: { type: DataTypes.UUID, allowNull: true },
 }, { sequelize, tableName: 'customers', timestamps: true });
 

@@ -19,6 +19,7 @@ export interface Contact {
   companyName: string;
   entityType: 'Vendor' | 'Customer' | 'Lead';
   isPrimary?: boolean;
+  social?: string;
 }
 
 // API response for searching companies

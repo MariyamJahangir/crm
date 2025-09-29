@@ -309,28 +309,39 @@ const CreateInvoicePage: React.FC = () => {
                              text-sm transition"
                 />
 
-                {user?.type === "ADMIN" ? (
-                  <select
-                    value={salesmanId}
-                    onChange={(e) => setSalesmanId(e.target.value)}
-                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
-                               bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
-                               shadow-sm text-sm transition"
-          
-                  >
-                    <option value="">-- Assign Salesman --</option>
-                    {members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="p-2 bg-white/40 dark:bg-midnight-800/50 rounded-2xl text-sm text-midnight-700 dark:text-ivory-200">
-                    Salesman:{" "}
-                    <span className="font-semibold">{user?.name || "..."}</span>
-                  </div>
-                )}
+{user?.type === "ADMIN" ? (
+  <select
+    value={salesmanId}
+    onChange={(e) => setSalesmanId(e.target.value)}
+    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+               bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
+               shadow-sm text-sm transition"
+  >
+    <option value="">-- Assign Salesman --</option>
+    {members.map((member) => (
+      <option
+        key={member.id}
+        value={member.id}
+        // Disable the option if the member is blocked
+        disabled={member.isBlocked}
+        // Apply a different style for disabled/blocked members
+        style={{
+          color: member.isBlocked ? '#999' : 'inherit',
+          cursor: member.isBlocked ? 'not-allowed' : 'pointer',
+        }}
+      >
+        {member.name} {member.isBlocked ? '(Blocked)' : ''}
+      </option>
+    ))}
+  </select>
+) : (
+  <div className="p-2 bg-white/40 dark:bg-midnight-800/50 rounded-2xl text-sm text-midnight-700 dark:text-ivory-200">
+    Salesman:{" "}
+    <span className="font-semibold">{user?.name || "..."}</span>
+  </div>
+)}
+
+
               </div>
             </div>
           </div>

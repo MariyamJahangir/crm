@@ -2,10 +2,19 @@
 import { api } from './api';
 import { Filter } from '../components/FilterDropdown'; 
 export type SalesmanUser = { id: string; name: string; email?: string };
-
+export type Share = {
+    id: string;
+    sharedWithMember: {
+      id: string;
+      name: string;
+    };
+    // Include other fields from the ShareGp model if needed later
+    profitPercentage?: number | null;
+    profitAmount?: number | null;
+};
 export type Lead = {
   id: string;
-  stage: 'Discover' | 'Solution Validation' | 'Quote' | 'Negotiation' | 'Deal Closed' | 'Deal Lost' | 'Fake Lead';
+  stage: 'Discover' | 'Solution Validation' | 'Quote Negotiation' | 'Deal Closed' | 'Deal Lost' | 'Fake Lead';
   forecastCategory: 'Pipeline' | 'BestCase' | 'Commit';
   division: string;
   source?: string;
@@ -19,6 +28,7 @@ export type Lead = {
   email?: string;
   city?: string;
   salesman?: SalesmanUser | null;
+  salesmanId?: string;
   description?: string;
   ownerId?: string;
   ownerName?: string;
@@ -26,11 +36,15 @@ export type Lead = {
   lostReason?: string;
   createdAt?: string;
   updatedAt?: string;
+  creatorId?:string;
+  country?:string;
+  address?:string;
   customerId?: string;
 nextFollowupAt?: string | null;
   attachments?: { filename: string; url: string; createdAt: string }[];
   followups?: { status: string; description?: string; createdAt: string }[];
   logs?: { action: string; message: string; createdAt: string }[];
+   shares?: Share[]; 
 };
 
 export type ListLeadsResponse = { success: boolean; leads: Lead[] };
@@ -69,6 +83,12 @@ export const leadsService = {
       email?: string;
       city?: string;
       salesmanId?: string;
+      country?: string; 
+      address?: string;
+       shareGpData?: {
+                sharedMemberId: string;
+                // Profit fields are optional for initial share
+            };
       description?: string;
       nextFollowupAt?: string; // added
       lostReason?: string;     // optional on create if stage is Deal Lost
@@ -113,4 +133,16 @@ export const leadsService = {
 
   addFollowup: (id: string, body: { status?: string; description?: string }, token?: string | null) =>
     api.post<{ success: boolean }>(`/leads/${id}/followups`, body, token),
+   shareLead(
+    leadId: string,
+    body: {
+      sharedMemberId: string;
+      profitPercentage?: number;
+      profitAmount?: number;
+      quoteId?: string;
+    },
+    token: string | null
+  ): Promise<{ success: boolean; message: string }> {
+    return api.post(`/leads/${leadId}/share`, body, token);
+  },
 };

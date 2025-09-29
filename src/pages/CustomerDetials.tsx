@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Sidebar from '../components/Sidebar';
 import Button from '../components/Button';
 import DataTable from '../components/DataTable';
-
+import { Paperclip } from 'lucide-react';
 // Helper to render a detail item, avoids showing empty values
 const DetailItem: React.FC<{ label: string; value: string | undefined | null }> = ({ label, value }) => {
   if (!value) return null;
@@ -139,9 +139,38 @@ const CustomerDetail: React.FC = () => {
               <DetailItem label="Category" value={customer.category} />
               <DetailItem label="Assigned Salesman" value={customer.salesman?.name} />
               <DetailItem label="Website" value={customer.website} />
+               <DetailItem label="Country" value={customer.country} />
+                <DetailItem label="Company Size" value={customer.sizeOfCompany} />
+                <DetailItem label="Status" value={customer.status} />
+                <DetailItem label="Note" value={customer.note} />
               <div className="sm:col-span-2 lg:col-span-3">
                 <DetailItem label="Address" value={customer.address} />
               </div>
+            <div className="mt-6 bg-cloud-50/30 ... p-5 ...">
+            <h2 className="text-base font-semibold text-midnight-700 flex items-center gap-2 mb-3">
+                <Paperclip size={18} />
+                Attachments
+            </h2>
+            <ul className="space-y-2">
+                {customer.attachments && customer.attachments.length > 0 ? (
+                    customer.attachments.map(file => (
+                        <li key={file.id}>
+                            <a 
+                                href={file.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sky-600 hover:underline"
+                            >
+                                {file.name}
+                            </a>
+                            <span className="text-xs text-gray-500 ml-2">({(file.size / 1024).toFixed(1)} KB)</span>
+                        </li>
+                    ))
+                ) : (
+                    <p className="text-sm text-gray-500 italic">No attachments found.</p>
+                )}
+            </ul>
+        </div>
             </div>
           </div>
 

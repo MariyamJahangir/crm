@@ -10,7 +10,7 @@ import Button from '../components/Button';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { X } from "lucide-react";
 import { toast } from 'react-hot-toast';
-interface Member { id: string; name: string; }
+interface Member { id: string; name: string; isBlocked: boolean; }
 
 const VendorFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,16 +29,24 @@ const VendorFormPage: React.FC = () => {
   const isEditMode = Boolean(id);
   const isAdmin = user?.type === 'ADMIN';
 
-  useEffect(() => {
+ useEffect(() => {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
+        let teamMembers: Member[] = [];
+        if (isAdmin) {
+          const res = await teamService.list(token);
+          teamMembers = res.users || [];
+          setMembers(teamMembers);
+        }
+
         if (isEditMode && id) {
           const res = await vendorService.getById(token, id);
           setVendor(res.vendor);
           setContacts(res.vendor.contacts.length > 0 ? res.vendor.contacts : [{ name: '' }]);
         } else {
-          setVendor({ status: 'Active', assignedTo: user?.id });
+          // MODIFICATION: Set assignedTo based on role
+          setVendor({ status: 'Active', assignedTo: isAdmin ? '' : user?.id });
           setContacts([{ name: '' }]);
         }
       } catch {
@@ -48,19 +56,7 @@ const VendorFormPage: React.FC = () => {
       }
     };
 
-    const fetchMembers = async () => {
-      if (isAdmin) {
-        try {
-          const res = await teamService.list(token);
-          setMembers(res.users || []);
-        } catch {
-           toast.error("Failed to load team members.");
-        }
-      }
-    };
-
     fetchInitialData();
-    fetchMembers();
   }, [id, isEditMode, token, isAdmin, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -303,29 +299,38 @@ return (
                 />
               </div>
 
-              {/* Assign To (admin only) */}
-              {isAdmin && (
-                <div className="lg:col-span-3">
-                  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
-                    Assign To
-                  </label>
-                  <select
-                    name="assignedTo"
-                    value={vendor.assignedTo || ""}
-                    onChange={handleChange}
-                    className="w-full h-11 px-4 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50
-                               bg-white/70 dark:bg-midnight-800/60 text-midnight-900 dark:text-ivory-100
-                               shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
-                  >
-                    <option value="">-- Select a Member --</option>
-                    {members.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+             {/* Assign To */}
+<div className="lg:col-span-3">
+  <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">
+    Assign To
+  </label>
+  {isAdmin ? (
+    <select
+      name="assignedTo"
+      value={vendor.assignedTo || ""}
+      onChange={handleChange}
+      className="w-full h-11 px-4 rounded-xl border border-cloud-200/50 dark:border-midnight-600/50
+                 bg-white/70 dark:bg-midnight-800/60 text-midnight-900 dark:text-ivory-100
+                 shadow-sm focus:border-sky-400 focus:ring-2 focus:ring-sky-300/50 transition"
+    >
+      <option value="" disabled>-- Select a Member --</option>
+      {members.map((m) => (
+        <option key={m.id} value={m.id} disabled={m.isBlocked}>
+          {m.name}{m.isBlocked ? ' (Blocked)' : ''}
+        </option>
+      ))}
+    </select>
+  ) : (
+    <input
+      readOnly
+      value={user?.name || ''}
+      className="w-full h-11 px-4 rounded-xl border border-cloud-200/40 dark:border-midnight-600/40 
+                 bg-cloud-100/60 dark:bg-midnight-800/60 
+                 text-midnight-700 dark:text-ivory-300 shadow-sm cursor-not-allowed"
+    />
+  )}
+</div>
+
             </div>
           )}
 
