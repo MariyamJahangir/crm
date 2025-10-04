@@ -171,6 +171,15 @@ const Sidebar: React.FC = () => {
           Vendors
           </span>
         </NavLink>
+          <NavLink
+          to="/reports"
+          className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
+        >
+          <Store size={18} className="mr-3 flex-shrink-0" />
+          <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          Reports
+          </span>
+        </NavLink>
       </nav>
 
       {/* Footer actions */}

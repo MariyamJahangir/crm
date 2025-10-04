@@ -80,9 +80,9 @@ InvoiceItem.init({
     allowNull: false
   },
   taxPercent: {
-    type: DataTypes.DECIMAL(5, 2), // e.g., 5.00 for 5%
+    type: DataTypes.DECIMAL(5, 2), 
     allowNull: false,
-    defaultValue: 5.00 // Default to 5% as requested
+    defaultValue: 5.00 
   },
   taxAmount: {
     type: DataTypes.DECIMAL(12, 2),

@@ -40,7 +40,18 @@ Lead.init(
 
     // ⚡ FIXED: removed `unique: true` here
     uniqueNumber: { type: DataTypes.STRING(40), allowNull: false },
-
+closingDates: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: [],
+      get() {
+        const raw = this.getDataValue('closingDates');
+        return raw || [];
+      },
+      set(val) {
+        this.setDataValue('closingDates', val || []);
+      }
+    },
     quoteNumber: { type: DataTypes.STRING(80) },
     previewUrl: { type: DataTypes.TEXT },
     actualDate: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },

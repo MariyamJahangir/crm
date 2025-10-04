@@ -41,7 +41,7 @@ const SelectContactModal: React.FC<SelectContactModalProps> = ({ open, onClose, 
     contactsService.searchCompanies(token, debouncedQuery)
       .then(res => {
         if (res.success) {
-          // The API returns the list under the 'contacts' key, which we map to companies
+          console.log(res)
           setCompanies(res.contacts);
         }
       })
@@ -71,6 +71,7 @@ const SelectContactModal: React.FC<SelectContactModalProps> = ({ open, onClose, 
             }}
           >
             <div className="font-semibold text-midnght-700">{company.companyName}</div>
+             <div className="text-sm text-gray-500 font-extrabold text-center">{company.uniqueNumber}</div>
             <div className="text-right">
               <span className={`px-2 py-1 text-xs font-bold rounded-full ${
                 company.entityType === 'Vendor' ? 'bg-green-100 text-green-800' 
