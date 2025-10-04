@@ -7,7 +7,23 @@ const Member = require('../models/Member');
 const LeadFollowup = require('../models/LeadFollowup');
 const LeadLog = require('../models/LeadLog');
 const { notifyLeadUpdate, scheduleFollowupReminders } = require('../utils/emailService');
+const ShareGp = require('../models/ShareGp');
 const router = express.Router();
+
+async function canAccessLead(req, lead) {
+    if (isAdmin(req)) return true;
+
+    const userId = String(req.subjectId);
+    if (String(lead.creatorId) === userId || String(lead.salesmanId) === userId) {
+        return true;
+    }
+    
+    // Check if the lead is shared with the current user
+    const share = await ShareGp.findOne({
+        where: { leadId: lead.id, sharedMemberId: userId },
+    });
+    return !!share;
+}
 
 function canViewLead(req, lead) {
   if (isAdmin(req)) return true;
@@ -70,34 +86,28 @@ async function writeLeadLog(req, leadId, action, message) {
  * List all follow-ups for given lead if authorized.
  */
 router.get('/:leadId', authenticateToken, async (req, res) => {
-  try {
-    const lead = await Lead.findByPk(req.params.leadId, {
-      include: [{ model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] }],
-    });
-    if (!lead) return res.status(404).json({ success: false, message: 'not found' });
+    try {
+        const lead = await Lead.findByPk(req.params.leadId);
+        if (!lead) return res.status(404).json({ success: false, message: 'Not found' });
 
-    if (!canViewLead(req, lead)) return res.status(403).json({ success: false, message: 'forbidden' });
+        // UPDATED: Use the new async permission check
+        if (!(await canAccessLead(req, lead))) {
+            return res.status(403).json({ success: false, message: 'Forbfghfidden' });
+        }
 
-    const followups = await LeadFollowup.findAll({
-      where: { leadId: lead.id },
-      order: [['createdAt', 'DESC']],
-    });
+        const followups = await LeadFollowup.findAll({
+            where: { leadId: lead.id },
+            order: [['createdAt', 'DESC']],
+        });
 
-    res.json({
-      success: true,
-      followups: followups.map(fu => ({
-        id: fu.id,
-        status: fu.status,
-        description: fu.description || '',
-        scheduledAt: fu.scheduledAt,
-        scheduleReminder: fu.scheduleReminder,
-        createdAt: fu.createdAt,
-      })),
-    });
-  } catch (error) {
-    console.error('Error fetching followups:', error);
-    res.status(500).json({ success: false, message: 'server error' });
-  }
+        res.json({
+            success: true,
+            followups: followups.map(fu => fu.toJSON()),
+        });
+    } catch (error) {
+        console.error('Error fetching followups:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
 });
 
 /**
@@ -105,89 +115,77 @@ router.get('/:leadId', authenticateToken, async (req, res) => {
  * Add a new follow-up for the lead if authorized.
  */
 router.post(
-  '/:leadId',
-  authenticateToken,
-  [
-    body('status').trim().isIn(['Followup', 'Meeting Scheduled', 'No Requirement', 'No Response']),
-    body('description').optional().isString(),
-    body('scheduledAt').optional().isISO8601(),
-    // Validate the new reminder field
-    body('scheduleReminder').optional().isIn(['30m', '1hr', '3hr', '5hr', '7hr', '10hr', '12hr', '24hr']),
-  ],
-  async (req, res) => {
-    try {
-      const lead = await Lead.findByPk(req.params.leadId, {
-        include: [
-          { model: Member, as: 'salesman', attributes: ['id', 'name', 'email'] },
-          { model: Member, as: 'creator', attributes: ['id', 'name', 'email'] }
-        ],
-      });
-      if (!lead) return res.status(404).json({ success: false, message: 'not found' });
-
-      if (!canModifyLead(req, lead)) return res.status(403).json({ success: false, message: 'forbidden' });
-
-      const errors = validationResult(req);
-      if (!errors.isEmpty())
-        return res.status(400).json({ success: false, message: 'validation failed', errors: errors.array() });
-
-      const { status, description, scheduledAt, scheduleReminder } = req.body;
-      const newFollowup = await LeadFollowup.create({
-        leadId: lead.id,
-        status,
-        description: description || '',
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        scheduleReminder: scheduleReminder || null,
-        createdByType: req.subjectType,
-        createdById: req.subjectId,
-      });
-
-      await writeLeadLog(req, lead.id, 'FOLLOWUP_ADDED', `${actorLabel(req)} added follow-up: ${status}`);
-
-       if (newFollowup.scheduledAt) {
-        // Determine recipients for the reminder emails
-        const recipients = new Set();
-        if (lead.salesman?.email) {
-            recipients.add(lead.salesman.email);
-        }
-        if (lead.creatorType === 'MEMBER' && lead.creator?.email) {
-            recipients.add(lead.creator.email);
+    '/:leadId',
+    authenticateToken,
+    [
+        body('status').trim().isIn(['Followup', 'Meeting Scheduled', 'No Requirement', 'No Response']),
+        body('description').optional().isString(),
+        body('scheduledAt').optional().isISO8601(),
+        body('scheduleReminder').optional().isIn(['30m', '1hr', '3hr', '5hr', '7hr', '10hr', '12hr', '24hr']),
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        if (recipients.size > 0) {
-            await scheduleFollowupReminders(newFollowup, lead, Array.from(recipients));
-        }
-      }
-if (isAdmin(req) && lead.salesman && lead.salesman.id !== req.subjectId) {
-                await notifyLeadUpdate(lead.salesman, lead, 'new follow-up');
+        try {
+            // UPDATED: Include creator, salesman, AND sharedWith
+            const lead = await Lead.findByPk(req.params.leadId, {
+                include: [
+                    { model: Member, as: 'salesman' },
+                    { model: Member, as: 'creator' },
+                    { model: Member, as: 'sharedWith' }, 
+                ],
+            });
+            if (!lead) return res.status(404).json({ success: false, message: 'Not found' });
+
+            // UPDATED: Use the new async permission check
+            if (!(await canAccessLead(req, lead))) {
+                return res.status(403).json({ success: false, message: 'Forbidden' });
             }
-      req.app.get('io')?.to(`lead:${lead.id}`).emit('followup:new', {
-        leadId: String(lead.id),
-        followup: {
-          id: newFollowup.id,
-          status: newFollowup.status,
-          description: newFollowup.description || '',
-          scheduledAt: newFollowup.scheduledAt,
-          scheduleReminder: newFollowup.scheduleReminder,
-          createdAt: newFollowup.createdAt,
-        },
-      });
 
-      res.status(201).json({
-        success: true,
-        followup: {
-          id: newFollowup.id,
-          status: newFollowup.status,
-          description: newFollowup.description || '',
-          scheduledAt: newFollowup.scheduledAt,
-          scheduleReminder: newFollowup.scheduleReminder,
-          createdAt: newFollowup.createdAt,
-        },
-      });
-    } catch (error) {
-      console.error('Error creating followup:', error);
-      res.status(500).json({ success: false, message: 'server error' });
+            const { status, description, scheduledAt, scheduleReminder } = req.body;
+            const newFollowup = await LeadFollowup.create({
+                leadId: lead.id,
+                status,
+                description: description || '',
+                scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+                scheduleReminder: scheduleReminder || null,
+                createdByType: req.subjectType,
+                createdById: req.subjectId,
+            });
+
+            await writeLeadLog(req, lead.id, 'FOLLOWUP_ADDED', `${actorLabel(req)} added follow-up: ${status}`);
+
+            if (newFollowup.scheduledAt) {
+                // CORRECTLY gathers all relevant recipients
+                const recipients = new Set();
+                if (lead.salesman?.email) recipients.add(lead.salesman.email);
+                if (lead.creator?.email) recipients.add(lead.creator.email);
+                lead.sharedWith?.forEach(member => {
+                    if (member.email) recipients.add(member.email);
+                });
+                
+                if (recipients.size > 0) {
+                    await scheduleFollowupReminders(newFollowup, lead, Array.from(recipients));
+                }
+            }
+
+            req.app.get('io')?.to(`lead:${lead.id}`).emit('followup:new', {
+                leadId: String(lead.id),
+                followup: newFollowup.toJSON(),
+            });
+
+            res.status(201).json({
+                success: true,
+                followup: newFollowup.toJSON(),
+            });
+        } catch (error) {
+            console.error('Error creating followup:', error);
+            res.status(500).json({ success: false, message: 'Server error' });
+        }
     }
-  }
 );
 
 module.exports = router;

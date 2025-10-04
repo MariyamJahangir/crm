@@ -5,7 +5,7 @@ class Quote extends Model {}
 
 Quote.init({
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  quoteNumber: { type: DataTypes.STRING, allowNull: false }, 
+  quoteNumber: { type: DataTypes.STRING, allowNull: false,unique:true }, 
   leadId: { type: DataTypes.UUID, allowNull: false },
   quoteDate: { type: DataTypes.DATE, allowNull: false },
   validityUntil: { type: DataTypes.DATE, allowNull: true },
@@ -14,8 +14,10 @@ Quote.init({
   customerId: { type: DataTypes.UUID, allowNull: true },
   customerName: { type: DataTypes.STRING, allowNull: false },
   contactPerson: { type: DataTypes.STRING, allowNull: true },
+  contactDesignation: { type: DataTypes.STRING, allowNull: true }, // New field
   phone: { type: DataTypes.STRING, allowNull: true },
   email: { type: DataTypes.STRING, allowNull: true },
+  paymentTerms: { type: DataTypes.STRING, allowNull: true }, 
   address: { type: DataTypes.TEXT, allowNull: true },
   description: { type: DataTypes.TEXT, allowNull: true },
   discountMode: { type: DataTypes.ENUM('PERCENT', 'AMOUNT'), allowNull: false, defaultValue: 'PERCENT' },
@@ -28,28 +30,25 @@ Quote.init({
   grandTotal: { type: DataTypes.DECIMAL(14, 2), allowNull: false, defaultValue: 0.00 },
   grossProfit: { type: DataTypes.DECIMAL(14, 2), allowNull: false, defaultValue: 0.00 },
   profitPercent: { type: DataTypes.DECIMAL(7, 3), allowNull: false, defaultValue: 0.000 },
-  profitRate: { type: DataTypes.DECIMAL(14, 4), allowNull: false, defaultValue: 0.0000 },
   status: { type: DataTypes.ENUM('Draft','Sent','Accepted','Rejected','Expired','PendingApproval'), allowNull: false, defaultValue: 'Draft' },
   preparedBy: { type: DataTypes.STRING, allowNull: true },
   approvedBy: { type: DataTypes.STRING, allowNull: true },
-   termsAndConditions: {
-    type: DataTypes.TEXT,
-    allowNull: true
-  },
+  termsAndConditions: { type: DataTypes.TEXT, allowNull: true },
   rejectNote: { type: DataTypes.TEXT, allowNull: true },
-  invoiceId: { // Optional: You can add this to link back from the quote
+  currency: { type: DataTypes.TEXT, allowNull: true },
+  invoiceId: {
     type: DataTypes.UUID,
     allowNull: true,
     references: {
-        model: 'invoices',
-        key: 'id'
+      model: 'invoices',
+      key: 'id'
     }
   },
   isApproved: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
 }, {
   sequelize,
   tableName: 'quotes',
-  indexes: [] // ✅ no duplicates
+  indexes: []
 });
 
 module.exports = Quote;

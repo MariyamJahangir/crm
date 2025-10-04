@@ -17,7 +17,7 @@ const teamRoutes = require('./routes/team.sql');
 const customersRoutes = require('./routes/customers.sql');
 const notificationsRoutes = require('./routes/notifications.sql');
 const quoteRoutes = require('./routes/quote.sql');
-const quotePdf = require('./routes/quotes.pdf');
+ const quotePdf = require('./routes/quotes.pdf');
 const chatRoutes = require('./routes/chat.sql');
 const vendorsRoutes = require('./routes/vendors.sql');
 const Admin = require('./models/Admin');
@@ -81,7 +81,7 @@ async function seedAdmins() {
     applyAssociations();
     await connectDB();
     if (process.env.DB_SYNC === 'true') {
-      //await sequelize.sync({ alter: true });
+    //await sequelize.sync({ alter: true });
       console.log('Sequelize synced');
     }
     await seedAdmins();
@@ -90,7 +90,7 @@ const [counter, created] = await Counter.findOrCreate({
       defaults: { currentValue: 1000 }
     });
     if (created) {
-      console.log('✅ "leadNumber" counter has been initialized.');
+      console.log(' "leadNumber" counter has been initialized.');
     }
     const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -140,7 +140,7 @@ const [counter, created] = await Counter.findOrCreate({
 
       socket.on('disconnect', () => {});
     });
-
+//INSERT INTO counters (name, currentValue) VALUES ('quoteNumber', 100) ON DUPLICATE KEY UPDATE name=name; run this before saving quote
     // Routes
     app.use('/api/auth', authRoutes);
     app.use('/api/leads', leadsRoutes);

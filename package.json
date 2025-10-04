@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.3.0",
+    "@tanstack/react-table": "^8.21.3",
     "bcryptjs": "^2.4.3",
     "chart.js": "^4.5.0",
     "cors": "^2.8.5",
@@ -23,6 +24,7 @@
     "file-saver": "^2.0.5",
     "framer-motion": "^12.23.16",
     "jsonwebtoken": "^9.0.2",
+    "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.344.0",
     "mongoose": "^8.17.2",
     "nodemailer": "^6.9.7",

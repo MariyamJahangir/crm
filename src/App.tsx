@@ -28,6 +28,9 @@ import CustomerDetail from './pages/CustomerDetials';
 import CustomerContactDetail from './pages/CustomerContactDetail';
 import VendorDetailPage from './pages/VendorDetailPage';
 import { Toaster } from 'react-hot-toast';
+import CloneQuote from './pages/CloneQuote';
+import EditQuote from './pages/EditQuote'
+import ReportsPage from './pages/ReportsPage';
 function App() {
   return (
     <AuthProvider>
@@ -68,6 +71,8 @@ function App() {
 <Route path="/customers/create" element={<EditCustomer />} />
 <Route path="/customers/:id/edit" element={<EditCustomer />} />
 <Route path="/quote" element={<Quote />} />
+<Route path="/quote/:id" element={<EditQuote />} />
+<Route path="/quote/:id/clone" element={<CloneQuote />} />
 <Route path="/create-quote" element={<CreateQuote />} />
 <Route path="/create-quote/:id" element={<CreateQuote />} />
 <Route path="/contacts" element={<Contact />} />
@@ -80,9 +85,8 @@ function App() {
 <Route path="/deals" element={<Deals />} /> 
 <Route path="/deals/:id" element={<DealDetails />} />
   <Route path="/sales-report" element={<SalesReport/>} />
+  <Route path="/reports" element={<ReportsPage />} />
           </Route>
-
-
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           {/* <Route path="*" element={<Navigate to="/dashboard" replace />} /> */}
         </Routes>

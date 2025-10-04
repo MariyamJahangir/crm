@@ -58,7 +58,7 @@ const SelectLeadModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
       setLoading(true);
       try {
         const res = await leadsService.myLeads(token);
-        
+   
         if (!abort) {
           setRows(res.leads);
           setTotal(res.total);

@@ -34,10 +34,12 @@ export type Lead = {
   ownerName?: string;
   ownerEmail?: string;
   lostReason?: string;
+  closingDate?: string | null;
   createdAt?: string;
   updatedAt?: string;
   creatorId?:string;
   country?:string;
+  companyName:string;
   address?:string;
   customerId?: string;
 nextFollowupAt?: string | null;
@@ -108,6 +110,7 @@ export const leadsService = {
       contactPerson: string;
       mobile: string;
       mobileAlt: string;
+      closingDate?: string | null;
       email: string;
       city: string;
       salesmanId: string;

@@ -95,13 +95,27 @@ Invoice.init({
     allowNull: false,
     
   },
-  quoteId: {
+quoteId: {
     type: DataTypes.UUID,
-    allowNull: true
+    allowNull: true,
+    references: {
+      model: 'quotes', 
+      key: 'id'
+    }
   },
   invoiceDate: {
     type: DataTypes.DATE,
     allowNull: false
+  },
+   currency: {
+    type: DataTypes.STRING(10),
+    allowNull: false,
+    defaultValue: 'USD'
+  },
+  paymentTerms: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'e.g., "Net 30", "Due on receipt"'
   },
   dueDate: {
     type: DataTypes.DATE,

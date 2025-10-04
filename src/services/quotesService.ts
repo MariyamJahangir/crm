@@ -4,12 +4,13 @@ export type QuoteItem = {
   slNo: number;
   product: string;
   description?: string;
-  unit?: string;
   quantity: number;
-  itemCost: number;
-  itemRate: number;
-  lineDiscountPercent?: number;
-  lineDiscountAmount?: number;
+  unitCost: number;
+  totalCost: number;
+  marginPercent: number;
+  vatPercent: number;
+  unitPrice: number;
+  totalPrice: number;
 };
 
 export type Quote = {
@@ -45,7 +46,27 @@ export type Quote = {
   rejectNote?: string | null;
    isApproved?: boolean;
 };
-
+export type CloneQuotePayload = {
+  quoteDate?: string;
+  validityUntil?: string | null;
+  salesmanId: string;
+  customerId?: string | null;
+  customerName: string;
+  contactPerson?: string;
+  contactDesignation?: string;
+  phone?: string;
+  email?: string;
+  currency: string;
+  address?: string;
+  description?: string;
+  termsAndConditions?: string;
+  discountMode: 'PERCENT' | 'AMOUNT';
+  discountValue: number;
+  vatPercent: number;
+  sharePercent: number;
+  items: Omit<QuoteItem, 'id' | 'quoteId'>[];
+};
+export type UpdateQuotePayload = CloneQuotePayload;
 function withAuthHeaders(token?: string | null, extra?: Record<string, string>) {
   const headers: Record<string, string> = extra ? { ...extra } : {};
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -88,7 +109,29 @@ setMainQuote: async (leadId: string, quoteNumber: string, token: string | null) 
       `/quotes/leads/${leadId}/quotes/${quoteId}`,
       token
     ),
-
+getOneById: (quoteId: string, token?: string | null) =>
+    api.get<{ success: boolean; quote: Quote & { items: QuoteItem[] } }>(
+      `/quotes/${quoteId}`, // Uses the new, simpler backend route
+      token
+    ),
+    clone: (
+    originalQuoteId: string,
+    body: CloneQuotePayload,
+    token?: string | null
+  ) =>
+    api.post<{ success: boolean; newQuoteId: string }>(
+      `/quotes/${originalQuoteId}/clone`, // Corrected URL
+      body,
+      token
+    ),
+     updateQuote: (
+    quoteId: string,
+    body: UpdateQuotePayload,
+    token: string | null
+  ): Promise<{ success: boolean; message: string; quoteId: string }> => {
+    // This hits the new PUT /quotes/:quoteId endpoint
+    return api.put(`/quotes/${quoteId}`, body, token);
+  },
   previewHtml: async (leadId: string, quoteId: string, token?: string | null): Promise<{ success: boolean; html: string }> => {
     const res = await fetch(`${apiOrigin()}/leads/${leadId}/quotes/${quoteId}/preview`, {
       method: 'GET',

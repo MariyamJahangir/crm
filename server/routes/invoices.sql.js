@@ -409,6 +409,137 @@ router.get('/', authenticateToken, async (req, res) => {
 
 
 
+// router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
+//     const { quoteId } = req.params;
+//     const loggedInUserId = req.subjectId;
+//     const loggedInUserType = req.subjectType;
+
+//     const transaction = await sequelize.transaction();
+
+//     try {
+//         // --- 1. Fetch Quote with all necessary associations ---
+//         const quote = await Quote.findByPk(quoteId, {
+//             include: [
+//                 { model: QuoteItem, as: 'items' },
+//                 {
+//                     model: Lead,
+//                     as: 'lead',
+//                     attributes: ['id', 'salesmanId', 'customerId'],
+//                     include: [
+//                         { model: Customer, as: 'customer', attributes: ['id', 'companyName', 'address'] },
+//                         { model: Member, as: 'salesman', attributes: ['id', 'name'] }
+//                     ]
+//                 }
+//             ],
+//             transaction
+//         });
+
+//         // --- 2. Perform All Validations ---
+//         if (!quote) {
+//             await transaction.rollback();
+//             return res.status(404).json({ success: false, message: 'Quote not found.' });
+//         }
+
+//         const isAdmin = loggedInUserType === 'ADMIN';
+//         const isAssignedSalesman = quote.lead && String(quote.lead.salesmanId) === String(loggedInUserId);
+
+//         if (!isAdmin && !isAssignedSalesman) {
+//             await transaction.rollback();
+//             return res.status(403).json({
+//                 success: false,
+//                 message: 'Forbidden: You do not have permission to convert this quote.'
+//             });
+//         }
+
+//         if (quote.status !== 'Accepted') {
+//             await transaction.rollback();
+//             return res.status(400).json({ success: false, message: 'Only an "Accepted" quote can be converted to an invoice.' });
+//         }
+        
+//         if (!quote.lead || !quote.lead.customer) {
+//             await transaction.rollback();
+//             return res.status(400).json({ success: false, message: 'Data consistency error: The quote is not linked to a valid customer or lead.' });
+//         }
+
+//         const existingInvoice = await Invoice.findOne({ where: { quoteId: quote.id }, transaction });
+//         if (existingInvoice) {
+//             await transaction.rollback();
+//             return res.status(409).json({ success: false, message: `This quote has already been converted to Invoice #${existingInvoice.invoiceNumber}.` });
+//         }
+
+//         // --- 3. Calculations with proper data handling ---
+//         const FIXED_TAX_PERCENT = 5;
+//         let calculatedSubtotal = 0;
+//         let calculatedVatAmount = 0;
+
+//         const invoiceItemsData = quote.items.map((item, index) => {
+//             const rate = Number(item.itemRate) || 0;
+//             const quantity = Number(item.quantity) || 0;
+//             const discount = Number(item.lineDiscountAmount) || 0;
+//             const lineSubtotal = (quantity * rate) - discount;
+//             const taxAmount = lineSubtotal * (FIXED_TAX_PERCENT / 100);
+            
+//             calculatedSubtotal += lineSubtotal;
+//             calculatedVatAmount += taxAmount;
+
+//             // This object MUST match your InvoiceItem model definition
+//             return {
+//                 slNo: index + 1,
+//                 product: item.product,
+//                 description: item.description,
+//                 quantity: quantity,
+//                 itemRate: rate, // CRITICAL FIX: Ensure itemRate is included and is a number
+//                 taxPercent: FIXED_TAX_PERCENT,
+//                 taxAmount: taxAmount.toFixed(2),
+//                 lineTotal: (lineSubtotal + taxAmount).toFixed(2),
+//             };
+//         });
+
+//         const overallDiscountAmount = Number(quote.discountAmount) || 0;
+//         const calculatedGrandTotal = (calculatedSubtotal - overallDiscountAmount) + calculatedVatAmount;
+
+//         // --- 4. Database Creation within the transaction ---
+//         const newInvoice = await Invoice.create({
+//             quoteId: quote.id,
+//             invoiceNumber: await generateInvoiceNumber(),
+//             invoiceDate: new Date(),
+//             dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
+//             customerId: quote.lead.customerId,
+//             customerName: quote.lead.customer.companyName,
+//             address: quote.lead.customer.address,
+//             subtotal: calculatedSubtotal.toFixed(2),
+//             discountAmount: overallDiscountAmount.toFixed(2),
+//             vatAmount: calculatedVatAmount.toFixed(2),
+//             grandTotal: calculatedGrandTotal.toFixed(2),
+//             status: 'Draft',
+//             createdById: loggedInUserId,
+//             creatorType: loggedInUserType,
+//             salesmanId: quote.lead.salesmanId,
+//             salesmanName: quote.lead.salesman ? quote.lead.salesman.name : 'N/A',
+//         }, { transaction });
+
+//         const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id }));
+        
+//         await InvoiceItem.bulkCreate(finalInvoiceItems, { transaction });
+        
+//         await quote.update({ invoiceId: newInvoice.id }, { transaction });
+
+//         // --- 5. Commit the transaction and Respond ---
+//         await transaction.commit();
+
+//         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'salesman'] });
+//         res.status(201).json({ success: true, message: 'Quote successfully converted to invoice.', invoice: fullInvoice });
+
+//     } catch (error) {
+//         if (transaction && !transaction.finished) {
+//             await transaction.rollback();
+//         }
+//         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+//         console.error(`[CONVERT_QUOTE] FAILED AND ROLLED BACK. Error: ${errorMessage}`, error);
+//         res.status(500).json({ success: false, message: 'Failed to convert quote to invoice: ' + errorMessage });
+//     }
+// });
+
 router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
     const { quoteId } = req.params;
     const loggedInUserId = req.subjectId;
@@ -417,110 +548,112 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
     const transaction = await sequelize.transaction();
 
     try {
-        // --- 1. Fetch Quote with associated Lead and Salesman ---
+        // --- 1. Fetch Quote with all necessary associations ---
         const quote = await Quote.findByPk(quoteId, {
             include: [
                 { model: QuoteItem, as: 'items' },
                 {
                     model: Lead,
                     as: 'lead',
-                    attributes: ['id', 'salesmanId', 'customerId'],
                     include: [
-                        { model: Customer, as: 'customer', attributes: ['id', 'companyName', 'address'] },
-                        // ★★★ FIX: Include the salesman's data from the lead
-                        { model: Member, as: 'salesman', attributes: ['id', 'name'] }
+                        { model: Customer, as: 'customer' },
+                        { model: Member, as: 'salesman' }
                     ]
                 }
             ],
             transaction
         });
 
-        // --- 2. Perform All Validations ---
+        // --- 2. Perform All Validations (as before) ---
         if (!quote) {
             await transaction.rollback();
             return res.status(404).json({ success: false, message: 'Quote not found.' });
         }
-
-        const isAdmin = loggedInUserType === 'ADMIN';
-        const isAssignedSalesman = quote.lead && String(quote.lead.salesmanId) === String(loggedInUserId);
-
-        if (!isAdmin && !isAssignedSalesman) {
-            await transaction.rollback();
-            return res.status(403).json({
-                success: false,
-                message: 'Forbidden: You do not have permission to convert this quote.'
-            });
-        }
-
         if (quote.status !== 'Accepted') {
             await transaction.rollback();
-            return res.status(400).json({ success: false, message: 'Only an "Accepted" quote can be converted to an invoice.' });
+            return res.status(400).json({ success: false, message: 'Only an "Accepted" quote can be converted.' });
         }
-        
+        if (await Invoice.findOne({ where: { quoteId: quote.id }, transaction })) {
+            await transaction.rollback();
+            return res.status(409).json({ success: false, message: 'This quote has already been converted.' });
+        }
         if (!quote.lead || !quote.lead.customer) {
             await transaction.rollback();
-            return res.status(400).json({ success: false, message: 'Data consistency error: The quote is not linked to a valid customer or lead.' });
+            return res.status(400).json({ success: false, message: 'Quote is not linked to a valid customer.' });
         }
 
-        const existingInvoice = await Invoice.findOne({ where: { quoteId: quote.id }, transaction });
-        if (existingInvoice) {
-            await transaction.rollback();
-            return res.status(409).json({ success: false, message: `This quote has already been converted to Invoice #${existingInvoice.invoiceNumber}.` });
-        }
-
-        // --- 3. Calculations (remains the same) ---
+        // --- 3. UPDATED Calculations Logic ---
         const FIXED_TAX_PERCENT = 5;
-        let calculatedSubtotal = 0;
-        let calculatedVatAmount = 0;
+        let invoiceSubtotal = 0;
+        let totalVatAmount = 0;
+        const overallDiscountAmount = Number(quote.discountAmount) || 0;
+        const quoteSubtotal = Number(quote.subtotal) || 0;
+
         const invoiceItemsData = quote.items.map((item, index) => {
-            const lineSubtotal = (Number(item.quantity) || 0) * (Number(item.itemRate) || 0) - (Number(item.lineDiscountAmount) || 0);
+            const quantity = Number(item.quantity) || 0;
+            const itemRate = Number(item.totalPrice) || 0; // Rate is the QuoteItem's total price
+            
+            const lineSubtotal = itemRate * quantity;
             const taxAmount = lineSubtotal * (FIXED_TAX_PERCENT / 100);
-            calculatedSubtotal += lineSubtotal;
-            calculatedVatAmount += taxAmount;
+
+            // Apportion the overall discount
+            let apportionedDiscount = 0;
+            if (overallDiscountAmount > 0 && quoteSubtotal > 0) {
+                const discountRatio = lineSubtotal / quoteSubtotal;
+                apportionedDiscount = overallDiscountAmount * discountRatio;
+            }
+
+            const lineTotal = lineSubtotal + taxAmount - apportionedDiscount;
+
+            // Accumulate totals for the main invoice record
+            invoiceSubtotal += lineSubtotal;
+            totalVatAmount += taxAmount;
+
             return {
                 slNo: index + 1,
                 product: item.product,
                 description: item.description,
-                quantity: item.quantity,
-                itemRate: item.itemRate,
+                quantity: quantity,
+                itemRate: itemRate,
                 taxPercent: FIXED_TAX_PERCENT,
-                taxAmount: taxAmount.toFixed(2),
-                lineTotal: (lineSubtotal + taxAmount).toFixed(2),
+                taxAmount: taxAmount,
+                lineTotal: lineTotal,
             };
         });
-        const overallDiscountAmount = Number(quote.discountAmount) || 0;
-        const calculatedGrandTotal = (calculatedSubtotal - overallDiscountAmount) + calculatedVatAmount;
+        
+        // Final grand total for the invoice
+        const invoiceGrandTotal = invoiceSubtotal + totalVatAmount - overallDiscountAmount;
 
-        // --- 4. Database Creation with Correct Salesman ---
+        // --- 4. Database Creation within the transaction ---
         const newInvoice = await Invoice.create({
             quoteId: quote.id,
             invoiceNumber: await generateInvoiceNumber(),
             invoiceDate: new Date(),
             dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
             customerId: quote.lead.customerId,
-            customerName: quote.lead.customer.companyName, 
+            customerName: quote.lead.customer.companyName,
             address: quote.lead.customer.address,
-            subtotal: calculatedSubtotal.toFixed(2),
-            discountAmount: overallDiscountAmount.toFixed(2),
-            vatAmount: calculatedVatAmount.toFixed(2),
-            grandTotal: calculatedGrandTotal.toFixed(2),
+            subtotal: invoiceSubtotal,
+            discountAmount: overallDiscountAmount,
+            vatAmount: totalVatAmount,
+            grandTotal: invoiceGrandTotal,
             status: 'Draft',
             createdById: loggedInUserId,
             creatorType: loggedInUserType,
-            // ★★★ FIX: Populate salesman details from the included lead data
             salesmanId: quote.lead.salesmanId,
             salesmanName: quote.lead.salesman ? quote.lead.salesman.name : 'N/A',
         }, { transaction });
 
         const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id }));
+        
         await InvoiceItem.bulkCreate(finalInvoiceItems, { transaction });
         
         await quote.update({ invoiceId: newInvoice.id }, { transaction });
 
-        // --- 5. Commit and Respond ---
+        // --- 5. Commit the transaction and Respond ---
         await transaction.commit();
 
-        const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'quote', 'salesman'] });
+        const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'salesman'] });
         res.status(201).json({ success: true, message: 'Quote successfully converted to invoice.', invoice: fullInvoice });
 
     } catch (error) {
@@ -533,18 +666,22 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
     }
 });
 
-
 router.post('/', authenticateToken, [
-    // Validation rules remain the same
+    // --- Validation Rules ---
     body('manualData.customerId').isUUID().withMessage('A valid customer must be selected.'),
     body('manualData.invoiceDate').isISO8601().withMessage('A valid invoice date is required.'),
+    body('manualData.dueDate').isISO8601().withMessage('A valid due date is required.'),
     body('manualData.items').isArray({ min: 1 }).withMessage('Invoice must have at least one item.'),
     body('manualData.salesmanId').isUUID().withMessage('A valid salesman must be assigned.'),
-    body('manualData.termsAndConditions').optional({ checkFalsy: true }).isString().withMessage('Terms and conditions must be a string.'),
     body('manualData.customerType').optional({ checkFalsy: true }).isIn(['Vendor', 'Customer']).withMessage('Invalid customer type specified.'),
+    // New Fields Validation
+    body('manualData.currency').notEmpty().withMessage('Currency is required.').isString().isLength({ max: 10 }),
+    body('manualData.paymentTerms').optional({ checkFalsy: true }).isString(),
+    body('manualData.quoteId').optional({ nullable: true }).isUUID().withMessage('Invalid Quote ID.'),
+    body('manualData.termsAndConditions').optional({ checkFalsy: true }).isString(),
+
 ], async (req, res) => {
     const errors = validationResult(req);
-    console.log(errors)
     if (!errors.isEmpty()) {
         return res.status(400).json({ success: false, message: 'Validation failed.', errors: errors.array() });
     }
@@ -553,15 +690,12 @@ router.post('/', authenticateToken, [
     const transaction = await sequelize.transaction();
 
     try {
-        const { items, termsAndConditions, customerType, ...invoiceData } = manualData;
+        const { items, customerType, currency, paymentTerms, termsAndConditions, ...invoiceData } = manualData;
         
-        // --- FIX ---
-        // Default to 'Customer' if the type is not 'Vendor' or is invalid
         const finalCustomerType = customerType === 'Vendor' ? 'Vendor' : 'Customer';
-        
         const TAX_PERCENT = 5;
 
-        // --- Invoice Calculation & Item Preparation ---
+        // --- Calculation Logic ---
         let calculatedSubtotal = 0;
         let calculatedVatAmount = 0;
         
@@ -578,8 +712,8 @@ router.post('/', authenticateToken, [
                 slNo: index + 1,
                 product: item.product,
                 description: item.description,
-                quantity: quantity,
-                itemRate: itemRate,
+                quantity,
+                itemRate,
                 taxPercent: TAX_PERCENT,
                 taxAmount: taxAmount.toFixed(2),
                 lineTotal: (lineSubtotal + taxAmount).toFixed(2),
@@ -599,8 +733,9 @@ router.post('/', authenticateToken, [
             vatAmount: calculatedVatAmount.toFixed(2),
             grandTotal: calculatedGrandTotal.toFixed(2),
             status: 'Draft',
+            currency: currency,
+            paymentTerms: paymentTerms || null,
             termsAndConditions: termsAndConditions || '',
-            salesmanId: manualData.salesmanId,
             createdById: req.subjectId,
             creatorType: req.subjectType,
         }, { transaction });
@@ -616,13 +751,10 @@ router.post('/', authenticateToken, [
 
     } catch (error) {
         await transaction.rollback();
-        console.error('--- FAILED TO CREATE INVOICE (CATCH BLOCK) ---', error);
+        console.error('--- FAILED TO CREATE INVOICE ---', error);
         res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
     }
 });
-
-
-
 
 router.patch('/:id/status', authenticateToken, async (req, res) => {
     const { status } = req.body;

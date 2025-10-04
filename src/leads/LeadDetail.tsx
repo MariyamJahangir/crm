@@ -9,7 +9,7 @@ import { api } from '../services/api';
 import FollowupModal from '../components/FollowupModal';
 import { quotesService, Quote } from '../services/quotesService';
 import PreviewModal from '../components/PreviewModal';
-import ChatBox from '../components/ChatBox';
+//import ChatBox from '../components/ChatBox';
 import { Download, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 type Followup = {
@@ -38,9 +38,8 @@ const [downloadingId, setDownloadingId] = useState<string | null>(null);
     (async () => {
       try {
         const res = await quotesService.listByLead(leadId, token);
-                console.log('--- Quotes Loaded from Server ---', res.quotes);
-
-        setQuotes(res.quotes);
+      
+         setQuotes(res.quotes);
       } catch (e: any) {
           toast.error(e?.data?.message || 'Failed to load quotes');
       }
@@ -51,7 +50,7 @@ const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const openPreview = async (q: Quote) => {
     try {
       const html = await quotesService.previewHtml(q.leadId, q.id, token);
-      console.log(html.html)
+     
       setPreview({ open: true, html:html.html , quote: q, downloading: false });
     } catch (e: any) {
         toast.error(e?.data?.message || 'Failed to build preview');
@@ -240,7 +239,7 @@ const LeadDetail: React.FC = () => {
     try {
       const res = await leadsService.getOne(id, token);
       setLead(res.lead);
-      console.log(res.lead)
+       console.log(res)
     } catch (e: any) {
       toast.error(e?.data?.message || 'Failed to load lead');
     } finally {
@@ -296,41 +295,39 @@ const LeadDetail: React.FC = () => {
   }, [socket, id]);
 
 
-  useEffect(() => {
-    if (!socket) return;
+useEffect(() => {
+    if (!socket || !id) return;
+
     const onAttNew = (evt: any) => {
-      if (evt.leadId !== id) return;
-      setLead(prev => {
-        if (!prev) return prev;
-        const exists = (prev.attachments || []).some(a => a.url === evt.attachment.url && a.filename === evt.attachment.filename);
-        return exists ? prev : { ...prev, attachments: [...(prev.attachments || []), evt.attachment] };
-      });
+        if (evt.leadId !== id) return;
+        setLead(prev => {
+            if (!prev) return prev;
+            // CORRECTED: Use attachmentsJson
+            const attachments = (prev.attachmentsJson as any[]) || [];
+            const exists = attachments.some(a => a.url === evt.attachment.url);
+            return exists ? prev : { ...prev, attachmentsJson: [...attachments, evt.attachment] };
+        });
     };
+
     const onAttDel = (evt: any) => {
-      if (evt.leadId !== id) return;
-      setLead(prev => prev ? ({
-        ...prev,
-        attachments: (prev.attachments || []).filter(a => !(a.filename === evt.attachment.filename && a.url === evt.attachment.url))
-      }) : prev);
+        if (evt.leadId !== id) return;
+        setLead(prev => prev ? ({
+            ...prev,
+            // CORRECTED: Use attachmentsJson
+            attachmentsJson: ((prev.attachmentsJson as any[]) || []).filter(a => a.url !== evt.attachment.url)
+        }) : prev);
     };
-    const onLog = (evt: any) => {
-      if (evt.leadId !== id) return;
-      setLead(prev => {
-        if (!prev) return prev;
-        const arr = (prev.logs as any[] | undefined) || [];
-        if (arr.some(l => l.id === evt.log.id)) return prev;
-        return { ...prev, logs: [evt.log, ...arr] };
-      });
-    };
+
     socket.on('attachment:new', onAttNew);
     socket.on('attachment:deleted', onAttDel);
-    socket.on('log:new', onLog);
+
     return () => {
-      socket.off('attachment:new', onAttNew);
-      socket.off('attachment:deleted', onAttDel);
-      socket.off('log:new', onLog);
+        socket.off('attachment:new', onAttNew);
+        socket.off('attachment:deleted', onAttDel);
     };
-  }, [socket, id]);
+}, [socket, id]);
+
+
 
 
   const visibleFollowups = useMemo(() => {
@@ -371,15 +368,20 @@ const LeadDetail: React.FC = () => {
   };
 
 
-  const onDeleteAttachment = async (att: { filename: string; url: string }) => {
+const onDeleteAttachment = async (att: { filename: string; url: string }) => {
     if (!id || !token) return;
     try {
-      await api.post<{ success: boolean }>(`/leads/${id}/attachments/delete`, { filename: att.filename, url: att.url }, token);
-      setLead(prev => prev ? ({ ...prev, attachments: (prev.attachments || []).filter(a => !(a.filename === att.filename && a.url === att.url)) }) : prev);
+        await api.post<{ success: boolean }>(`/leads/${id}/attachments/delete`, { filename: att.filename, url: att.url }, token);
+        // CORRECTED: Use attachmentsJson
+        setLead(prev => prev ? ({
+            ...prev,
+            attachmentsJson: ((prev.attachmentsJson as any[]) || []).filter(a => a.url !== att.url)
+        }) : prev);
     } catch (e: any) {
-      toast.error(e?.data?.message || 'Delete failed');
+        toast.error(e?.data?.message || 'Delete failed');
     }
-  };
+};
+
 
 
   const AttachmentChip = ({ filename, url }: { filename: string; url: string }) => {
@@ -597,15 +599,15 @@ const LeadDetail: React.FC = () => {
               
                                   {/* Scrollable content */}
                                   <div className="overflow-y-auto pr-2 flex-1">
-                                    {lead.attachments?.length ? (
-                                      <div className="flex flex-wrap gap-3">
-                                        {lead.attachments.map((a, i) => (
-                                          <AttachmentChip key={`${a.url}:${a.filename}:${i}`} filename={a.filename} url={a.url} />
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No attachments.</div>
-                                    )}
+                                   {lead.attachmentsJson && (lead.attachmentsJson as any[]).length > 0 ? (
+    <div className="flex flex-wrap gap-3">
+      {(lead.attachmentsJson as any[]).map((a, i) => (
+        <AttachmentChip key={`${a.url}:${i}`} filename={a.filename} url={a.url} />
+      ))}
+    </div>
+  ) : (
+    <div className="text-sm text-midnight-500 dark:text-ivory-500 italic">No attachments.</div>
+  )}
                                   </div>
                                 </div>
                               </div>
@@ -668,8 +670,8 @@ const LeadDetail: React.FC = () => {
                               </div>
                             </div>
 
-              {/* Chat */}
-              {lead && <ChatBox leadId={lead.id} />}
+              {/* Chat
+              {lead && <ChatBox leadId={lead.id} />} */}
 
               <FollowupModal
                 open={openFollowup}

@@ -14,11 +14,33 @@ const fs = require('fs/promises');
 const { Op } = require('sequelize');
 const pdf = require('html-pdf');
 const router = express.Router();
+const {sequelize}=require('../config/database')
+const Counter = require('../models/Counter')
+const ShareGp= require('../models/ShareGp')
 const  { notifyAdminsOfApprovalRequest, notifyMemberOfQuoteDecision, notifyAdminsOfSuccess }= require('../utils/emailService')
 // --- Constants ---
 const APPROVAL_LIMIT = 500; // Quotes with a grand total LESS than this require admin approval for non-admins
 const FINAL_STATES = new Set(['Accepted', 'Rejected', 'Expired']);
 
+async function generateUniqueQuoteNumber(transaction) {
+  // Lock the 'quoteNumber' row for the duration of the transaction to prevent race conditions
+  const counter = await Counter.findOne({
+    where: { name: 'quoteNumber' },
+    lock: transaction.LOCK.UPDATE,
+    transaction
+  });
+
+  if (!counter) {
+    // This error will be caught by the try-catch block and will roll back the transaction
+    throw new Error("Quote number counter has not been initialized. Please run the initial SQL command.");
+  }
+
+  const nextValue = counter.currentValue + 1;
+  counter.currentValue = nextValue;
+  await counter.save({ transaction });
+
+  return `Q-${nextValue}`;
+}
 // --- Actor & Logging Helpers ---
 function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
 async function canModifyLead(req, lead) {
@@ -483,181 +505,423 @@ async function withPage(fn) {
   }
 }
 
-async function canSeeLead(req, lead) {
-  if (isAdmin(req)) return true;
-  const self = String(req.subjectId);
-  return String(lead.creatorId) === self || String(lead.salesmanId) === self;
-}
+// async function canSeeLead(req, lead) {
+//   if (isAdmin(req)) return true;
+//   const self = String(req.subjectId);
+//   return String(lead.creatorId) === self || String(lead.salesmanId) === self;
+// }
 
 // --- Routes ---
 
 // List all quotes with role-based visibility
-router.get('/', authenticateToken, async (req, res) => {
-  try {
-    const leadWhereClause = {};
-    if (!isAdmin(req)) {
-      const self = String(req.subjectId);
-      leadWhereClause[Op.or] = [
-        { creatorId: self },
-        { salesmanId: self }
-      ];
+
+async function canSeeLead(req, lead) {
+    // 1. Admins can always see the lead.
+    if (isAdmin(req)) {
+        return true;
     }
 
-    const quotes = await Quote.findAll({
-      include: [{
-        model: Lead,
-        as: 'lead',
-        where: leadWhereClause,
-        required: true // Ensures that only quotes with a matching lead are returned
-      }],
-      order: [['createdAt', 'DESC']]
+    const currentUserId = String(req.subjectId);
+
+    // 2. The creator or assigned salesman can see the lead.
+    if (String(lead.creatorId) === currentUserId || String(lead.salesmanId) === currentUserId) {
+        return true;
+    }
+
+    // 3. A shared member can see the lead (this requires a database query).
+    const share = await ShareGp.findOne({
+        where: {
+            leadId: lead.id,
+            sharedMemberId: currentUserId,
+        },
     });
 
-    res.json({ success: true, quotes });
-  } catch (e) {
-    console.error('List Quotes Error:', e); // Added more specific error logging
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
+    // If a 'share' record is found, !!share will be true. Otherwise, it will be false.
+    return !!share;
+}
+
+// router.get('/', authenticateToken, async (req, res) => {
+//     try {
+//         const userId = String(req.subjectId);
+
+//         // If the user is an admin, fetch all quotes without restrictions.
+//         if (isAdmin(req)) {
+//             const allQuotes = await Quote.findAll({
+//                 include: [{
+//                     model: Lead,
+//                     as: 'lead',
+//                     // Also include lead's salesman for context in the UI
+//                     include: [{ model: Member, as: 'salesman', attributes: ['name'] }]
+//                 }],
+//                 order: [['createdAt', 'DESC']]
+//             });
+//             return res.json({ success: true, quotes: allQuotes });
+//         }
+
+//         // For non-admin users, build a clause to find all leads they can access.
+        
+//         // 1. Get all lead IDs that are explicitly shared with the current user.
+//         const sharedLeadRecords = await ShareGp.findAll({
+//             attributes: ['leadId'],
+//             where: { sharedMemberId: userId },
+//             raw: true // Ensures we get plain objects like [{ leadId: '...' }]
+//         });
+//         const sharedLeadIds = sharedLeadRecords.map(record => record.leadId);
+
+//         // 2. Define the complete `where` clause for the included Lead model.
+//         // A user can see a quote if the associated lead meets any of these conditions:
+//         const leadWhereClause = {
+//             [Op.or]: [
+//                 { creatorId: userId },          // They created the lead.
+//                 { salesmanId: userId },         // They are the assigned salesman.
+//                 { id: { [Op.in]: sharedLeadIds } } // The lead has been shared with them.
+//             ]
+//         };
+
+//         // 3. Fetch only the quotes where the associated lead matches the access criteria.
+//         const quotes = await Quote.findAll({
+//             include: [{
+//                 model: Lead,
+//                 as: 'lead',
+//                 where: leadWhereClause,
+//                 required: true, // This creates an INNER JOIN, ensuring only quotes with an accessible lead are returned.
+//                 include: [{ model: Member, as: 'salesman', attributes: ['name'] }]
+//             }],
+//             order: [['createdAt', 'DESC']]
+//         });
+
+//         res.json({ success: true, quotes });
+
+//     } catch (e) {
+//         console.error('List Quotes Error:', e);
+//         res.status(500).json({ success: false, message: 'Server error while listing quotes.' });
+//     }
+// });
 
 
 // Create quote with approval logic
-router.post('/leads/:leadId/quotes', authenticateToken, [
-    // Validation rules are correct and enforce data integrity
-    body('items.*.itemCost').isFloat({ min: 0 }).withMessage('Item cost must be a non-negative number.'),
-    body('items.*.itemRate').isFloat({ gt: 0 }).withMessage('Item rate must be a positive number.'),
-    body('quoteDate').optional().isISO8601(),
-    body('validityUntil').optional().isISO8601(),
-    body('salesmanId').optional().isString(),
-    body('customerName').trim().notEmpty(),
-    body('discountMode').isIn(['PERCENT', 'AMOUNT']),
-    body('discountValue').isFloat({ min: 0 }),
-    body('vatPercent').isFloat({ min: 0 }),
-    body('items').isArray({ min: 1 }),
-    body('items.*.product').trim().notEmpty(),
-    body('items.*.quantity').isFloat({ gt: 0 }),
-], async (req, res) => {
-     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
-    }
+// router.post('/leads/:leadId/quotes', authenticateToken, [
+//     // Validation rules are correct and enforce data integrity
+//     body('items.*.itemCost').isFloat({ min: 0 }).withMessage('Item cost must be a non-negative number.'),
+//     body('items.*.itemRate').isFloat({ gt: 0 }).withMessage('Item rate must be a positive number.'),
+//     body('quoteDate').optional().isISO8601(),
+//     body('validityUntil').optional().isISO8601(),
+//     body('salesmanId').optional().isString(),
+//     body('customerName').trim().notEmpty(),
+//     body('discountMode').isIn(['PERCENT', 'AMOUNT']),
+//     body('discountValue').isFloat({ min: 0 }),
+//     body('vatPercent').isFloat({ min: 0 }),
+//     body('items').isArray({ min: 1 }),
+//     body('items.*.product').trim().notEmpty(),
+//     body('items.*.quantity').isFloat({ gt: 0 }),
+// ], async (req, res) => {
+//      const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+//         return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+//     }
 
-    try {
-        const lead = await Lead.findByPk(req.params.leadId);
-        if (!lead) {
-            return res.status(404).json({ success: false, message: 'Lead not found' });
-        }
+//     try {
+//         const lead = await Lead.findByPk(req.params.leadId);
+//         if (!lead) {
+//             return res.status(404).json({ success: false, message: 'Lead not found' });
+//         }
 
-        const { items, discountMode, discountValue,  salesmanId, vatPercent } = req.body;
-        console.log(req.body)
-        let quoteSubtotal = 0;
-        let quoteTotalCost = 0;
+//         const { items, discountMode, discountValue,  salesmanId, vatPercent } = req.body;
+//         console.log(req.body)
+//         let quoteSubtotal = 0;
+//         let quoteTotalCost = 0;
 
        
-        const computedItems = items.map((it, index) => {
-            const qty = Number(it.quantity || 0);
-            const cost = Number(it.itemCost || 0);
-            const rate = Number(it.itemRate || 0);
-            const grossBeforeDiscount = qty * rate;
+//         const computedItems = items.map((it, index) => {
+//             const qty = Number(it.quantity || 0);
+//             const cost = Number(it.itemCost || 0);
+//             const rate = Number(it.itemRate || 0);
+//             const grossBeforeDiscount = qty * rate;
 
-            let lineDiscount = 0;
-            if (it.lineDiscountMode === 'AMOUNT') {
-                lineDiscount = Number(it.lineDiscountAmount || 0);
-            } else { // Default to PERCENT
-                lineDiscount = (grossBeforeDiscount * Number(it.lineDiscountPercent || 0)) / 100;
-            }
-            lineDiscount = Math.min(lineDiscount, grossBeforeDiscount); // Cap discount
+//             let lineDiscount = 0;
+//             if (it.lineDiscountMode === 'AMOUNT') {
+//                 lineDiscount = Number(it.lineDiscountAmount || 0);
+//             } else { // Default to PERCENT
+//                 lineDiscount = (grossBeforeDiscount * Number(it.lineDiscountPercent || 0)) / 100;
+//             }
+//             lineDiscount = Math.min(lineDiscount, grossBeforeDiscount); // Cap discount
 
-            const lineGross = grossBeforeDiscount - lineDiscount;
-            const lineCostTotal = qty * cost;
-            const lineGP = lineGross - lineCostTotal;
-            const lineProfitPercent = lineGross > 0 ? (lineGP / lineGross) * 100 : 0;
+//             const lineGross = grossBeforeDiscount - lineDiscount;
+//             const lineCostTotal = qty * cost;
+//             const lineGP = lineGross - lineCostTotal;
+//             const lineProfitPercent = lineGross > 0 ? (lineGP / lineGross) * 100 : 0;
             
-            quoteSubtotal += lineGross;
-            quoteTotalCost += lineCostTotal;
+//             quoteSubtotal += lineGross;
+//             quoteTotalCost += lineCostTotal;
 
-            return {
-                ...it,
-                slNo: index + 1,
-                lineDiscountAmount: lineDiscount.toFixed(2),
-                lineGross: lineGross.toFixed(2),
-                lineCostTotal: lineCostTotal.toFixed(2),
-                lineGP: lineGP.toFixed(2),
-                lineProfitPercent: lineProfitPercent.toFixed(3),
-            };
+//             return {
+//                 ...it,
+//                 slNo: index + 1,
+//                 lineDiscountAmount: lineDiscount.toFixed(2),
+//                 lineGross: lineGross.toFixed(2),
+//                 lineCostTotal: lineCostTotal.toFixed(2),
+//                 lineGP: lineGP.toFixed(2),
+//                 lineProfitPercent: lineProfitPercent.toFixed(3),
+//             };
+//         });
+
+//         // 2. Calculate overall quote totals
+//         const overallDiscount = discountMode === 'PERCENT'
+//             ? (quoteSubtotal * Number(discountValue || 0)) / 100
+//             : Math.min(Number(discountValue || 0), quoteSubtotal);
+        
+//         const netAfterDiscount = quoteSubtotal - overallDiscount;
+//         const vatAmount = netAfterDiscount * (Number(vatPercent || 0) / 100);
+//         const grandTotal = netAfterDiscount + vatAmount;
+//         const grossProfit = netAfterDiscount - quoteTotalCost;
+//         const profitPercent = netAfterDiscount > 0 ? (grossProfit / netAfterDiscount) * 100 : 0;
+
+//         // 3. Determine approval status
+//         let isApproved = true;
+//         let initialStatus = 'Draft';
+//         if (!isAdmin(req) && grandTotal < APPROVAL_LIMIT) {
+//             isApproved = false;
+//             initialStatus = 'PendingApproval';
+//         }
+
+//         const member = await Member.findByPk(salesmanId);
+//         if (!member) {
+//             return res.status(403).json({ success: false, message: 'Creator not found.' });
+//         }
+
+//         const quoteNumber = `Q-${new Date().getFullYear()}-${Date.now()}`;
+        
+//         // 4. Create the Quote record
+//         const createdQuote = await Quote.create({
+//             ...req.body,
+//             quoteNumber,
+//             leadId: lead.id,
+//             isApproved,
+//             status: initialStatus,
+//             subtotal: quoteSubtotal.toFixed(2),
+//             totalCost: quoteTotalCost.toFixed(2),
+//             discountAmount: overallDiscount.toFixed(2),
+//             vatAmount: vatAmount.toFixed(2),
+//             grandTotal: grandTotal.toFixed(2),
+//             grossProfit: grossProfit.toFixed(2),
+//             profitPercent: profitPercent.toFixed(3),
+//             salesmanName: member.name,
+//             approvedBy: isApproved ? 'Auto-approved' : null,
+//             rejectNote: null,
+//         });
+
+//         // 5. Create all QuoteItem records
+//         await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: createdQuote.id })));
+
+//         if (lead.stage !== 'Quote') {
+//             await lead.update({ stage: 'Quote Negotiation' });
+//         }
+        
+//         if (initialStatus === 'PendingApproval') {
+//             await notifyAdminsOfApprovalRequest(createdQuote, lead, member);
+//         }
+
+//         await writeLeadLog(req, lead.id, 'QUOTE_CREATED', `Created quote #${quoteNumber}. Status: ${initialStatus}`);
+        
+//         res.status(201).json({
+//             success: true,
+//             quoteId: createdQuote.id,
+//             quoteNumber: createdQuote.quoteNumber,
+//             isApproved: createdQuote.isApproved,
+//             status: createdQuote.status,
+//         });
+
+//     } catch (e) {
+//         console.error('Create Quote Error:', e);
+//         res.status(500).json({ success: false, message: 'Server error', error: e.message });
+//     }
+// });
+
+router.get('/', authenticateToken, async (req, res) => {
+    try {
+        const userId = String(req.subjectId);
+
+        // If the user is an admin, fetch all quotes without restrictions.
+        if (isAdmin(req)) {
+            const allQuotes = await Quote.findAll({
+                include: [{
+                    model: Lead,
+                    as: 'lead',
+                    // Also include lead's salesman for context in the UI
+                    include: [{ model: Member, as: 'salesman', attributes: ['name'] }]
+                }],
+                order: [['createdAt', 'DESC']]
+            });
+            return res.json({ success: true, quotes: allQuotes });
+        }
+
+        // For non-admin users, build a clause to find all leads they can access.
+        
+        // 1. Get all lead IDs that are explicitly shared with the current user.
+        const sharedLeadRecords = await ShareGp.findAll({
+            attributes: ['leadId'],
+            where: { sharedMemberId: userId },
+            raw: true // Ensures we get plain objects like [{ leadId: '...' }]
+        });
+        const sharedLeadIds = sharedLeadRecords.map(record => record.leadId);
+
+        // 2. Define the complete `where` clause for the included Lead model.
+        // A user can see a quote if the associated lead meets any of these conditions:
+        const leadWhereClause = {
+            [Op.or]: [
+                { creatorId: userId },             // They created the lead.
+                { salesmanId: userId },            // They are the assigned salesman.
+                { id: { [Op.in]: sharedLeadIds } } // The lead has been shared with them.
+            ]
+        };
+
+        // 3. Fetch only the quotes where the associated lead matches the access criteria.
+        const quotes = await Quote.findAll({
+            include: [{
+                model: Lead,
+                as: 'lead',
+                where: leadWhereClause,
+                required: true, // This creates an INNER JOIN, ensuring only quotes with an accessible lead are returned.
+                include: [{ model: Member, as: 'salesman', attributes: ['name'] }]
+            }],
+            order: [['createdAt', 'DESC']]
         });
 
-        // 2. Calculate overall quote totals
-        const overallDiscount = discountMode === 'PERCENT'
-            ? (quoteSubtotal * Number(discountValue || 0)) / 100
-            : Math.min(Number(discountValue || 0), quoteSubtotal);
-        
-        const netAfterDiscount = quoteSubtotal - overallDiscount;
-        const vatAmount = netAfterDiscount * (Number(vatPercent || 0) / 100);
-        const grandTotal = netAfterDiscount + vatAmount;
-        const grossProfit = netAfterDiscount - quoteTotalCost;
-        const profitPercent = netAfterDiscount > 0 ? (grossProfit / netAfterDiscount) * 100 : 0;
-
-        // 3. Determine approval status
-        let isApproved = true;
-        let initialStatus = 'Draft';
-        if (!isAdmin(req) && grandTotal < APPROVAL_LIMIT) {
-            isApproved = false;
-            initialStatus = 'PendingApproval';
-        }
-
-        const member = await Member.findByPk(salesmanId);
-        if (!member) {
-            return res.status(403).json({ success: false, message: 'Creator not found.' });
-        }
-
-        const quoteNumber = `Q-${new Date().getFullYear()}-${Date.now()}`;
-        
-        // 4. Create the Quote record
-        const createdQuote = await Quote.create({
-            ...req.body,
-            quoteNumber,
-            leadId: lead.id,
-            isApproved,
-            status: initialStatus,
-            subtotal: quoteSubtotal.toFixed(2),
-            totalCost: quoteTotalCost.toFixed(2),
-            discountAmount: overallDiscount.toFixed(2),
-            vatAmount: vatAmount.toFixed(2),
-            grandTotal: grandTotal.toFixed(2),
-            grossProfit: grossProfit.toFixed(2),
-            profitPercent: profitPercent.toFixed(3),
-            salesmanName: member.name,
-            approvedBy: isApproved ? 'Auto-approved' : null,
-            rejectNote: null,
-        });
-
-        // 5. Create all QuoteItem records
-        await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: createdQuote.id })));
-
-        if (lead.stage !== 'Quote') {
-            await lead.update({ stage: 'Quote Negotiation' });
-        }
-        
-        if (initialStatus === 'PendingApproval') {
-            await notifyAdminsOfApprovalRequest(createdQuote, lead, member);
-        }
-
-        await writeLeadLog(req, lead.id, 'QUOTE_CREATED', `Created quote #${quoteNumber}. Status: ${initialStatus}`);
-        
-        res.status(201).json({
-            success: true,
-            quoteId: createdQuote.id,
-            quoteNumber: createdQuote.quoteNumber,
-            isApproved: createdQuote.isApproved,
-            status: createdQuote.status,
-        });
+        res.json({ success: true, quotes });
 
     } catch (e) {
-        console.error('Create Quote Error:', e);
-        res.status(500).json({ success: false, message: 'Server error', error: e.message });
+        console.error('List Quotes Error:', e);
+        res.status(500).json({ success: false, message: 'Server error while listing quotes.' });
     }
 });
+
+
+router.post('/leads/:leadId/quotes',
+  authenticateToken,
+  [
+    // --- Comprehensive Validation Rules ---
+    body('quoteDate').optional().isISO8601().withMessage('Invalid quote date format.'),
+    body('validityUntil').optional().isISO8601().withMessage('Invalid validity date format.'),
+    body('salesmanId').isString().notEmpty().withMessage('Salesman ID is required.'),
+    body('customerName').trim().notEmpty().withMessage('Customer name is required.'),
+    body('items').isArray({ min: 1 }).withMessage('At least one item is required.'),
+    body('paymentTerms').optional().isString().withMessage('Payment terms must be a string.'),
+    body('items.*.product').trim().notEmpty().withMessage('Item product name is required.'),
+    body('sharePercent').optional().isFloat({ min: 0, max: 100 }).withMessage('Invalid share percentage.'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+    }
+
+    const { leadId } = req.params;
+    const { items, discountMode, discountValue, sharePercent, ...headerData } = req.body;
+    const isAdmin = req.subjectType === 'ADMIN';
+
+    let transaction;
+    try {
+      transaction = await sequelize.transaction();
+
+      const lead = await Lead.findByPk(leadId, { transaction });
+      if (!lead) {
+        await transaction.rollback();
+        return res.status(404).json({ success: false, message: 'Lead not found' });
+      }
+
+      // --- 1. Backend Calculation Logic ---
+      let quoteSubtotal = 0, quoteTotalCost = 0, quoteVatAmount = 0;
+      const computedItems = items.map((it, index) => {
+        const quantity = Number(it.quantity || 0);
+        const unitCost = Number(it.unitCost || 0);
+        const marginPercent = Number(it.marginPercent || 0);
+        const vatPercent = Number(it.vatPercent || 0);
+        const unitPrice = unitCost * (1 + marginPercent / 100);
+        const lineGross = unitPrice * quantity;
+        quoteSubtotal += lineGross;
+        quoteTotalCost += unitCost * quantity;
+        quoteVatAmount += lineGross * (vatPercent / 100);
+        return { ...it, slNo: index + 1, unitPrice, lineGross };
+      });
+
+      const discountAmount = discountMode === 'PERCENT' ? (quoteSubtotal * Number(discountValue || 0)) / 100 : Math.min(Number(discountValue || 0), quoteSubtotal);
+      const netAfterDiscount = quoteSubtotal - discountAmount;
+      const grandTotal = netAfterDiscount + quoteVatAmount;
+      const grossProfit = netAfterDiscount - quoteTotalCost;
+      
+      const requiresApproval = computedItems.some(item => Number(item.marginPercent) < 8);
+      const finalStatus = (requiresApproval && !isAdmin) ? 'PendingApproval' : 'Draft';
+
+      const salesman = await Member.findByPk(headerData.salesmanId, { transaction });
+      const uniqueQuoteNumber = await generateUniqueQuoteNumber(transaction);
+
+      // --- 2. Create the Main Quote Record ---
+      const createdQuote = await Quote.create({
+        ...headerData,
+        quoteNumber: uniqueQuoteNumber,
+        leadId: lead.id,
+        discountMode,
+        discountValue,
+        subtotal: quoteSubtotal,
+        totalCost: quoteTotalCost,
+        discountAmount,
+        vatAmount: quoteVatAmount,
+        grandTotal,
+        grossProfit,
+        profitPercent: netAfterDiscount > 0 ? (grossProfit / netAfterDiscount) * 100 : 0,
+        sharePercent: sharePercent || 0,
+        status: finalStatus,
+        salesmanName: salesman ? salesman.name : 'N/A',
+      }, { transaction });
+
+      // --- 3. Create all associated QuoteItem records ---
+      await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: createdQuote.id })), { transaction });
+
+      // --- 4. Update ShareGp records if the lead is shared ---
+      if (sharePercent > 0) {
+        await ShareGp.update(
+          {
+            quoteId: createdQuote.id,
+            profitPercentage: sharePercent,
+            profitAmount: (grossProfit * (sharePercent / 100)).toFixed(2),
+          },
+          {
+            where: { leadId: lead.id },
+            transaction,
+          }
+        );
+      }
+      
+      // --- 5. Update Lead Status and Quote Number ---
+      const leadUpdates = {
+        stage: 'Quote Negotiation'
+      };
+      
+      if (!lead.quoteNumber) {
+        leadUpdates.quoteNumber = createdQuote.quoteNumber;
+      }
+      
+      await lead.update(leadUpdates, { transaction });
+
+      // --- 6. If everything is successful, commit the transaction ---
+      await transaction.commit();
+      
+      res.status(201).json({
+        success: true,
+        message: `Quote created successfully with status: ${finalStatus}.`,
+        quoteId: createdQuote.id,
+        quoteNumber: createdQuote.quoteNumber,
+      });
+
+    } catch (e) {
+      if (transaction) await transaction.rollback();
+      console.error('Create Quote Error:', e);
+      res.status(500).json({ success: false, message: 'An unexpected server error occurred.' });
+    }
+  }
+);
+
+
 
 
 // ADMIN APPROVE QUOTE
@@ -925,15 +1189,459 @@ router.get('/leads/:leadId/quotes/:quoteId/pdf', authenticateToken, async (req, 
 
 
 router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {
-  const lead = await Lead.findByPk(req.params.leadId);
-  if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
-  if (!(await canSeeLead(req, lead))) return res.status(403).json({ success: false, message: 'Forbidden' });
-  const quotes = await Quote.findAll({
-    where: { leadId: lead.id },
-    include: [{ model: QuoteItem, as: 'items' }],
-    order: [['createdAt', 'DESC']],
-  });
-  res.json({ success: true, quotes });
+  try {
+    const { leadId } = req.params;
+
+    // It's good practice to validate the lead exists first
+    const lead = await Lead.findByPk(leadId);
+    if (!lead) {
+      return res.status(404).json({ success: false, message: 'Lead not found' });
+    }
+
+    // Your authorization check
+    if (!(await canSeeLead(req, lead))) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    // The corrected findAll call
+    const quotes = await Quote.findAll({
+      where: { leadId: lead.id },
+    
+      attributes: [
+        'id',
+        'quoteNumber',
+        'status',
+        'grandTotal',
+        'quoteDate',
+        'validityUntil',
+        'createdAt',
+        'leadId'
+      ],
+      include: [
+        {
+          model: QuoteItem,
+          as: 'items',
+          // **FIX**: Explicitly define attributes for the included 'QuoteItem' model
+          attributes: ['id', 'product', 'quantity', 'unitCost', 'marginPercent', 'vatPercent']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    res.json({ success: true, quotes });
+
+  } catch (error) {
+    // **IMPROVEMENT**: Add proper error handling
+    console.error('Failed to fetch quotes:', error);
+    res.status(500).json({ success: false, message: 'An internal server error occurred.' });
+  }
 });
+
+
+
+// router.post('/:quoteId/clone',
+//   authenticateToken,
+//   [
+//     // --- Validation Rules ---
+//     body('salesmanId').isString().notEmpty().withMessage('Salesman ID is required.'),
+//     body('items').isArray({ min: 1 }).withMessage('At least one item is required.'),
+//     body('sharePercent').optional().isFloat({ min: 0, max: 100 }),
+//     body('paymentTerms').optional().isString(),
+//     body('termsAndConditions').optional().isString(),
+//   ],
+//   async (req, res) => {
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+//       return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+//     }
+
+//     const { quoteId: originalQuoteId } = req.params;
+//     const { items, discountMode, discountValue, sharePercent, ...headerData } = req.body;
+//     const isAdmin = req.subjectType === 'ADMIN';
+
+//     let transaction;
+//     try {
+//       transaction = await sequelize.transaction();
+
+//       // 1. Find the original quote by its primary key
+//       const originalQuote = await Quote.findByPk(originalQuoteId, { transaction });
+
+//       if (!originalQuote) {
+//         await transaction.rollback();
+//         return res.status(404).json({ success: false, message: 'Original quote to clone not found.' });
+//       }
+
+//       // 2. Expire the original quote
+//       originalQuote.status = 'Expired';
+//       await originalQuote.save({ transaction });
+      
+//       // 3. Backend Calculation Logic for the new quote
+//       let quoteSubtotal = 0, quoteOverallTotalCost = 0, quoteVatAmount = 0;
+      
+//       const computedItems = items.map((it, index) => {
+//         const quantity = Number(it.quantity || 0);
+//         const unitCost = Number(it.unitCost || 0);
+//         const marginPercent = Number(it.marginPercent || 0);
+//         const vatPercent = Number(it.vatPercent || 0);
+        
+//         const unitPrice = unitCost * (1 + marginPercent / 100);
+//         const itemTotalPrice = unitPrice * quantity; // This is the total price for the line item
+//         const itemTotalCost = unitCost * quantity;    // This is the total cost for the line item
+
+//         quoteSubtotal += itemTotalPrice; // Aggregate for the quote's subtotal
+//         quoteOverallTotalCost += itemTotalCost; // Aggregate for the quote's total cost
+//         quoteVatAmount += itemTotalPrice * (vatPercent / 100);
+        
+//         // ** THE FIX: Ensure both 'totalCost' and 'totalPrice' are included **
+//         return { 
+//           ...it, 
+//           slNo: index + 1, 
+//           unitPrice, 
+//           totalPrice: itemTotalPrice, // Added 'totalPrice' field
+//           totalCost: itemTotalCost   // 'totalCost' is also present
+//         };
+//       });
+
+//       const discountAmount = discountMode === 'PERCENT' ? (quoteSubtotal * Number(discountValue || 0)) / 100 : Math.min(Number(discountValue || 0), quoteSubtotal);
+//       const netAfterDiscount = quoteSubtotal - discountAmount;
+//       const grandTotal = netAfterDiscount + quoteVatAmount;
+//       const grossProfit = netAfterDiscount - quoteOverallTotalCost;
+      
+//       const requiresApproval = computedItems.some(item => Number(item.marginPercent) < 8);
+//       const finalStatus = (requiresApproval && !isAdmin) ? 'PendingApproval' : 'Draft';
+
+//       const salesman = await Member.findByPk(headerData.salesmanId, { transaction });
+//       const uniqueQuoteNumber = await generateUniqueQuoteNumber(transaction);
+
+//       // 4. Create the New (Cloned) Quote Record
+//       const newQuote = await Quote.create({
+//         ...headerData,
+//         leadId: originalQuote.leadId,
+//         quoteNumber: uniqueQuoteNumber,
+//         status: finalStatus,
+//         salesmanName: salesman ? salesman.name : 'N/A',
+//         subtotal: quoteSubtotal,
+//         totalCost: quoteOverallTotalCost,
+//         discountAmount,
+//         vatAmount: quoteVatAmount,
+//         grandTotal,
+//         grossProfit,
+//         profitPercent: netAfterDiscount > 0 ? (grossProfit / netAfterDiscount) * 100 : 0,
+//         sharePercent: sharePercent || 0,
+//       }, { transaction });
+
+//       // 5. Create new items for the cloned quote (this will now succeed)
+//       await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: newQuote.id })), { transaction });
+
+//       // 6. Update ShareGp record if the lead is shared
+//       if (sharePercent > 0) {
+//         await ShareGp.update(
+//           {
+//             quoteId: newQuote.id,
+//             profitPercentage: sharePercent,
+//             profitAmount: (grossProfit * (sharePercent / 100)).toFixed(2),
+//           },
+//           {
+//             where: { leadId: originalQuote.leadId },
+//             transaction,
+//           }
+//         );
+//       }
+      
+//       // 7. Commit the transaction
+//       await transaction.commit();
+      
+//       res.status(201).json({
+//         success: true,
+//         message: 'Quote cloned successfully.',
+//         newQuoteId: newQuote.id,
+//       });
+
+//     } catch (e) {
+//       if (transaction) await transaction.rollback();
+//       console.error('Clone Quote Error:', e);
+//       res.status(500).json({ success: false, message: 'An unexpected server error occurred.' });
+//     }
+//   }
+// );
+
+router.post('/:quoteId/clone',
+  authenticateToken,
+  [
+    // --- Validation Rules ---
+    body('salesmanId').isString().notEmpty().withMessage('Salesman ID is required.'),
+    body('items').isArray({ min: 1 }).withMessage('At least one item is required.'),
+    body('sharePercent').optional().isFloat({ min: 0, max: 100 }),
+    body('paymentTerms').optional().isString(),
+    body('termsAndConditions').optional().isString(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+    }
+
+    const { quoteId: originalQuoteId } = req.params;
+    const { items, discountMode, discountValue, sharePercent, ...headerData } = req.body;
+    const isAdmin = req.subjectType === 'ADMIN';
+
+    let transaction;
+    try {
+      transaction = await sequelize.transaction();
+
+      // 1. Find the original quote by its primary key
+      const originalQuote = await Quote.findByPk(originalQuoteId, { transaction });
+
+      if (!originalQuote) {
+        await transaction.rollback();
+        return res.status(404).json({ success: false, message: 'Original quote to clone not found.' });
+      }
+
+      // 2. Expire the original quote
+      originalQuote.status = 'Expired';
+      await originalQuote.save({ transaction });
+      
+      // 3. Backend Calculation Logic for the new quote
+      let quoteSubtotal = 0, quoteOverallTotalCost = 0, quoteVatAmount = 0;
+      
+      const computedItems = items.map((it, index) => {
+        const quantity = Number(it.quantity || 0);
+        const unitCost = Number(it.unitCost || 0);
+        const marginPercent = Number(it.marginPercent || 0);
+        const vatPercent = Number(it.vatPercent || 0);
+        
+        const unitPrice = unitCost * (1 + marginPercent / 100);
+        const itemTotalPrice = unitPrice * quantity; // This is the total price for the line item
+        const itemTotalCost = unitCost * quantity;    // This is the total cost for the line item
+
+        quoteSubtotal += itemTotalPrice; // Aggregate for the quote's subtotal
+        quoteOverallTotalCost += itemTotalCost; // Aggregate for the quote's total cost
+        quoteVatAmount += itemTotalPrice * (vatPercent / 100);
+        
+        // ** THE FIX: Ensure both 'totalCost' and 'totalPrice' are included **
+        return { 
+          ...it, 
+          slNo: index + 1, 
+          unitPrice, 
+          totalPrice: itemTotalPrice, // Added 'totalPrice' field
+          totalCost: itemTotalCost   // 'totalCost' is also present
+        };
+      });
+
+      const discountAmount = discountMode === 'PERCENT' ? (quoteSubtotal * Number(discountValue || 0)) / 100 : Math.min(Number(discountValue || 0), quoteSubtotal);
+      const netAfterDiscount = quoteSubtotal - discountAmount;
+      const grandTotal = netAfterDiscount + quoteVatAmount;
+      const grossProfit = netAfterDiscount - quoteOverallTotalCost;
+      
+      const requiresApproval = computedItems.some(item => Number(item.marginPercent) < 8);
+      const finalStatus = (requiresApproval && !isAdmin) ? 'PendingApproval' : 'Draft';
+
+      const salesman = await Member.findByPk(headerData.salesmanId, { transaction });
+      const uniqueQuoteNumber = await generateUniqueQuoteNumber(transaction);
+
+      // 4. Create the New (Cloned) Quote Record
+      const newQuote = await Quote.create({
+        ...headerData,
+        leadId: originalQuote.leadId,
+        quoteNumber: uniqueQuoteNumber,
+        status: finalStatus,
+        salesmanName: salesman ? salesman.name : 'N/A',
+        subtotal: quoteSubtotal,
+        totalCost: quoteOverallTotalCost,
+        discountAmount,
+        vatAmount: quoteVatAmount,
+        grandTotal,
+        grossProfit,
+        profitPercent: netAfterDiscount > 0 ? (grossProfit / netAfterDiscount) * 100 : 0,
+        sharePercent: sharePercent || 0,
+      }, { transaction });
+
+      // 5. Create new items for the cloned quote (this will now succeed)
+      await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: newQuote.id })), { transaction });
+
+      // 6. Update ShareGp record if the lead is shared
+      if (sharePercent > 0) {
+        await ShareGp.update(
+          {
+            quoteId: newQuote.id,
+            profitPercentage: sharePercent,
+            profitAmount: (grossProfit * (sharePercent / 100)).toFixed(2),
+          },
+          {
+            where: { leadId: originalQuote.leadId },
+            transaction,
+          }
+        );
+      }
+      
+      // 7. Commit the transaction
+      await transaction.commit();
+      
+      res.status(201).json({
+        success: true,
+        message: 'Quote cloned successfully.',
+        newQuoteId: newQuote.id,
+      });
+
+    } catch (e) {
+      if (transaction) await transaction.rollback();
+      console.error('Clone Quote Error:', e);
+      res.status(500).json({ success: false, message: 'An unexpected server error occurred.' });
+    }
+  }
+);
+
+
+
+router.get('/:quoteId',
+  authenticateToken,
+  async (req, res) => {
+    const { quoteId } = req.params;
+    try {
+      const quote = await Quote.findByPk(quoteId, {
+        include: [{ model: QuoteItem, as: 'items' }]
+      });
+
+      if (!quote) {
+        return res.status(404).json({ success: false, message: 'Quote not found' });
+      }
+      
+      // Fetch associated shares separately to ensure we always get them
+       const shares = await ShareGp.findAll({
+        where: {
+          leadId: quote.leadId,
+          quoteId: quote.id // This is the crucial addition
+        }
+      });
+      
+      const quoteData = quote.toJSON();
+      quoteData.shares = shares.map(s => s.toJSON());
+      quoteData.isShared = quoteData.shares.length > 0;
+      
+      res.status(200).json({ success: true, quote: quoteData });
+
+    } catch (error) {
+      console.error('Error fetching quote for cloning:', error);
+      res.status(500).json({ success: false, message: 'An unexpected server error occurred.' });
+    }
+  }
+);
+router.put('/:quoteId',
+  authenticateToken,
+  [
+    // --- Validation for the incoming payload ---
+    body('salesmanId').isString().notEmpty().withMessage('Salesman ID is required.'),
+    body('items').isArray({ min: 1 }).withMessage('At least one item is required for the quote.'),
+    body('customerName').trim().notEmpty().withMessage('Customer name is required.'),
+    body('validityUntil').optional().isISO8601().withMessage('Invalid validity date format.'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
+    }
+
+    const { quoteId } = req.params;
+    const { items, discountMode, discountValue, sharePercent, ...headerData } = req.body;
+    const isAdmin = req.subjectType === 'ADMIN';
+
+    let transaction;
+    try {
+      transaction = await sequelize.transaction();
+
+      // 1. Find the existing quote to update
+      const quoteToUpdate = await Quote.findByPk(quoteId, { transaction });
+      if (!quoteToUpdate) {
+        await transaction.rollback();
+        return res.status(404).json({ success: false, message: 'The quote you are trying to edit was not found.' });
+      }
+
+      // 2. Perform backend calculations with the new data
+      let quoteSubtotal = 0, quoteOverallTotalCost = 0, quoteVatAmount = 0;
+      
+      const computedItems = items.map((it, index) => {
+        const quantity = Number(it.quantity || 0);
+        const unitCost = Number(it.unitCost || 0);
+        const marginPercent = Number(it.marginPercent || 0);
+        const vatPercent = Number(it.vatPercent || 0);
+        
+        const unitPrice = unitCost * (1 + marginPercent / 100);
+        const itemTotalPrice = unitPrice * quantity;
+        const itemTotalCost = unitCost * quantity;
+
+        quoteSubtotal += itemTotalPrice;
+        quoteOverallTotalCost += itemTotalCost;
+        quoteVatAmount += itemTotalPrice * (vatPercent / 100);
+        
+        // ** THE FIX: Ensure all required fields are included **
+        return { 
+          ...it, 
+          slNo: index + 1, 
+          unitPrice, 
+          totalPrice: itemTotalPrice,
+          totalCost: itemTotalCost 
+        };
+      });
+
+      const discountAmount = discountMode === 'PERCENT' ? (quoteSubtotal * Number(discountValue || 0)) / 100 : Math.min(Number(discountValue || 0), quoteSubtotal);
+      const netAfterDiscount = quoteSubtotal - discountAmount;
+      const grandTotal = netAfterDiscount + quoteVatAmount;
+      const grossProfit = netAfterDiscount - quoteOverallTotalCost;
+
+      const requiresApproval = computedItems.some(item => Number(item.marginPercent) < 8);
+      const finalStatus = (requiresApproval && !isAdmin) ? 'PendingApproval' : quoteToUpdate.status;
+
+      // 3. Update the main Quote record
+      await quoteToUpdate.update({
+        ...headerData,
+        status: finalStatus,
+        isApproved: !requiresApproval,
+        subtotal: quoteSubtotal,
+        totalCost: quoteOverallTotalCost,
+        discountAmount,
+        vatAmount: quoteVatAmount,
+        grandTotal,
+        grossProfit,
+        profitPercent: netAfterDiscount > 0 ? (grossProfit / netAfterDiscount) * 100 : 0,
+        sharePercent: sharePercent || 0,
+      }, { transaction });
+
+      // 4. Replace the old quote items with the new ones
+      await QuoteItem.destroy({ where: { quoteId: quoteToUpdate.id }, transaction });
+      await QuoteItem.bulkCreate(computedItems.map(ci => ({ ...ci, quoteId: quoteToUpdate.id })), { transaction });
+
+      // 5. Update ShareGp record if the lead is shared
+      if (sharePercent > 0) {
+        await ShareGp.update(
+          {
+            profitPercentage: sharePercent,
+            profitAmount: (grossProfit * (sharePercent / 100)).toFixed(2),
+          },
+          {
+            where: { leadId: quoteToUpdate.leadId }, // Find by leadId
+            transaction,
+          }
+        );
+      }
+
+      // 6. Commit the transaction
+      await transaction.commit();
+
+      res.status(200).json({
+        success: true,
+        message: 'Quote updated successfully.',
+        quoteId: quoteToUpdate.id,
+      });
+
+    } catch (e) {
+      if (transaction) await transaction.rollback();
+      console.error('Update Quote Error:', e);
+      res.status(500).json({ success: false, message: 'An unexpected server error occurred while updating the quote.' });
+    }
+  }
+);
+
+
+
 module.exports = router;
 
