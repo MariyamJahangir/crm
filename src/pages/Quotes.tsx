@@ -85,7 +85,6 @@ const Quotes: React.FC = () => {
       setLoading(true);
       try {
         const res = await quotesService.listAll(token);
-        console.log(res)
         setMasterQuotes(res.quotes);
         setQuotes(res.quotes);
       } catch (e: any) {

@@ -13,7 +13,7 @@ const LeadLog = require('../models/LeadLog');
 const fs = require('fs/promises');
 const path = require('path');
 const router = express.Router();
-const { createNotification, notifyAdmins } = require('../utils/notify');
+const { createNotification,notifyAllRelevantParties, notifyAdmins } = require('../utils/notify');
 const {  notifyAssignment ,notifyLeadUpdate  } = require('../utils/emailService')
 const BASE_DIR = path.resolve(process.cwd());
 const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
@@ -113,11 +113,11 @@ async function generateUniqueLeadNumber(transaction) {
 
     counter.currentValue += 1;
     await counter.save({ transaction: transaction });
-    return `L-${String(counter.currentValue).padStart(6, '0')}`;
+    return `L-${String(counter.currentValue).padStart(4, '0')}`;
 }
 
 
-// Logging helpers
+
 function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
 async function resolveActorName(req) {
   if (req.subjectType === 'ADMIN') return 'Admin';
@@ -200,7 +200,11 @@ router.delete('/:id/attachments', authenticateToken, async (req, res) => {
         io?.to(`lead:${lead.id}`).emit('attachment:deleted', { leadId: String(lead.id), attachment: removed });
 
         await writeLeadLog(req, lead.id, 'ATTACHMENT_DELETED', `${actorLabel(req)} removed attachment ${removed.filename}`);
+const actorName = await resolveActorName(req);
+    const subject = `Attachment Removed from Lead: ${lead.companyName}`;
+    const message = `<p>The attachment <strong>${removed.filename}</strong> was removed.</p>`;
 
+    await notifyAllRelevantParties(lead, subject, message, actorName);
         res.json({ success: true });
     } catch (e) {
         console.error('Delete attachment error:', e);
@@ -290,7 +294,11 @@ router.post('/:id/attachments', authenticateToken, upload.array('files', 10), as
         if (added.length) {
             await writeLeadLog(req, lead.id, 'ATTACHMENT_ADDED', `${actorLabel(req)} added ${added.length} attachment(s)`);
         }
-        
+        const actorName = await resolveActorName(req);
+    const subject = `Attachment Added to Lead: ${lead.companyName}`;
+    const message = `<p>${actorName} added ${added.length} new attachment(s).</p>`;
+    
+    await notifyAllRelevantParties(lead, subject, message, actorName);
         res.json({ success: true, attachments: added });
     } catch (e) {
         console.error('Upload attachments error:', e);
@@ -557,9 +565,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 
 
-router.post(
-  '/',
-  authenticateToken,
+router.post('/',authenticateToken,
   [
     body('customerId').trim().notEmpty().withMessage('Customer is required.'),
     body('shareGpData.sharedMemberId').optional().isUUID().withMessage('A valid member must be selected for sharing.'),
@@ -576,7 +582,7 @@ router.post(
       let resolvedSalesmanId = null;
       let resolvedCreatorId = null;
       let resolvedCreatorType = null;
-      let sharingInitiatorId = null; // This will hold the correct Member ID for the share
+      let sharingInitiatorId = null; 
 
       if (isAdmin(req)) {
         if (!req.body.salesmanId) {
@@ -592,7 +598,7 @@ router.post(
         resolvedSalesmanId = assignedSalesman.id;
         resolvedCreatorId = assignedSalesman.id;
         resolvedCreatorType = 'MEMBER';
-        // When an Admin acts, the share is initiated on behalf of the selected salesman
+       
         sharingInitiatorId = assignedSalesman.id; 
         
       } else {
@@ -657,7 +663,24 @@ router.post(
       
       await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`, t);
       await t.commit();
-      
+      try {
+       
+        const newLead = await Lead.findByPk(lead.id, {
+          include: [{ model: Member, as: 'salesman', attributes: ['name', 'email'] }]
+        });
+
+        if (newLead) {
+            const actorName = await resolveActorName(req);
+            const subject = `New Lead Created: ${newLead.companyName}`;
+            const message = `<p>A new lead has been created for <strong>${newLead.companyName}</strong> and assigned to <strong>${newLead.salesman?.name || 'N/A'}</strong>.</p>`;
+
+            // Call the unified notification function
+            await notifyAllRelevantParties(newLead, subject, message, actorName);
+        }
+      } catch (emailError) {
+          // Log the error but don't block the main response. The lead was created successfully.
+          console.error('Failed to send lead creation email:', emailError);
+      }
       res.status(201).json({ success: true, id: lead.id, uniqueNumber: lead.uniqueNumber });
 
     } catch (e) {
@@ -860,7 +883,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
         
         // Step 6: Commit the transaction
         await t.commit();
-        
+        const updatedLead = await Lead.findByPk(lead.id); // Re-fetch the lead to get the latest state
+    const actorName = await resolveActorName(req);
+    const subject = `Lead Updated: ${updatedLead.companyName}`;
+    const message = `<p>The details for the lead have been updated.</p>`;
+    
+    await notifyAllRelevantParties(updatedLead, subject, message, actorName);
         // Your existing notification logic
         if (lead.salesmanId !== req.subjectId) {
             const salesman = await Member.findByPk(lead.salesmanId);

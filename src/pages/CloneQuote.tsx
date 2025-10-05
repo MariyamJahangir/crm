@@ -179,64 +179,41 @@ const [lead, setLead] = useState<Lead | null>(null);
             setDownloading(false);
         }
     };
-const save = async (e: React.FormEvent) => {
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quoteIdToClone) { toast.error("Original Quote ID is missing."); return; }
-    if (!salesmanId) { toast.error("A salesman must be assigned."); return; }
-    if (!validityUntil) { toast.error('Please select a "Validity Until" date.'); return; }
-    if (items.some(it => !it.product.trim() || it.quantity <= 0)) {
-        toast.error('Each item must have a product name and quantity > 0.');
-        return;
+    if (!quoteIdToClone || !salesmanId || !validityUntil || items.some(it => !it.product.trim() || it.quantity <= 0)) {
+      toast.error("Please fill all required fields (Salesman, Validity, and Item details).");
+      return;
     }
-
     setSaving(true);
-
     const requiresApproval = items.some(item => item.marginPercent < 8);
-
-    // --- FULLY UPDATED PAYLOAD ---
     const payload = {
-        quoteDate: quoteDate ? new Date(quoteDate).toISOString() : undefined,
-        validityUntil: validityUntil ? new Date(validityUntil).toISOString() : undefined,
-        salesmanId,
-        customerName,
-        contactPerson,
-        contactDesignation,
-        phone,
-        email,
-        currency,
-        address,
-        description,
-        termsAndConditions, // Included
-        paymentTerms,       // Included
-        discountMode,
-        discountValue,
-        sharePercent: leadIsShared ? sharePercent : 0,
-        items: items.map(it => ({ ...it })),
-        status: requiresApproval && !isAdmin ? 'PendingApproval' : 'Draft',
-        isApproved: !requiresApproval,
+      quoteDate: quoteDate ? new Date(quoteDate).toISOString() : undefined, validityUntil: validityUntil ? new Date(validityUntil).toISOString() : undefined,
+      salesmanId, customerName, contactPerson, contactDesignation, phone, email, currency, address, description,
+      termsAndConditions, paymentTerms, discountMode, discountValue,
+      sharePercent: leadIsShared ? sharePercent : 0,
+      items: items.map(it => ({ ...it })),
+      status: requiresApproval && !isAdmin ? 'PendingApproval' : 'Draft',
+      isApproved: !requiresApproval,
     };
-
     try {
-        const res = await quotesService.clone(quoteIdToClone, payload, token!);
-        toast.success("New quote created from clone successfully!");
-        navigate(`/quote`);
+      await quotesService.clone(quoteIdToClone, payload, token!);
+      toast.success("New quote created from clone successfully!");
+      navigate(`/quote`);
     } catch (err: any) {
-        const errorMessage = err?.data?.errors?.[0]?.msg || err?.data?.message || 'Failed to clone the quote.';
-        toast.error(errorMessage);
+      toast.error(err?.data?.message || 'Failed to clone the quote.');
     } finally {
-        setSaving(false);
+      setSaving(false);
     }
-};
+  };
 
- useEffect(() => {
+  // --- Main Data Loading Effect ---
+  useEffect(() => {
     if (!quoteIdToClone || !token || !user) return;
-
     const fetchQuoteDataForCloning = async () => {
       try {
         const { quote } = await quotesService.getOneById(quoteIdToClone, token);
-console.log(quote);
-
-        // --- All fields are now correctly populated ---
+console.log(quote)
         setSelectedLeadId(quote.leadId);
         setCustomerName(quote.customerName || '');
         setContactPerson(quote.contactPerson || '');
@@ -250,24 +227,14 @@ console.log(quote);
         setCurrency(quote.currency || 'USD');
         setDiscountMode(quote.discountMode || 'PERCENT');
         setDiscountValue(Number(quote.discountValue) || 0);
+        setSalesmanId(isAdmin ? quote.salesmanId : user.id);
 
-        if (isAdmin) {
-          setSalesmanId(quote.salesmanId);
-        } else {
-          setSalesmanId(user.id);
-        }
-
-        // --- Correctly handle the 'shares' array from the quote object ---
+        // This correctly sets the share status from the quote data
         const isShared = Array.isArray(quote.shares) && quote.shares.length > 0;
         setLeadIsShared(isShared);
 
         if (isShared) {
-          // Find the share object relevant to the current user
-          const currentUserShare = quote.shares.find(share => 
-            String(share.memberId) === String(user.id) ||
-            String(share.sharedMemberId) === String(user.id)
-          );
-          // Set the percentage from that share
+          const currentUserShare = quote.shares.find(share => String(share.memberId) === String(user.id) || String(share.sharedMemberId) === String(user.id));
           setSharePercent(Number(currentUserShare?.profitPercentage) || 0);
         } else {
           setSharePercent(0);
@@ -275,17 +242,11 @@ console.log(quote);
 
         if (quote.items?.length > 0) {
           setItems(quote.items.map((item: any, index: number) => ({
-            slNo: index + 1,
-            product: item.product,
-            description: item.description,
-            quantity: Number(item.quantity),
-            unitCost: Number(item.unitCost),
-            marginPercent: Number(item.marginPercent),
-            vatPercent: Number(item.vatPercent),
+            slNo: index + 1, product: item.product, description: item.description, quantity: Number(item.quantity),
+            unitCost: Number(item.unitCost), marginPercent: Number(item.marginPercent), vatPercent: Number(item.vatPercent),
           })));
         }
         
-        // Fetch and set lead/contact details after getting the leadId
         if (quote.leadId) {
             const { lead: fetchedLead } = await leadsService.getOne(quote.leadId, token);
             setLeadNumber(fetchedLead.uniqueNumber || '');
@@ -294,33 +255,31 @@ console.log(quote);
                 setContacts(fetchedContacts || []);
             }
         }
-
       } catch (error) {
         toast.error("Failed to load quote data for cloning.");
         navigate('/quote');
       }
     };
-
     fetchQuoteDataForCloning();
   }, [quoteIdToClone, token, navigate, isAdmin, user]);
 
 
-  useEffect(() => {
-    if (!token || !selectedLeadId) return;
-    (async () => {
-      try {
-        const { lead } = await leadsService.getOne(selectedLeadId, token);
-        setLeadNumber(lead.uniqueNumber || '');
-        setLeadIsShared(Array.isArray(lead.shares) && lead.shares.length > 0);
-        if (lead.customer?.id) {
-          const contactsResp = await customerService.getContacts(lead.customer.id, token);
-          setContacts(contactsResp.contacts || []);
-        }
-      } catch (error) {
-        toast.error('Failed to load associated lead details.');
-      }
-    })();
-  }, [token, selectedLeadId]);
+  // useEffect(() => {
+  //   if (!token || !selectedLeadId) return;
+  //   (async () => {
+  //     try {
+  //       const { lead } = await leadsService.getOne(selectedLeadId, token);
+  //       setLeadNumber(lead.uniqueNumber || '');
+  //       setLeadIsShared(Array.isArray(lead.shares) && lead.shares.length > 0);
+  //       if (lead.customer?.id) {
+  //         const contactsResp = await customerService.getContacts(lead.customer.id, token);
+  //         setContacts(contactsResp.contacts || []);
+  //       }
+  //     } catch (error) {
+  //       toast.error('Failed to load associated lead details.');
+  //     }
+  //   })();
+  // }, [token, selectedLeadId]);
 
   const canViewSharePercent = useMemo(() => {
     // If the user is admin, they can always see it.

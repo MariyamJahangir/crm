@@ -162,6 +162,86 @@ async function scheduleFollowupReminders(followup, lead, recipients) {
         }
     }
 }
+async function notifySharedMemberOnQuoteCreation(quote, lead, sharePercent, creatorName) {
+  try {
+    // Find the sharing record for this lead
+    const shareRecord = await ShareGp.findOne({ where: { leadId: lead.id } });
+    if (!shareRecord || !shareRecord.sharedMemberId) {
+      console.log('No shared member found for this lead to notify.');
+      return;
+    }
+
+    // Find the member to be notified
+    const sharedMember = await Member.findByPk(shareRecord.sharedMemberId, { attributes: ['email', 'name'] });
+    if (!sharedMember) {
+      console.log(`Shared member with ID ${shareRecord.sharedMemberId} not found.`);
+      return;
+    }
+
+    const subject = `New Quote Created for Shared Lead: ${lead.companyName}`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <p>Hello ${sharedMember.name},</p>
+        <p>${creatorName} has just created a new quote (<strong>#${quote.quoteNumber}</strong>) for the lead <strong>${lead.companyName}</strong>, which is shared with you.</p>
+        <p>Your agreed profit share for this quote is <strong>${sharePercent}%</strong>.</p>
+        <ul>
+          <li><strong>Quote Total:</strong> ${quote.grandTotal.toFixed(2)}</li>
+          <li><strong>Gross Profit:</strong> ${quote.grossProfit.toFixed(2)}</li>
+        </ul>
+        <p>You can view the full details in the CRM.</p>
+      </div>
+    `;
+
+    await sendEmail(sharedMember.email, subject, html);
+
+  } catch (error) {
+    console.error('Failed to send shared member quote notification:', error);
+  }
+}
+async function notifyAllRelevantParties(lead, subject, message, initiatorName) {
+  try {
+    // 1. Fetch all admins
+    const admins = await Admin.findAll({ attributes: ['email'] });
+    const adminEmails = admins.map(a => a.email);
+
+    // 2. Fetch the assigned salesman
+    let salesmanEmail = null;
+    if (lead.salesmanId) {
+      const salesman = await Member.findByPk(lead.salesmanId, { attributes: ['email'] });
+      if (salesman) {
+        salesmanEmail = salesman.email;
+      }
+    }
+
+    // 3. Combine recipients and remove duplicates
+    const recipientSet = new Set(adminEmails);
+    if (salesmanEmail) {
+      recipientSet.add(salesmanEmail);
+    }
+
+    const recipients = Array.from(recipientSet);
+
+    if (recipients.length === 0) {
+      console.log('No recipients found for the lead notification.');
+      return;
+    }
+
+    // 4. Construct the final HTML
+    const finalHtml = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <p>Hello Team,</p>
+        <p>${initiatorName} has performed an action on the lead for <strong>${lead.companyName}</strong>.</p>
+        ${message}
+        <p>You can view the lead details in the CRM.</p>
+      </div>
+    `;
+
+    // 5. Send the email
+    await sendEmail(recipients, subject, finalHtml);
+  } catch (error) {
+    console.error('Failed to send comprehensive lead notification:', error);
+  }
+}
 
 module.exports = {
     sendOTPEmail,
@@ -172,4 +252,6 @@ module.exports = {
     notifyMemberOfQuoteDecision,
     notifyAdminsOfSuccess,
     scheduleFollowupReminders,
+    notifyAllRelevantParties,
+notifySharedMemberOnQuoteCreation,
 };
