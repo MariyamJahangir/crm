@@ -119,6 +119,39 @@ async function generateUniqueLeadNumber(transaction) {
 
 
 
+function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
+async function resolveActorName(req) {
+  if (req.subjectType === 'ADMIN') return 'Admin';
+  if (req.subjectType === 'MEMBER') {
+    const m = await Member.findByPk(req.subjectId, { attributes: ['name'] });
+    return m?.name || 'Member';
+  }
+  return 'System';
+}
+async function writeLeadLog(req, leadId, action, message) {
+  const actorName = await resolveActorName(req);
+  const created = await LeadLog.create({
+    leadId,
+    action,
+    message,
+    actorType: req.subjectType,
+    actorId: req.subjectId,
+    actorName
+  });
+  req.app.get('io')?.to(`lead:${leadId}`).emit('log:new', {
+    leadId: String(leadId),
+    log: {
+      id: created.id,
+      action: created.action,
+      message: created.message,
+      actorType: created.actorType,
+      actorId: created.actorId,
+      actorName: created.actorName,
+      createdAt: created.createdAt
+    }
+  });
+  return created;
+}
 
 // Compute nearest future follow-up (returns Date or null)
 function nearestFutureFollowup(rows) {

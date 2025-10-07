@@ -508,7 +508,7 @@ const onDeleteAttachment = async (att: { filename: string; url: string }) => {
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Address : </span> {lead.address || '-'}</div>
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Country : </span> {lead.country || '-'}</div>
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">City : </span> {lead.city || '-'}</div>
-                 {lead?.sharedWith && (
+                 {lead?.sharedWith?.name && (
                     <div>
                       <span className="font-medium text-midnight-500 dark:text-ivory-400">Shared With : </span> {lead.sharedWith[0].name || '-'}
                     </div>

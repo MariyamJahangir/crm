@@ -450,8 +450,7 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
 
         // --- 5. Commit the transaction and Respond ---
         await transaction.commit();
-  await writeLeadLog(req, invoice.leadId, 'QUOTE_CONVERTED_TO_INVOCIE', `${actorLabel(req)} converted invoice #${invoice.invoiceNumber}`).catch(() => {});
-            
+
         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'salesman'] });
         res.status(201).json({ success: true, message: 'Quote successfully converted to invoice.', invoice: fullInvoice });
 
@@ -546,8 +545,6 @@ router.post('/', authenticateToken, [
         await transaction.commit();
         
         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: 'items' });
-          await writeLeadLog(req, invoice.leadId, 'INVOICE_CREATED', `${actorLabel(req)} created invoice #${invoice.invoiceNumber}`).catch(() => {});
-            
         res.status(201).json({ success: true, invoice: fullInvoice });
 
     } catch (error) {

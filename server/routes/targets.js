@@ -22,14 +22,23 @@ const convertToAED = (amount, currency) => {
     if (amount === null || isNaN(amount)) return 0;
     const upperCaseCurrency = currency ? currency.toUpperCase() : 'AED';
 
-    // Define conversion rates relative to AED
     const rates = {
         USD: 3.67,
-        EUR: 4.00,
+        INR: 83.0,
+        SAR: 3.67,
         AED: 1,
+        QAR: 3.64,
+        KWD: 12.04,
+        BHD: 9.75,
+        OMR: 9.53,
+        EUR: 4.00,
+        GBP: 4.64,
     };
 
-    return amount * (rates[upperCaseCurrency] || 1);
+    const rate = rates[upperCaseCurrency];
+    if (!rate) return amount; // Assume AED if unknown
+
+    return amount * rate;
 };
 
 // --- ROUTES ---
@@ -204,32 +213,25 @@ router.get('/achievements', authenticateToken, async (req, res) => {
  */
 router.post('/', authenticateToken, async (req, res) => {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
-    
-    const { memberId, targetType, targetValue } = req.body;
+
+    const { memberId, targetValue } = req.body;
     const year = new Date().getFullYear();
     const month = new Date().getMonth() + 1;
 
-    if (!memberId || !targetType || targetValue === undefined) {
-        return res.status(400).json({ success: false, message: 'Member ID, Target Type, and Target Value are required.' });
-    }
-    const validTypes = ['INVOICE_VALUE', 'LEADS'];
-    if (!validTypes.includes(targetType.toUpperCase())) {
-        return res.status(400).json({ success: false, message: `Invalid target type. Must be one of: ${validTypes.join(', ')}` });
+    if (!memberId || targetValue === undefined) {
+        return res.status(400).json({ success: false, message: 'Member ID and Target Value are required.' });
     }
 
     try {
         const [target, created] = await SalesTarget.findOrCreate({
             where: { memberId, year, month },
             defaults: {
-                targetType: targetType.toUpperCase(),
-                targetValue: parseFloat(targetValue),
-                currency: 'AED' // All targets are stored in AED
+                targetAmount: parseFloat(targetValue),
             }
         });
 
         if (!created) {
-            target.targetType = targetType.toUpperCase();
-            target.targetValue = parseFloat(targetValue);
+            target.targetAmount = parseFloat(targetValue);
             await target.save();
         }
         res.json({ success: true, message: `Target successfully ${created ? 'set' : 'updated'}.` });
@@ -239,24 +241,16 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-/**
- * @route   POST /api/sales-targets/bulk
- * @desc    Set or update a uniform sales target for all active members for the current month
- * @access  Private (Admin)
- */
+// POST /api/sales-targets/bulk: Set/update sales targets for all active members
 router.post('/bulk', authenticateToken, async (req, res) => {
     if (!isAdmin(req)) return res.status(403).json({ success: false, message: 'Forbidden' });
-    
-    const { targetType, targetValue } = req.body;
+
+    const { targetValue } = req.body;
     const year = new Date().getFullYear();
     const month = new Date().getMonth() + 1;
 
-    if (!targetType || targetValue === undefined) {
-        return res.status(400).json({ success: false, message: 'Target Type and Target Value are required.' });
-    }
-    const validTypes = ['INVOICE_VALUE', 'LEADS'];
-    if (!validTypes.includes(targetType.toUpperCase())) {
-        return res.status(400).json({ success: false, message: `Invalid target type. Must be one of: ${validTypes.join(', ')}` });
+    if (targetValue === undefined) {
+        return res.status(400).json({ success: false, message: 'Target Value is required.' });
     }
 
     try {
@@ -265,20 +259,18 @@ router.post('/bulk', authenticateToken, async (req, res) => {
             const [target, created] = await SalesTarget.findOrCreate({
                 where: { memberId: member.id, year, month },
                 defaults: {
-                    targetType: targetType.toUpperCase(),
-                    targetValue: parseFloat(targetValue),
-                    currency: 'AED'
+                    targetAmount: parseFloat(targetValue),
                 }
             });
 
             if (!created) {
-                target.targetType = targetType.toUpperCase();
-                target.targetValue = parseFloat(targetValue);
+                target.targetAmount = parseFloat(targetValue);
                 await target.save();
             }
         });
-        
+
         await Promise.all(promises);
+
         res.json({ success: true, message: `Targets successfully set/updated for all ${members.length} members.` });
     } catch (error) {
         console.error('Failed to set bulk sales targets:', error);

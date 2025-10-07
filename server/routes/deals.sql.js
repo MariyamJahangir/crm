@@ -17,7 +17,7 @@ router.get('/', authenticateToken, async (req, res) => {
     if (!isAdmin(req)) {
       whereClause.salesmanId = req.subjectId;
     }
-
+  
     const deals = await Lead.findAll({
       where: whereClause,
       attributes: ['id', 'uniqueNumber', 'contactPerson', 'updatedAt'],
@@ -60,43 +60,43 @@ router.get('/', authenticateToken, async (req, res) => {
 
 // GET /api/deals/:id - Fetches all details for a single deal
 router.get('/:id', authenticateToken, async (req, res) => {
-    try {
-        const whereClause = { id: req.params.id, stage: 'Deal Closed' };
-        if (!isAdmin(req)) {
-            whereClause.salesmanId = req.subjectId;
-        }
-
-        const deal = await Lead.findOne({
-            where: whereClause,
-            attributes: { exclude: ['stage', 'forecastCategory'] },
-            include: [
-                { model: Member, as: 'salesman', attributes: ['id', 'name'] },
-                { model: Customer, as: 'customer' },
-                {
-                    model: Quote,
-                    as: 'quotes',
-                    where: { status: 'Accepted' },
-                    required: false,
-                    include: [
-                        { model: QuoteItem, as: 'items' },
-                        { model: Invoice, as: 'invoice', required: false }
-                    ]
-                }
-            ]
-        });
-
-        if (!deal) {
-            return res.status(404).json({ success: false, message: 'Deal not found or you do not have permission to view it.' });
-        }
-        
-        const plainDeal = deal.toJSON();
-        plainDeal.quote = plainDeal.quotes?.[0] || null;
-        delete plainDeal.quotes;
-
-        res.json({ success: true, deal: plainDeal });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
+  try {
+    const whereClause = { id: req.params.id, stage: 'Deal Closed' };
+    if (!isAdmin(req)) {
+      whereClause.salesmanId = req.subjectId;
     }
+
+    const deal = await Lead.findOne({
+      where: whereClause,
+      attributes: { exclude: ['stage', 'forecastCategory'] },
+      include: [
+        { model: Member, as: 'salesman', attributes: ['id', 'name'] },
+        { model: Customer, as: 'customer' },
+        {
+          model: Quote,
+          as: 'quotes',
+          where: { status: 'Accepted' },
+          required: false,
+          include: [
+            { model: QuoteItem, as: 'items' },
+            { model: Invoice, as: 'invoice', required: false }
+          ]
+        }
+      ]
+    });
+
+    if (!deal) {
+      return res.status(404).json({ success: false, message: 'Deal not found or you do not have permission to view it.' });
+    }
+    
+    const plainDeal = deal.toJSON();
+    plainDeal.quote = plainDeal.quotes?.[0] || null;
+    delete plainDeal.quotes;
+
+    res.json({ success: true, deal: plainDeal });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
+  }
 });
 
 module.exports = router;
