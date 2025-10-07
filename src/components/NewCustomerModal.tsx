@@ -134,166 +134,191 @@ const getErrorMessage = (error: any, defaultMessage: string): string => {
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="New Customer"
-      size="lg"
-      footer={
-        <>
-          <Button
-            variant="secondary"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray text-gray-400
-                   bg-white/5 backdrop-blur-sm
-                   hover:text-gray-800 hover:border-white/60
-                   hover:bg-slate/10
-                   hover:shadow-[0_0_12px_rgba(255,255,255,0.5)]
-                   transition-all"
-          >
-            Cancel
-          </Button>
+     <Modal
+    open={open}
+    onClose={onClose}
+    title="New Customer"
+    size="lg"
+    footer={
+      <>
+        <Button
+          variant="secondary"
+          onClick={onClose}
+          className="px-4 py-2 rounded-lg border border-gray-300/40 text-gray-600
+                     bg-white/60 backdrop-blur-md
+                     hover:text-gray-800 hover:border-gray-400/70
+                     hover:bg-white/70 hover:shadow-md
+                     transition-all duration-200"
+        >
+          Cancel
+        </Button>
 
-          <Button
-    onClick={save}
-    disabled={saving || !companyName.trim()}
-    className={`
-        px-4 py-2 rounded-lg 
-        bg-blue-600 text-white 
-        border border-blue-500
-        hover:bg-blue-700 hover:shadow-lg
-        transition-all duration-300 ease-in-out
-        ${saving || !companyName.trim() ? 'opacity-50 cursor-not-allowed' : ''}
-    `}
->
-    {saving ? 'Saving...' : 'Create'}
-</Button>
-
-        </>
-      }
-    >
-      
-
-      <div className="max-h-[60vh] overflow-y-auto pr-1">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Reusable glass input style */}
-          {[
-            {
-              label: 'Company Name*',
-              value: companyName,
-              setter: setCompanyName,
-              placeholder: 'Apex Engineering Pvt Ltd',
-              required: true,
-            },
-            {
-              label: 'Contact Number*',
-              value: contactNumber,
-              setter: setContactNumber,
-              placeholder: '+971 44xxxxxxx',
-            },
-            {
-              label: 'Email',
-              type: 'email',
-              value: email,
-              setter: setEmail,
-              placeholder: 'info@company.com',
-            },
-            {
-              label: 'VAT No',
-              value: vatNo,
-              setter: setVatNo,
-              placeholder: 'TIN/VAT number',
-            },
-          ].map((field, i) => (
-            <div key={i}>
-              <label className="text-sm font-medium text-midnight-900/80">{field.label}</label>
-              <input
-                type={field.type || 'text'}
-                className="w-full rounded-lg px-3 py-2 
-                       bg-white/50 border border-white/20 text-midnight-900/90
-                       placeholder-slate-500 backdrop-blur-sm
-                       focus:outline-none focus:border-white/50
-                       hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
-                       transition-all"
-                value={field.value}
-                onChange={e => field.setter(e.target.value)}
-                placeholder={field.placeholder}
-                required={field.required}
-              />
-            </div>
-          ))}
-
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium text-midnight-900/80">Address</label>
-            <textarea
-              className="w-full rounded-lg px-3 py-2 
-                     bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-500 backdrop-blur-sm
-                     focus:outline-none focus:border-white/50
-                     hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
-                     transition-all"
-              rows={3}
-              value={address}
-              onChange={e => setAddress(e.target.value)}
-              placeholder="Billing address"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-midnight-900/80">Industry</label>
+        <Button
+          onClick={save}
+          disabled={saving || !companyName.trim()}
+          className={`px-5 py-2 rounded-lg font-medium
+                      bg-blue-600 text-white 
+                      border border-blue-500
+                      hover:bg-blue-700 hover:shadow-lg
+                      transition-all duration-300 ease-in-out
+                      ${
+                        saving || !companyName.trim()
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }`}
+        >
+          {saving ? "Saving..." : "Create"}
+        </Button>
+      </>
+    }
+  >
+    <div className="max-h-[65vh] overflow-y-auto pr-1 custom-scrollbar">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {/* Reusable input fields */}
+        {[
+          {
+            label: "Company Name*",
+            value: companyName,
+            setter: setCompanyName,
+            placeholder: "Apex Engineering Pvt Ltd",
+            required: true,
+          },
+          {
+            label: "Contact Number*",
+            value: contactNumber,
+            setter: setContactNumber,
+            placeholder: "+971 44xxxxxxx",
+          },
+          {
+            label: "Email",
+            type: "email",
+            value: email,
+            setter: setEmail,
+            placeholder: "info@company.com",
+          },
+          {
+            label: "VAT No",
+            value: vatNo,
+            setter: setVatNo,
+            placeholder: "TIN/VAT number",
+          },
+        ].map((field, i) => (
+          <div key={i} className="flex flex-col gap-1">
+            <label className="text-sm font-semibold text-midnight-800/80 dark:text-ivory-200">
+              {field.label}
+            </label>
             <input
-              className="w-full rounded-lg px-3 py-2 
-                     bg-white/50 border border-white/20 text-midnight-900/90
-                     placeholder-slate-500 backdrop-blur-sm
-                     focus:outline-none focus:border-white/50
-                     hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
-                     transition-all"
-              value={industry}
-              onChange={e => setIndustry(e.target.value)}
-              placeholder="Manufacturing, EPC, Pharma..."
+              type={field.type || "text"}
+              className="w-full rounded-lg px-3 py-2
+                         bg-white/70 dark:bg-midnight-800/60
+                         border border-cloud-300/40 dark:border-midnight-700/50
+                         text-midnight-800 dark:text-ivory-100
+                         placeholder-slate-400
+                         focus:outline-none focus:ring-2 focus:ring-blue-400/40
+                         hover:shadow-[0_0_8px_rgba(0,0,0,0.08)]
+                         transition-all duration-200"
+              value={field.value}
+              onChange={(e) => field.setter(e.target.value)}
+              placeholder={field.placeholder}
+              required={field.required}
             />
           </div>
+        ))}
 
-          <div>
-            <label className="text-sm font-medium text-midnight-900/80">Website</label>
-            <input
-              className="w-full rounded-lg px-3 py-2 
-                     bg-white/50 border border-white/20 text-midnight-900/90
-                      placeholder-slate-500 backdrop-blur-sm
-                     focus:outline-none focus:border-white/50
-                     hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
-                     transition-all"
-              value={website}
-              onChange={e => setWebsite(e.target.value)}
-              placeholder="https://example.com"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-midnight-900/80">Category</label>
-            <select
-              className="w-full rounded-lg px-3 py-2 
-                     bg-white/50 border border-white/20 text-midnight-400/90
-                     backdrop-blur-sm
-                     focus:outline-none focus:border-white/50
-                     hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
-                     transition-all"
-              value={category}
-              onChange={e => setCategory(e.target.value as any)}
-            >
-              <option value="" className='bg-cloud-100'>-- Select --</option>
-              <option value="Enterprise" className='bg-cloud-100'>Enterprise</option>
-              <option value="SMB" className='bg-cloud-100'>SMB</option>
-              <option value="Individual" className='bg-cloud-100'>Individual</option>
-            </select>
-          </div>
-          <div>
-          <label>Country</label>
-          <input value={country} onChange={(e) => setCountry(e.target.value)} />
+        {/* Industry */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-midnight-800/80 dark:text-ivory-200">
+            Industry
+          </label>
+          <input
+            className="w-full rounded-lg px-3 py-2
+                       bg-white/70 dark:bg-midnight-800/60
+                       border border-cloud-300/40 dark:border-midnight-700/50
+                       text-midnight-800 dark:text-ivory-100
+                       placeholder-slate-400
+                       focus:outline-none focus:ring-2 focus:ring-blue-400/40
+                       hover:shadow-[0_0_8px_rgba(0,0,0,0.08)]
+                       transition-all duration-200"
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            placeholder="Manufacturing, EPC, Pharma..."
+          />
         </div>
-        <div>
-          <label>Company Size</label>
-          <select value={sizeOfCompany} onChange={(e) => setSizeOfCompany(e.target.value)}>
+
+        {/* Website */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-midnight-800/80 dark:text-ivory-200">
+            Website
+          </label>
+          <input
+            className="w-full rounded-lg px-3 py-2
+                       bg-white/70 dark:bg-midnight-800/60
+                       border border-cloud-300/40 dark:border-midnight-700/50
+                       text-midnight-800 dark:text-ivory-100
+                       placeholder-slate-400
+                       focus:outline-none focus:ring-2 focus:ring-blue-400/40
+                       hover:shadow-[0_0_8px_rgba(0,0,0,0.08)]
+                       transition-all duration-200"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+            placeholder="https://example.com"
+          />
+        </div>
+
+        {/* Category */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-midnight-800/80 dark:text-ivory-200">
+            Category
+          </label>
+          <select
+            className="w-full rounded-lg px-3 py-2
+                       bg-white/70 dark:bg-midnight-800/60
+                       border border-cloud-300/40 dark:border-midnight-700/50
+                       text-midnight-800 dark:text-ivory-100
+                       focus:outline-none focus:ring-2 focus:ring-blue-400/40
+                       transition-all duration-200"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="">-- Select --</option>
+            <option value="Enterprise">Enterprise</option>
+            <option value="SMB">SMB</option>
+            <option value="Individual">Individual</option>
+          </select>
+        </div>
+
+        {/* Country */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-midnight-800/80 dark:text-ivory-200">
+            Country
+          </label>
+          <input
+            className="w-full rounded-lg px-3 py-2
+                       bg-white/70 dark:bg-midnight-800/60
+                       border border-cloud-300/40 dark:border-midnight-700/50
+                       text-midnight-800 dark:text-ivory-100
+                       focus:outline-none focus:ring-2 focus:ring-blue-400/40
+                       transition-all duration-200"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+          />
+        </div>
+
+        {/* Company Size */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-midnight-800/80 dark:text-ivory-200">
+            Company Size
+          </label>
+          <select
+            className="w-full rounded-lg px-3 py-2
+                       bg-white/70 dark:bg-midnight-800/60
+                       border border-cloud-300/40 dark:border-midnight-700/50
+                       text-midnight-800 dark:text-ivory-100
+                       focus:outline-none focus:ring-2 focus:ring-blue-400/40
+                       transition-all duration-200"
+            value={sizeOfCompany}
+            onChange={(e) => setSizeOfCompany(e.target.value)}
+          >
             <option value="">-- Select --</option>
             <option value="1-10">1-10</option>
             <option value="11-50">11-50</option>
@@ -302,63 +327,84 @@ const getErrorMessage = (error: any, defaultMessage: string): string => {
             <option value="500+">500+</option>
           </select>
         </div>
-        <div className="sm:col-span-2">
-          <label>Note</label>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} />
+
+        {/* Salesman */}
+        <div>
+          <label className="text-sm font-semibold text-midnight-800/80 dark:text-ivory-200">
+            Salesman
+          </label>
+          {isAdmin ? (
+            <>
+              <select
+                className="w-full rounded-lg px-3 py-2
+                           bg-white/70 dark:bg-midnight-800/60
+                           border border-cloud-300/40 dark:border-midnight-700/50
+                           text-midnight-800 dark:text-ivory-100
+                           focus:outline-none focus:ring-2 focus:ring-blue-400/40
+                           transition-all duration-200"
+                value={salesmanId}
+                onChange={(e) => setSalesmanId(e.target.value)}
+                disabled={loadingTeam}
+              >
+                <option value="" disabled>
+                  Select salesman
+                </option>
+                {salesmen.map((s) => (
+                  <option key={s.id} value={s.id} disabled={s.isBlocked}>
+                    {s.name}
+                    {s.isBlocked ? " (Blocked)" : ""}
+                  </option>
+                ))}
+              </select>
+              <div className="text-xs text-gray-500 mt-1">
+                Admins must choose a salesman.
+              </div>
+            </>
+          ) : (
+            <>
+              <input
+                className="w-full rounded-lg px-3 py-2
+                           bg-gray-200/40 border border-cloud-300/40
+                           text-gray-700 cursor-not-allowed"
+                value={(() => {
+                  const assignedSalesman = salesmen.find(
+                    (s) => String(s.id) === String(user?.id)
+                  );
+                  const name = user?.name || "";
+                  return assignedSalesman?.isBlocked
+                    ? `${name} (Blocked)`
+                    : name;
+                })()}
+                disabled
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                You are assigned as the salesman for this customer.
+              </div>
+            </>
+          )}
         </div>
+
+        {/* Note */}
+        <div className="sm:col-span-2 flex flex-col gap-1">
+          <label className="text-sm font-semibold text-midnight-800/80 dark:text-ivory-200">
+            Note
+          </label>
+          <textarea
+            className="w-full min-h-[80px] rounded-lg px-3 py-2
+                       bg-white/70 dark:bg-midnight-800/60
+                       border border-cloud-300/40 dark:border-midnight-700/50
+                       text-midnight-800 dark:text-ivory-100
+                       focus:outline-none focus:ring-2 focus:ring-blue-400/40
+                       transition-all duration-200"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+
         
-
-          {/* Conditional salesman field */}
-          <div className="sm:col-span-2">
-            <label className="text-sm font-medium text-midnight-400">Salesman</label>
-     {isAdmin ? (
-              <>
-                <select
-                  className="w-full rounded-lg px-3 py-2 
-                             bg-white/50 border border-white/20 text-midnight-900/90
-                             backdrop-blur-sm
-                             focus:outline-none focus:border-white/50
-                             hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]
-                             transition-all"
-                  value={salesmanId}
-                  onChange={e => setSalesmanId(e.target.value)}
-                  required={isAdmin}
-                  disabled={loadingTeam}
-                >
-                  <option value="" disabled>Select salesman</option>
-                  {salesmen.map(s => (
-                    <option key={s.id} value={s.id} disabled={s.isBlocked}>
-                      {s.name}{s.isBlocked ? ' (Blocked)' : ''}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-xs text-white/60 mt-1">
-                  Admins must choose a salesman.
-                </div>
-              </>
-            ) : (
-              <>
-                <input
-                  className="w-full rounded-lg px-3 py-2 
-                             bg-gray-500/20 border border-white/20 text-white/90
-                             backdrop-blur-sm cursor-not-allowed"
-                  value={(() => {
-                    const assignedSalesman = salesmen.find(s => String(s.id) === String(user?.id));
-                    const name = user?.name || '';
-                    return assignedSalesman?.isBlocked ? `${name} (Blocked)` : name;
-                  })()}
-                  disabled
-                />
-                <div className="text-xs text-white/60 mt-1">
-                  You are assigned as the salesman for this customer.
-                </div>
-              </>
-            )}
-
-          </div>
-        </div>
       </div>
-    </Modal>
+    </div>
+  </Modal>
 
   );
 

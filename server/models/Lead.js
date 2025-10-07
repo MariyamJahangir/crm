@@ -64,7 +64,7 @@ closingDates: {
 
     nextFollowupAt: { type: DataTypes.DATE, allowNull: true },
     lostReason: { type: DataTypes.STRING(300), allowNull: true },
-
+createdBy: { type: DataTypes.STRING(120), allowNull: true },
     creatorType: { type: DataTypes.ENUM('ADMIN', 'MEMBER'), allowNull: false },
     creatorId: { type: DataTypes.UUID, allowNull: false },
     companyName: { type: DataTypes.STRING(200), allowNull: false, defaultValue: '' },

@@ -14,7 +14,7 @@ import { quotesService } from '../services/quotesService';
 import { contactsService, Contact, Company } from '../services/contactsService';
 import { teamService, TeamUser } from '../services/teamService';
 import { toast } from 'react-hot-toast';
-
+import CustomSelect from '../components/CustomSelect';
 const CreateInvoicePage: React.FC = () => {
     const { token, user } = useAuth();
     const navigate = useNavigate();
@@ -250,20 +250,20 @@ const CreateInvoicePage: React.FC = () => {
         <div className="flex min-h-screen z-10 transition-colors duration-300">
             <Sidebar />
             <div className="flex-1 overflow-y-auto h-screen">
-                <main className="max-w-7xl mx-auto py-8 px-6">
+                <main className="max-w-7xl mx-auto py-8 px-8">
                     <h1 className="text-3xl font-bold text-midnight-900 dark:text-ivory-100 mb-6">
                         Create New Invoice
                     </h1>
 
                     <form onSubmit={handleSubmit} className="bg-white/30 dark:bg-midnight-900/40 backdrop-blur-xl border border-white/20 dark:border-midnight-700/30 p-8 rounded-xl shadow-2xl space-y-8">
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-8">
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
                             {/* Column 1: Bill To */}
                             <div>
                                 <label className="block text-sm font-bold text-midnight-700 dark:text-ivory-200 mb-2">Bill To</label>
-                                <div className="space-y-4">
-                                    <input type="text" placeholder="Company Name" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition" />
-                                    <textarea placeholder="Address" value={address} onChange={e => setAddress(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-xl border border-white/30 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition" />
+                                <div className="space-y-3">
+                                    <input type="text" placeholder="Company Name" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full h-12 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition" />
+                                    <textarea placeholder="Address" value={address} onChange={e => setAddress(e.target.value)} rows={5} className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition" />
                                     <Button type="button" className="bg-sky-500/80 backdrop-blur-md text-ivory-50 hover:bg-sky-600/90 shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 focus:ring-4 focus:ring-sky-300/50 dark:focus:ring-sky-700/60 rounded-xl" onClick={() => setIsModalOpen(true)}>{selectedCompany ? 'Change Company' : 'Select Company'}</Button>
                                 </div>
                             </div>
@@ -272,115 +272,188 @@ const CreateInvoicePage: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-bold text-midnight-700 dark:text-ivory-200 mb-2">Contact & Details</label>
                                 <div className="space-y-4">
-                                    <select value={contactPersonId} onChange={e => handleContactPersonChange(e.target.value)} className="w-full h-10 px-3 rounded-2xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition disabled:opacity-50" disabled={companyContacts.length === 0}>
+                                    <select value={contactPersonId} onChange={e => handleContactPersonChange(e.target.value)} className="w-full h-12 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition disabled:opacity-70" disabled={companyContacts.length === 0}>
                                         <option value="">-- Select Contact --</option>
                                         {companyContacts.map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
                                     </select>
-                                    <input type="email" placeholder="Contact Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full h-10 px-3 rounded-2xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition" />
-                                    <input type="tel" placeholder="Contact Phone" value={phone} onChange={e => setPhone(e.target.value)} className="w-full h-10 px-3 rounded-2xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition" />
+                                    <input type="email" placeholder="Contact Email" value={email} onChange={e => setEmail(e.target.value)} className="w-full h-12 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition" />
+                                    <input type="tel" placeholder="Contact Phone" value={phone} onChange={e => setPhone(e.target.value)} className="w-full h-12 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition" />
                                 </div>
                             </div>
-                            
+
                             {/* Column 3: Invoice Settings */}
-                            <div>
+                            <div className='col-span-2'>
                                 <label className="block text-sm font-bold text-midnight-700 dark:text-ivory-200 mb-2">Invoice Settings</label>
-                                <div className="space-y-4">
-                                    <div>
+
+                                <div className="grid grid-cols-3 gap-4 py-2">
+                                    <div className='items-center'>
                                         <label htmlFor="invoiceDate" className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Invoice Date</label>
-                                        <input id="invoiceDate" type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"/>
+                                        <input id="invoiceDate" type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition" />
                                     </div>
-                                    <div>
+                                    <div className='items-center'>
                                         <label htmlFor="dueDate" className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Due Date</label>
-                                        <input id="dueDate" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"/>
+                                        <input id="dueDate" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition" />
                                     </div>
                                     {user?.type === "ADMIN" ? (
-                                        <select value={salesmanId} onChange={(e) => setSalesmanId(e.target.value)} className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition">
-                                            <option value="">-- Assign Salesman --</option>
-                                            {members.map((member) => (
-                                                <option key={member.id} value={member.id} disabled={member.isBlocked} style={{ color: member.isBlocked ? '#999' : 'inherit' }}>
-                                                    {member.name} {member.isBlocked ? '(Blocked)' : ''}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        // <select value={salesmanId} onChange={(e) => setSalesmanId(e.target.value)} className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition">
+                                        //     <option value="">-- Assign Salesman --</option>
+                                        //     {members.map((member) => (
+                                        //         <option key={member.id} value={member.id} disabled={member.isBlocked} style={{ color: member.isBlocked ? '#999' : 'inherit' }}>
+                                        //             {member.name} {member.isBlocked ? '(Blocked)' : ''}
+                                        //         </option>
+                                        //     ))}
+                                        // </select>
+
+                                        <CustomSelect
+                                            label="Assign Salesman"
+                                            options={members.map((member) => ({
+                                                value: member.id,
+                                                label: `${member.name}${member.isBlocked ? ' (Blocked)' : ''}`,
+                                                isDisabled: member.isBlocked,
+                                            }))}
+                                            value={salesmanId}
+                                            onChange={(value) => setSalesmanId(value)}
+                                            placeholder="-- Assign Salesman --"
+                                        />
+
                                     ) : (
                                         <div className="p-2 bg-white/40 dark:bg-midnight-800/50 rounded-2xl text-sm text-midnight-700 dark:text-ivory-200">
                                             Salesman: <span className="font-semibold">{user?.name || "..."}</span>
                                         </div>
                                     )}
                                 </div>
-                                 <div>
-  <label
-    htmlFor="currency"
-    className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2"
-  >
-    Currency
-  </label>
-  <select
-    id="currency"
-    value={currency}
-    onChange={e => setCurrency(e.target.value)}
-    className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
-  >
-    <option value="USD">USD - US Dollar</option>
-    <option value="INR">INR - Indian Rupee</option>
-    <option value="SAR">SAR - Saudi Riyal</option>
-    <option value="AED">AED - UAE Dirham</option>
-    <option value="QAR">QAR - Qatari Riyal</option>
-    <option value="KWD">KWD - Kuwaiti Dinar</option>
-    <option value="BHD">BHD - Bahraini Dinar</option>
-    <option value="OMR">OMR - Omani Rial</option>
-  </select>
-</div>
 
-                            <div>
-                                <label htmlFor="paymentTerms" className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Payment Terms</label>
-                                <input id="paymentTerms" type="text" value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"/>
+                                <div className="grid grid-cols-2 gap-4 py-2">
+                                    <div>
+                                        <label
+                                            htmlFor="currency"
+                                            className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2"
+                                        >
+                                            Currency
+                                        </label>
+                                        <select
+                                            id="currency"
+                                            value={currency}
+                                            onChange={e => setCurrency(e.target.value)}
+                                            className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
+                                        >
+                                            <option value="USD">USD - US Dollar</option>
+                                            <option value="INR">INR - Indian Rupee</option>
+                                            <option value="SAR">SAR - Saudi Riyal</option>
+                                            <option value="AED">AED - UAE Dirham</option>
+                                            <option value="QAR">QAR - Qatari Riyal</option>
+                                            <option value="KWD">KWD - Kuwaiti Dinar</option>
+                                            <option value="BHD">BHD - Bahraini Dinar</option>
+                                            <option value="OMR">OMR - Omani Rial</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="paymentTerms" className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Payment Terms</label>
+                                        <input id="paymentTerms" type="text" value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} className="w-full h-10 px-3 rounded-xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition" />
+                                    </div>
+                                </div>
                             </div>
-                            </div>
-                           </div>
-                        
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-white/20 dark:divide-midnight-700/30 text-sm">
-                                <thead className="bg-white/40 dark:bg-midnight-800/50">
+                        </div>
+
+                        <div className="overflow-x-auto border border-cloud-500/30 rounded-lg shadow-sm">
+                            <table className="min-w-full border-collapse rounded-xl overflow-hidden shadow-sm text-sm">
+                                <thead className="bg-white/60 dark:bg-midnight-800/50 backdrop-blur-sm border border-cloud-500/20">
                                     <tr>
-                                        <th className="px-6 py-3 text-left font-medium text-midnight-700 dark:text-ivory-200 w-2/5">Product / Service</th>
-                                        <th className="px-6 py-3 text-left font-medium text-midnight-700 dark:text-ivory-200 w-1/5">Description</th>
-                                        <th className="px-3 py-3 text-right font-medium text-midnight-700 dark:text-ivory-200">Qty</th>
-                                        <th className="px-3 py-3 text-right font-medium text-midnight-700 dark:text-ivory-200">Rate</th>
-                                        <th className="px-3 py-3 text-right font-medium text-midnight-700 dark:text-ivory-200">Tax %</th>
-                                        <th className="px-3 py-3 text-right font-medium text-midnight-700 dark:text-ivory-200">Total (incl. Tax)</th>
-                                        <th className="py-3"></th>
+                                        <th className="px-4 py-3 text-left font-semibold text-midnight-700 dark:text-ivory-200 w-[20%]">Product / Service</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-midnight-700 dark:text-ivory-200 w-[30%]">Description</th>
+                                        <th className="px-3 py-3 text-center font-semibold text-midnight-700 dark:text-ivory-200 w-[10%]">Qty</th>
+                                        <th className="px-3 py-3 text-center font-semibold text-midnight-700 dark:text-ivory-200 w-[10%]">Rate</th>
+                                        <th className="px-3 py-3 text-center font-semibold text-midnight-700 dark:text-ivory-200 w-[10%]">Tax %</th>
+                                        <th className="px-4 py-3 text-right font-semibold text-midnight-700 dark:text-ivory-200 w-[15%]">Total (incl. Tax)</th>
+                                        <th className="px-2 py-3 text-center w-[5%]"></th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/20 dark:divide-midnight-700/30">
+
+                                <tbody className="divide-y divide-cloud-500/20 dark:divide-midnight-700/30 bg-white/30 dark:bg-midnight-900/30">
                                     {items.map((item, index) => (
-                                        <tr key={index}>
-                                            <td className="px-6 py-4"><input type="text" value={item.product} onChange={e => handleItemChange(index, 'product', e.target.value)} className="w-full h-9 px-2 rounded-lg bg-white/40 dark:bg-midnight-800/50" /></td>
-                                            <td className="px-6 py-4"><input type="text" value={item.description} onChange={e => handleItemChange(index, 'description', e.target.value)} className="w-full h-9 px-2 rounded-lg bg-white/40 dark:bg-midnight-800/50" /></td>
-                                            <td className="px-3 py-4"><input type="number" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', parseFloat(e.target.value))} className="w-20 h-9 px-2 text-right rounded-lg bg-white/40 dark:bg-midnight-800/50" /></td>
-                                            <td className="px-3 py-4"><input type="number" value={item.itemRate} onChange={e => handleItemChange(index, 'itemRate', parseFloat(e.target.value))} className="w-24 h-9 px-2 text-right rounded-lg bg-white/40 dark:bg-midnight-800/50" /></td>
-                                            <td className="px-3 py-4"><input type="number" value={item.taxPercent} onChange={e => handleItemChange(index, 'taxPercent', parseFloat(e.target.value))} className="w-20 h-9 px-2 text-right rounded-lg bg-white/40 dark:bg-midnight-800/50" /></td>
-                                            <td className="px-3 py-4 text-right text-midnight-700 dark:text-ivory-200">{(item.quantity * item.itemRate * (1 + item.taxPercent / 100)).toFixed(2)}</td>
-                                            <td className="py-4 text-right"><Button type="button" variant="icon" onClick={() => removeItem(index)}><X size={18} /></Button></td>
+                                        <tr key={index} className="hover:bg-cloud-100/30 dark:hover:bg-midnight-800/50 transition-colors">
+                                            <td className="px-4 py-2 align-middle">
+                                                <input
+                                                    type="text"
+                                                    value={item.product}
+                                                    onChange={e => handleItemChange(index, 'product', e.target.value)}
+                                                    className="w-full h-9 px-2 rounded-lg bg-white/60 dark:bg-midnight-800/60 border border-cloud-500/30 dark:border-midnight-700/40 shadow-sm focus:ring-2 focus:ring-sky-300/50 outline-none"
+                                                />
+                                            </td>
+
+                                            <td className="px-4 py-2 align-middle">
+                                                <input
+                                                    type="text"
+                                                    value={item.description}
+                                                    onChange={e => handleItemChange(index, 'description', e.target.value)}
+                                                    className="w-full h-9 px-2 rounded-lg bg-white/60 dark:bg-midnight-800/60 border border-cloud-500/30 dark:border-midnight-700/40 shadow-sm focus:ring-2 focus:ring-sky-300/50 outline-none"
+                                                />
+                                            </td>
+
+                                            <td className="px-3 py-2 text-center align-middle">
+                                                <input
+                                                    type="number"
+                                                    value={item.quantity}
+                                                    onChange={e => handleItemChange(index, 'quantity', parseFloat(e.target.value))}
+                                                    className="w-16 h-9 text-center rounded-lg bg-white/60 dark:bg-midnight-800/60 border border-cloud-500/30 dark:border-midnight-700/40 shadow-sm focus:ring-2 focus:ring-sky-300/50 outline-none"
+                                                />
+                                            </td>
+
+                                            <td className="px-3 py-2 text-center align-middle">
+                                                <input
+                                                    type="number"
+                                                    value={item.itemRate}
+                                                    onChange={e => handleItemChange(index, 'itemRate', parseFloat(e.target.value))}
+                                                    className="w-20 h-9 text-center rounded-lg bg-white/60 dark:bg-midnight-800/60 border border-cloud-500/30 dark:border-midnight-700/40 shadow-sm focus:ring-2 focus:ring-sky-300/50 outline-none"
+                                                />
+                                            </td>
+
+                                            <td className="px-3 py-2 text-center align-middle">
+                                                <input
+                                                    type="number"
+                                                    value={item.taxPercent}
+                                                    onChange={e => handleItemChange(index, 'taxPercent', parseFloat(e.target.value))}
+                                                    className="w-16 h-9 text-center rounded-lg bg-white/60 dark:bg-midnight-800/60 border border-cloud-500/30 dark:border-midnight-700/40 shadow-sm focus:ring-2 focus:ring-sky-300/50 outline-none"
+                                                />
+                                            </td>
+
+                                            <td className="px-3 py-2 text-right font-semibold text-midnight-700 dark:text-ivory-200 align-middle">
+                                                <div className='border border-cloud-500/30 px-3 py-2 rounded-lg shadow-sm'>
+                                                {(item.quantity * item.itemRate * (1 + item.taxPercent / 100)).toFixed(2)}
+                                                </div>
+                                            </td>
+
+                                            <td className="px-2 py-2 text-center align-middle">
+                                                <Button
+                                                    type="button"
+                                                    variant="icon"
+                                                    onClick={() => removeItem(index)}
+                                                    className="text-red-500 hover:text-red-700 transition"
+                                                >
+                                                    <X size={18} />
+                                                </Button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
+
                         </div>
 
                         <Button type="button" variant="secondary" onClick={addItem}>Add Item</Button>
-                        
+
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-white/20 dark:border-midnight-700/30">
                             <div>
                                 <label htmlFor="notes" className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Notes / Terms</label>
-                                <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={4} className="w-full px-3 py-2 rounded-2xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition"/>
+                                <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={4} className="w-full px-3 py-2 rounded-2xl border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 shadow-sm text-sm transition" />
                             </div>
                             <div className="space-y-3 text-midnight-700 dark:text-ivory-200">
                                 <div className="flex justify-between items-center"><span>Subtotal:</span><span className="font-medium">{currency} {subtotal.toFixed(2)}</span></div>
                                 <div className="flex justify-between items-center">
                                     <label htmlFor="discountAmount">Discount:</label>
-                                    <input id="discountAmount" type="number" value={discountAmount} onChange={e => setDiscountAmount(parseFloat(e.target.value) || 0)} className="w-28 h-9 px-2 text-right rounded-lg border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-sm text-midnight-800 dark:text-ivory-100"/>
+                                    <input id="discountAmount" type="number" value={discountAmount} onChange={e => setDiscountAmount(parseFloat(e.target.value) || 0)} className="w-28 h-9 px-2 text-right rounded-lg border border-gray-300 dark:border-midnight-700/30 bg-white/40 dark:bg-midnight-800/50 text-sm text-midnight-800 dark:text-ivory-100" />
                                 </div>
                                 <div className="flex justify-between items-center"><span>Total Tax (VAT):</span><span className="font-medium">{currency} {vatAmount.toFixed(2)}</span></div>
                                 <div className="flex justify-between items-center pt-3 border-t border-white/20 dark:border-midnight-700/30"><span className="text-xl font-bold">Grand Total:</span><span className="text-xl font-bold">{currency} {grandTotal.toFixed(2)}</span></div>

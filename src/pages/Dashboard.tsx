@@ -25,10 +25,38 @@ const PieChartCard = ({ title, chartData, centerTextLabel, centerTextValue, onSl
 
 
     const options = {
-        responsive: true, maintainAspectRatio: false, cutout: '65%',
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%',
+        layout: {
+            padding: {
+                top: 20,
+                bottom: 20,
+                left: 20,
+                right: 20,
+            },
+        },
         plugins: {
-            legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12, font: { weight: 'bold' } } },
-            tooltip: { ...chartData.options?.plugins?.tooltip, bodySpacing: 5, padding: 10, multiKeyBackground: '#0000' }
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 15,
+                    boxWidth: 12,
+                    font: {
+                        weight: 'bold'
+                    }
+                }
+            },
+            tooltip: {
+                ...chartData.options?.plugins?.tooltip,
+                bodySpacing: 6,
+                padding: 10,
+                multiKeyBackground: '#0000',
+                cornerRadius: 8,
+                backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                titleColor: '#fff',
+                bodyColor: '#e2e8f0',
+            }
         },
     };
 
@@ -45,23 +73,29 @@ const PieChartCard = ({ title, chartData, centerTextLabel, centerTextValue, onSl
             onSliceClick(null);
         }
     };
-    
+
     return (
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col h-[450px]">
+        <div className="bg-cloud-50/60 backdrop-blur-lg p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col h-[450px]">
             <h3 className="text-lg font-bold text-gray-800 mb-2 text-center truncate">{title}</h3>
+
             <div className="relative flex-grow w-full h-full">
                 {chartData && chartData.datasets[0].data.length > 0 ? (
                     <>
+
                         <Doughnut ref={chartRef} data={chartData} options={options} onClick={handleClick} />
+
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                            <span className="text-3xl font-extrabold text-gray-900">{centerTextValue}</span>
-                            <span className="text-sm font-medium text-gray-500">{centerTextLabel}</span>
+                            <span className="text-3xl font-extrabold text-midnight-900">{centerTextValue}</span>
+                            <span className="text-sm font-medium text-midnight-500">{centerTextLabel}</span>
                         </div>
                     </>
                 ) : (<div className="absolute inset-0 flex items-center justify-center"><p className="text-gray-500">No data for this period.</p></div>)}
+
             </div>
         </div>
     );
+
+
 };
 
 
@@ -85,7 +119,7 @@ const Dashboard = () => {
 
     const fetchData = useCallback((currentPeriod) => {
         if (!token) return;
-        setIsLoading(true); 
+        setIsLoading(true);
         setError(null);
         // Reset selections when fetching new data
         setSelectedLeadInfo(null);
@@ -104,23 +138,41 @@ const Dashboard = () => {
     }, [token]);
 
 
-    useEffect(() => { 
-        fetchData(period); 
+    useEffect(() => {
+        fetchData(period);
     }, [fetchData, period]);
-    
-    const handleEditTarget = (member) => { 
-        setEditingTarget(member); 
-        setTargetModalOpen(true); 
+
+    const handleEditTarget = (member) => {
+        setEditingTarget(member);
+        setTargetModalOpen(true);
     };
 
 
     const formatUSD = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
     const formatNumber = (value) => new Intl.NumberFormat('en-US').format(value);
-    
-    const chartColors = ['#4F46E5', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1'];
+
+    const chartColors = [
+        "#415178", // Indigo Blue
+        "#EE5E5F", // Coral Red
+        "#A5599E", // Deep Purple Rose
+        "#54B4AF", // Teal Green
+        "#EBD332", // Vibrant Yellow
+
+        // new ones below 👇
+        "#F48C06", // Warm Orange
+        "#6A4C93", // Royal Violet
+        "#0096C7", // Strong Aqua Blue
+        "#16A34A", // Fresh Green
+        "#D7263D", // Crimson Red
+        "#845EC2", // Purple Blue
+        "#FF6F61", // Bright Coral
+        "#2C6975", // Ocean Teal
+        "#FFC75F", // Soft Gold
+        "#0081CF"  // Clear Sky Blue
+    ];
     const baseChartData = (labels, values) => ({
         labels,
-        datasets: [{ data: values, backgroundColor: chartColors, borderColor: '#fff', borderWidth: 4, hoverOffset: 15 }]
+        datasets: [{ data: values, backgroundColor: chartColors, borderColor: '#a2a8b0ac', borderWidth: 2, hoverOffset: 15 }]
     });
 
 
@@ -147,24 +199,24 @@ const Dashboard = () => {
         if (!dashboardData?.quotesBySalesman) return baseChartData([], []);
         const { labels, details } = dashboardData.quotesBySalesman;
         const data = baseChartData(labels, details.map(d => d.total));
-        data.options = { plugins: { tooltip: { callbacks: { label: (c) => { const d = details[c.dataIndex]; if (!d) return ''; const statuses = Object.entries(d.statuses).sort((a,b) => b[1] - a[1]).map(([status, count]) => `  - ${status}: ${formatNumber(count)}`); return [`Total Quotes: ${formatNumber(d.total)}`, ...statuses]; } } } } };
+        data.options = { plugins: { tooltip: { callbacks: { label: (c) => { const d = details[c.dataIndex]; if (!d) return ''; const statuses = Object.entries(d.statuses).sort((a, b) => b[1] - a[1]).map(([status, count]) => `  - ${status}: ${formatNumber(count)}`); return [`Total Quotes: ${formatNumber(d.total)}`, ...statuses]; } } } } };
         return data;
     }, [dashboardData]);
-    
+
     const leadsByStageChart = useMemo(() => {
         if (!dashboardData?.leadsByStage) return baseChartData([], []);
         const { labels, details } = dashboardData.leadsByStage;
         const data = baseChartData(labels, details.map(d => d.count));
-        data.options = { plugins: { tooltip: { callbacks: { label: (c) => { const d = details[c.dataIndex]; if (!d) return ''; const members = Object.entries(d.members).sort((a,b) => b[1] - a[1]).map(([name, count]) => `  - ${name}: ${formatNumber(count)}`); return [`Total: ${formatNumber(d.count)} (${formatUSD(d.valuation)})`, ...members]; } } } } };
+        data.options = { plugins: { tooltip: { callbacks: { label: (c) => { const d = details[c.dataIndex]; if (!d) return ''; const members = Object.entries(d.members).sort((a, b) => b[1] - a[1]).map(([name, count]) => `  - ${name}: ${formatNumber(count)}`); return [`Total: ${formatNumber(d.count)} (${formatUSD(d.valuation)})`, ...members]; } } } } };
         return data;
     }, [dashboardData]);
 
 
-     const leadsByForecastChart = useMemo(() => {
+    const leadsByForecastChart = useMemo(() => {
         if (!dashboardData?.leadsByForecast) return baseChartData([], []);
         const { labels, details } = dashboardData.leadsByForecast;
         const data = baseChartData(labels, details.map(d => d.count));
-        data.options = { plugins: { tooltip: { callbacks: { label: (c) => { const d = details[c.dataIndex]; if (!d) return ''; const members = Object.entries(d.members).sort((a,b) => b[1] - a[1]).map(([name, count]) => `  - ${name}: ${formatNumber(count)}`); return [`Total: ${formatNumber(d.count)} (${formatUSD(d.valuation)})`, ...members]; } } } } };
+        data.options = { plugins: { tooltip: { callbacks: { label: (c) => { const d = details[c.dataIndex]; if (!d) return ''; const members = Object.entries(d.members).sort((a, b) => b[1] - a[1]).map(([name, count]) => `  - ${name}: ${formatNumber(count)}`); return [`Total: ${formatNumber(d.count)} (${formatUSD(d.valuation)})`, ...members]; } } } } };
         return data;
     }, [dashboardData]);
 
@@ -175,7 +227,7 @@ const Dashboard = () => {
     const totalQuotes = useMemo(() => dashboardData?.quotesBySalesman.details.reduce((s, d) => s + d.total, 0) || 0, [dashboardData]);
     const totalStageValuation = useMemo(() => dashboardData?.leadsByStage.details.reduce((s, d) => s + d.valuation, 0) || 0, [dashboardData]);
     const totalForecastValuation = useMemo(() => dashboardData?.leadsByForecast.details.reduce((s, d) => s + d.valuation, 0) || 0, [dashboardData]);
-    
+
     const renderContent = () => {
         if (isLoading) return <Loader />;
         if (error) return <ErrorMessage message={error} />;
@@ -185,45 +237,49 @@ const Dashboard = () => {
         const { isAdmin, memberTargetAchievements } = dashboardData;
         return (
             <>
-                <div className="mb-8 bg-white p-6 rounded-2xl shadow-lg">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4">This Month's Target Achievement</h2>
-                    {isAdmin ? (<TargetAchievementSlider data={memberTargetAchievements} onEdit={handleEditTarget} />) : (<div className="max-w-md mx-auto">{memberTargetAchievements.length > 0 ? <MemberTargetGauge {...memberTargetAchievements[0]} /> : <p className="text-center text-gray-500">Your target is not set for this month.</p>}</div>)}
+                <div className="mb-8 py-6 rounded-2xl ">
+                    {/* <h2 className="text-xl font-bold text-gray-800 mb-4">This Month's Target Achievement</h2> */}
+                    {isAdmin ? (<TargetAchievementSlider data={memberTargetAchievements} onEdit={handleEditTarget} />) : (<div className="max-w-md mx-auto">{memberTargetAchievements.length > 0 ? <MemberTargetGauge {...memberTargetAchievements[0]} /> : <p className="text-center text-midnight-500">Your target is not set for this month.</p>}</div>)}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    <PieChartCard 
-                        title="Sales by Salesman (USD)" 
-                        chartData={salesBySalesmanChart} 
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+
+
+
+                    <PieChartCard
+                        title="Sales by Salesman (USD)"
+                        chartData={salesBySalesmanChart}
                         centerTextValue={selectedSalesInfo ? formatUSD(selectedSalesInfo.value) : formatUSD(totalSales)}
                         centerTextLabel={selectedSalesInfo ? selectedSalesInfo.label : "Total Sales"}
                         onSliceClick={setSelectedSalesInfo}
                     />
-                    <PieChartCard 
-                        title="Leads by Salesman" 
-                        chartData={leadsBySalesmanChart} 
+
+                    <PieChartCard
+                        title="Leads by Salesman"
+                        chartData={leadsBySalesmanChart}
                         centerTextValue={selectedLeadInfo ? formatNumber(selectedLeadInfo.value) : formatNumber(totalLeads)}
                         centerTextLabel={selectedLeadInfo ? selectedLeadInfo.label : "Total Leads"}
                         onSliceClick={setSelectedLeadInfo}
                     />
-                    <PieChartCard 
-                        title="Quotes by Salesman" 
-                        chartData={quotesBySalesmanChart} 
+                    <PieChartCard
+                        title="Quotes by Salesman"
+                        chartData={quotesBySalesmanChart}
                         centerTextValue={selectedQuoteInfo ? formatNumber(selectedQuoteInfo.value) : formatNumber(totalQuotes)}
                         centerTextLabel={selectedQuoteInfo ? selectedQuoteInfo.label : "Total Quotes"}
                         onSliceClick={setSelectedQuoteInfo}
                     />
-                    <PieChartCard 
-                        title="Leads by Stage (USD)" 
-                        chartData={leadsByStageChart} 
-                        centerTextValue={formatUSD(totalStageValuation)} 
-                        centerTextLabel="Total Valuation" 
-                        onSliceClick={() => {}} // This chart is not interactive per-slice
+                    <PieChartCard
+                        title="Leads by Stage (USD)"
+                        chartData={leadsByStageChart}
+                        centerTextValue={formatUSD(totalStageValuation)}
+                        centerTextLabel="Total Valuation"
+                        onSliceClick={() => { }} // This chart is not interactive per-slice
                     />
-                    <PieChartCard 
-                        title="Leads by Forecast (USD)" 
-                        chartData={leadsByForecastChart} 
-                        centerTextValue={formatUSD(totalForecastValuation)} 
+                    <PieChartCard
+                        title="Leads by Forecast (USD)"
+                        chartData={leadsByForecastChart}
+                        centerTextValue={formatUSD(totalForecastValuation)}
                         centerTextLabel="Total Forecast"
-                        onSliceClick={() => {}} // This chart is not interactive per-slice
+                        onSliceClick={() => { }} // This chart is not interactive per-slice
                     />
                 </div>
             </>
@@ -231,31 +287,33 @@ const Dashboard = () => {
     };
 
 
-    const FilterButton = ({ value, label }) => (<button onClick={() => setPeriod(value)} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${period === value ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>{label}</button>);
+    const FilterButton = ({ value, label }) => (<button onClick={() => setPeriod(value)} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${period === value ? 'bg-sky-500 text-white shadow-md' : 'bg-cloud-50 text-midnight-700 hover:bg-gray-100'}`}>{label}</button>);
 
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen">
             <SetTargetModal isOpen={isTargetModalOpen} onClose={() => { setTargetModalOpen(false); setEditingTarget(null); fetchData(period); }} token={token} editTarget={editingTarget} />
             <Sidebar />
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-                <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Sales Dashboard</h1>
-                        <p className="mt-1 text-gray-600">Welcome back, {user?.name || 'User'}.</p>
-                    </div>
-                    <div className="flex items-center gap-4 mt-4 sm:mt-0">
-                        {dashboardData?.isAdmin && <button onClick={() => setTargetModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700"><Target size={16}/> Set Target</button>}
-                        <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm">
-                            <FilterButton value="this_month" label="This Month" />
-                            <FilterButton value="last_month" label="Last Month" />
-                            <FilterButton value="this_quarter" label="This Quarter" />
-                            <FilterButton value="all_time" label="All Time" />
+            <div className="flex-1 overflow-y-auto h-screen">
+                <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+                        <div>
+                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Sales Dashboard</h1>
+                            <p className="mt-1 text-gray-600">Welcome back, {user?.name || 'User'}.</p>
                         </div>
-                    </div>
-                </header>
-                {renderContent()}
-            </main>
+                        <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                            {dashboardData?.isAdmin && <button onClick={() => setTargetModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white font-semibold rounded-lg shadow-md hover:bg-sky-600"><Target size={16} /> Set Target</button>}
+                            <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-md border">
+                                <FilterButton value="this_month" label="This Month" />
+                                <FilterButton value="last_month" label="Last Month" />
+                                <FilterButton value="this_quarter" label="This Quarter" />
+                                <FilterButton value="all_time" label="All Time" />
+                            </div>
+                        </div>
+                    </header>
+                    {renderContent()}
+                </main>
+            </div>
         </div>
     );
 };

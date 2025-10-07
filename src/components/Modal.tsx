@@ -21,7 +21,7 @@ type Props = {
 
 const sizeClass = (s?: string) =>
   s === 'lg'
-    ? 'max-w-2xl'
+    ? 'max-w-3xl'
     : s === 'sm'
     ? 'max-w-md'
     : 'max-w-xl';

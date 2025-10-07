@@ -11,10 +11,11 @@ const { makeUploader } = require('../upload/uploader');
 const LeadFollowup = require('../models/LeadFollowup');
 const LeadLog = require('../models/LeadLog');
 const fs = require('fs/promises');
+const Admin = require('../models/Admin');
 const path = require('path');
 const router = express.Router();
-const { createNotification,notifyAllRelevantParties, notifyAdmins } = require('../utils/notify');
-const {  notifyAssignment ,notifyLeadUpdate  } = require('../utils/emailService')
+const { createNotification, notifyAdmins } = require('../utils/notify');
+const {  notifyAssignment, notifyAllRelevantParties ,notifyLeadUpdate  } = require('../utils/emailService')
 const BASE_DIR = path.resolve(process.cwd());
 const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
 const STAGES = Lead.STAGES;
@@ -565,7 +566,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 
 
-router.post('/',authenticateToken,
+router.post('/', authenticateToken,
   [
     body('customerId').trim().notEmpty().withMessage('Customer is required.'),
     body('shareGpData.sharedMemberId').optional().isUUID().withMessage('A valid member must be selected for sharing.'),
@@ -582,7 +583,8 @@ router.post('/',authenticateToken,
       let resolvedSalesmanId = null;
       let resolvedCreatorId = null;
       let resolvedCreatorType = null;
-      let sharingInitiatorId = null; 
+      let sharingInitiatorId = null;
+      let createdByName = '';
 
       if (isAdmin(req)) {
         if (!req.body.salesmanId) {
@@ -594,25 +596,25 @@ router.post('/',authenticateToken,
           await t.rollback();
           return res.status(400).json({ success: false, message: 'Invalid primary salesman.' });
         }
-        
         resolvedSalesmanId = assignedSalesman.id;
         resolvedCreatorId = assignedSalesman.id;
         resolvedCreatorType = 'MEMBER';
-       
-        sharingInitiatorId = assignedSalesman.id; 
-        
+        sharingInitiatorId = assignedSalesman.id;
+
+        // Fetch admin's name separately without transaction to avoid conflicts
+        const adminUser = await Admin.findByPk(req.subjectId);
+        createdByName = adminUser ? adminUser.name : 'Admin';
       } else {
         const creator = await Member.findByPk(req.subjectId, { transaction: t });
         if (!creator) {
           await t.rollback();
           return res.status(400).json({ success: false, message: 'Invalid creator: Your user account could not be found.' });
         }
-        
         resolvedSalesmanId = req.subjectId;
         resolvedCreatorId = req.subjectId;
         resolvedCreatorType = 'MEMBER';
-        // When a Member acts, they are the initiator of the share
         sharingInitiatorId = req.subjectId;
+        createdByName = creator.name;
       }
 
       const customer = await Customer.findByPk(req.body.customerId, { transaction: t });
@@ -641,46 +643,42 @@ router.post('/',authenticateToken,
         salesmanId: resolvedSalesmanId,
         creatorId: resolvedCreatorId,
         creatorType: resolvedCreatorType,
+        createdBy: createdByName,
       };
 
       const lead = await Lead.create(leadData, { transaction: t });
 
-      // --- FINALIZED SHARING LOGIC ---
       if (req.body.shareGpData && req.body.shareGpData.sharedMemberId) {
-        // Prevent sharing with the same person assigned as the primary salesman
         if (req.body.shareGpData.sharedMemberId === resolvedSalesmanId) {
-            await t.rollback();
-            return res.status(400).json({ success: false, message: 'You cannot share a lead with the primary salesman.' });
+          await t.rollback();
+          return res.status(400).json({ success: false, message: 'You cannot share a lead with the primary salesman.' });
         }
-        
         await ShareGp.create({
           leadId: lead.id,
-          memberId: sharingInitiatorId, // Use the correctly resolved Member ID
+          memberId: sharingInitiatorId,
           sharedMemberId: req.body.shareGpData.sharedMemberId,
         }, { transaction: t });
       }
-      // -----------------------------
-      
+
       await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`, t);
+
       await t.commit();
+
       try {
-       
         const newLead = await Lead.findByPk(lead.id, {
           include: [{ model: Member, as: 'salesman', attributes: ['name', 'email'] }]
         });
 
         if (newLead) {
-            const actorName = await resolveActorName(req);
-            const subject = `New Lead Created: ${newLead.companyName}`;
-            const message = `<p>A new lead has been created for <strong>${newLead.companyName}</strong> and assigned to <strong>${newLead.salesman?.name || 'N/A'}</strong>.</p>`;
-
-            // Call the unified notification function
-            await notifyAllRelevantParties(newLead, subject, message, actorName);
+          const actorName = await resolveActorName(req);
+          const subject = `New Lead Created: ${newLead.companyName}`;
+          const message = `<p>A new lead has been created for <strong>${newLead.companyName}</strong> and assigned to <strong>${newLead.salesman?.name || 'N/A'}</strong>.</p>`;
+          await notifyAllRelevantParties(newLead, subject, message, actorName);
         }
       } catch (emailError) {
-          // Log the error but don't block the main response. The lead was created successfully.
-          console.error('Failed to send lead creation email:', emailError);
+        console.error('Failed to send lead creation email:', emailError);
       }
+      
       res.status(201).json({ success: true, id: lead.id, uniqueNumber: lead.uniqueNumber });
 
     } catch (e) {
@@ -692,6 +690,7 @@ router.post('/',authenticateToken,
     }
   }
 );
+
 
  
 // router.put('/:id', authenticateToken, async (req, res) => {

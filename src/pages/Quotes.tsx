@@ -7,12 +7,15 @@ import { quotesService, Quote } from '../services/quotesService';
 import { invoiceService } from '../services/invoiceService';
 import DataTable from '../components/DataTable';
 import PreviewModal from '../components/PreviewModal';
-import { Eye, Download, File, Pen } from 'lucide-react';
+import { Eye, Download,Check,X, File, Pen } from 'lucide-react';
 import { Filter } from '../components/FilterDropdown';
 import FormattedDateTime from '../components/FormattedDateTime';
 import { toast } from 'react-hot-toast';
 
-// --- Rejection Dialog Sub-component ---
+
+
+
+// --- Rejection Dialog Sub-component --- 
 const RejectDialog: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -231,29 +234,36 @@ const Quotes: React.FC = () => {
     const hasInvoice = !!quote.invoiceId;
 
     return (
-      <div className="flex items-center gap-1 justify-end flex-wrap mr-5">
-        {isAccepted && !hasInvoice && (
-          <Button size="sm" variant="success" onClick={() => convertToInvoice(quote)} disabled={isBusy} className='px-3'>
-            {isBusy ? 'Converting...' : 'Convert to Invoice'}
-          </Button>
-        )}
-        {isAccepted && hasInvoice && (
-          <span className="text-xs font-semibold text-green-600 bg-green-100 rounded-full px-3 py-1">Invoice Created</span>
-        )}
 
-        {!isPendingApproval && !isAccepted && (
-          <select value={status} onChange={(e) => updateStatus(quote, e.target.value)} disabled={isFinal || isBusy} className="select select-bordered select-sm rounded-md">
-            {(isAdmin ? adminStatuses : memberStatuses).map(s => (<option key={s} value={s}>{s}</option>))}
-          </select>
-        )}
+      <div className="grid grid-cols-6 gap-1">
+        <div className='col-span-3 my-auto'>
 
-        {isAdmin && isPendingApproval && !isFinal && (
-          <div className="flex gap-2">
-            <Button size="sm" variant="success" onClick={() => approveQuote(quote)} disabled={isBusy} className='px-3'>Approve</Button>
-            <Button size="sm" variant="danger" onClick={() => setRejectFor(quote)} disabled={isBusy} className="px-3">Reject</Button>
-          </div>
-        )}
-        
+
+          {isAccepted && !hasInvoice && (
+            <Button size="sm" variant="success" onClick={() => convertToInvoice(quote)} disabled={isBusy} className='px-3'>
+              {isBusy ? 'Converting...' : 'Convert to Invoice'}
+            </Button>
+          )}
+
+          {isAccepted && hasInvoice && (
+            <span className="text-xs font-semibold text-green-600 bg-green-100 rounded-full px-3 py-1">Invoice Created</span>
+          )}
+
+          {!isPendingApproval && !isAccepted && (
+            <select value={status} onChange={(e) => updateStatus(quote, e.target.value)} disabled={isFinal || isBusy} className="select select-bordered select-sm rounded-full">
+              {(isAdmin ? adminStatuses : memberStatuses).map(s => (<option key={s} value={s}>{s}</option>))}
+            </select>
+          )}
+
+          {isAdmin && isPendingApproval && !isFinal && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="success" onClick={() => approveQuote(quote)} disabled={isBusy} className='px-3'><Check></Check></Button>
+              <Button size="sm" variant="danger" onClick={() => setRejectFor(quote)} disabled={isBusy} className="px-3"><X></X></Button>
+            </div>
+          )}
+
+        </div>
+
         {/* MODIFICATION: Show Edit icon only for 'PendingApproval' status */}
         {status === 'PendingApproval' && (
           <button
@@ -276,6 +286,17 @@ const Quotes: React.FC = () => {
           <Eye className="w-5 h-5" />
         </button>
 
+
+        <button
+          onClick={() => handleDownload(quote)}
+          disabled={!canDownload || isBusy}
+          title={!canDownload ? "Waiting for admin approval" : "Download PDF"}
+          className="p-2 text-gray-600 hover:text-sky-600 disabled:opacity-50"
+        >
+          <Download className="w-5 h-5" />
+        </button>
+
+
         {(status === 'Draft' || status === 'Sent') && (
           <button
             onClick={() => navigate(`/quote/${quote.id}/clone`)}
@@ -286,15 +307,7 @@ const Quotes: React.FC = () => {
             <File className="w-5 h-5" />
           </button>
         )}
-        
-        <button
-          onClick={() => handleDownload(quote)}
-          disabled={!canDownload || isBusy}
-          title={!canDownload ? "Waiting for admin approval" : "Download PDF"}
-          className="p-2 text-gray-600 hover:text-sky-600 disabled:opacity-50"
-        >
-          <Download className="w-5 h-5" />
-        </button>
+
       </div>
     );
   };
@@ -321,8 +334,8 @@ const Quotes: React.FC = () => {
           <DataTable
             rows={quotes}
             columns={[
-              { key: 'quoteNumber', header: 'Quote #' },
-                { key: 'lead.uniqueNumber', header: 'Lead #' },
+              { key: 'quoteNumber', header: 'Quote' },
+              { key: 'lead.uniqueNumber', header: 'Lead' },
               { key: 'customerName', header: 'Company' },
               { key: 'salesmanName', header: 'SalesMan' },
               {
@@ -333,24 +346,40 @@ const Quotes: React.FC = () => {
               {
                 key: 'status',
                 header: 'Status',
-                render: (r) => (
-                  <div className="flex flex-col">
-                    <span
-                      className={`font-medium ${r.status === 'PendingApproval' ? 'text-yellow-600' : ''
-                        }`}
-                    >
-                      {r.status}
-                    </span>
-                    {r.status === 'Rejected' && r.rejectNote && (
+                render: (r) => {
+
+                  const statusColors: Record<string, string> = {
+                    Draft: 'text-gray-500',
+                    Sent: 'text-blue-500 ',
+                    Accepted: 'text-green-500',
+                    Rejected: 'text-red-500 ',
+                    Expired: 'text-yellow-500 ',
+                  };
+
+                  const colorClass = statusColors[r.status] || 'text-gray-700 bg-gray-100/60 border border-gray-200/60';
+
+
+
+                  return (
+
+                    <div className="flex flex-col">
                       <span
-                        className="text-xs text-red-600 mt-0.5"
-                        title={r.rejectNote}
+                        className={`font-medium ${r.status === 'PendingApproval' ? 'text-yellow-600' : ''
+                          }  ${colorClass}`}
                       >
-                        Reason: {r.rejectNote}
+                        {r.status}
                       </span>
-                    )}
-                  </div>
-                ),
+                      {r.status === 'Rejected' && r.rejectNote && (
+                        <span
+                          className="text-xs text-red-600 mt-0.5 italic"
+                          title={r.rejectNote}
+                        >
+                          Reason: {r.rejectNote}
+                        </span>
+                      )}
+                    </div>
+                  );
+                }
               },
               {
                 key: 'grandTotal',
@@ -360,12 +389,12 @@ const Quotes: React.FC = () => {
               },
               {
                 key: 'validityUntil',
-                header: 'Date',
+                header: 'Valid Till',
                 render: (row) => <FormattedDateTime isoString={row.validityUntil} />,
               },
-               {
+              {
                 key: 'createdAt',
-                header: 'Date',
+                header: 'Created At',
                 render: (row) => <FormattedDateTime isoString={row.createdAt} />,
               },
               {
@@ -373,7 +402,7 @@ const Quotes: React.FC = () => {
                 header: 'Actions',
                 sortable: false,
                 render: renderActions,
-                width: '360px',
+                width: '300px',
               },
             ]}
             initialSort={{ key: 'quoteDate', dir: 'DESC' }}
