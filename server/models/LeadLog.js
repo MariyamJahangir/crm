@@ -7,16 +7,17 @@ const LeadLog = sequelize.define('LeadLog', {
     primaryKey: true,
     defaultValue: DataTypes.UUIDV4,
   },
-  leadId: { 
-    type: DataTypes.CHAR(36),
-    allowNull: false,
-    references: {
-      model: 'leads', // Exact table name in your DB
-      key: 'id',
-    },
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
+leadId: { 
+  type: DataTypes.UUID,
+  allowNull: false,
+  references: {
+    model: 'leads', 
+    key: 'id',
   },
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE',
+},
+
   action: {
     type: DataTypes.STRING(64),
     allowNull: false,
