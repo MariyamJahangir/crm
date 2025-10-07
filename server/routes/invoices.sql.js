@@ -19,10 +19,7 @@ const Admin = require('../models/Admin')
 const numWords = require('num-words');
 // --- Helper Functions ---
 
-/**
- * Generates a unique, sequential invoice number.
- * @returns {Promise<string>} A new invoice number (e.g., "INV-00001").
- */
+
 async function generateInvoiceNumber() {
   const lastInvoice = await Invoice.findOne({
     order: [['createdAt', 'DESC']],
@@ -36,12 +33,7 @@ async function generateInvoiceNumber() {
   return 'INV-00001';
 }
 
-/**
- * Safely escapes a value to be injected into HTML.
- * @param {*} v The value to escape.
- * @returns {string} The escaped string.
- */
-// A simple utility to escape HTML characters
+
 function esc(str) {
     if (typeof str !== 'string') return '';
     return str.replace(`/[&<>"']/g`, match => {
@@ -275,87 +267,6 @@ function buildInvoiceHTML({ invoice, items, creator, logoBase64 }) {
 
 
 
-// --- API Routes ---
-
-/**
- * GET /api/invoices
- * Retrieves a list of all invoices.
- */
-// router.get('/:id/download', authenticateToken, async (req, res) => {
-//   try {
-//     const invoice = await Invoice.findByPk(req.params.id, {
-//       include: [
-//         { model: InvoiceItem, as: 'items' },
-//         { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
-//       ]
-//     });
-
-//     if (!invoice) {
-//       return res.status(404).json({ success: false, message: 'Invoice not found' });
-//     }
-
-//     // 1. Generate HTML content
-//     const html = buildInvoiceHTML({ 
-//       invoice: invoice.toJSON(), 
-//       items: (invoice.items || []).map(i => i.toJSON()) 
-//     });
-    
-//     const invoiceNumber = invoice.invoiceNumber || 'invoice';
-
-//     const options = {
-//       format: 'A4',
-//       border: {
-//         top: '20px',
-//         right: '20px',
-//         bottom: '20px',
-//         left: '20px'
-//       }
-//     };
-
-//     // 2. Use pdf.create with a callback, just like your quote route
-//     pdf.create(html, options).toBuffer((err, buffer) => {
-//       if (err) {
-//         // This is the source of the instability and timeout errors.
-//         console.error('html-pdf generation error:', err);
-//         return res.status(500).json({ success: false, message: 'Failed to generate PDF.' });
-//       }
-      
-//       // 3. Set headers and send the response if successful
-//       res.setHeader('Content-Type', 'application/pdf');
-//       res.setHeader('Content-Disposition', `attachment; filename=${invoiceNumber}.pdf`);
-//       res.send(buffer);
-//     });
-
-//   } catch (e) {
-//     // This outer catch block may not be reached if PhantomJS crashes the entire process.
-//     console.error('Outer PDF Download Error:', e);
-//     res.status(500).json({ success: false, message: 'An unexpected server error occurred while generating the PDF.' });
-//   }
-// });
-/**
- * PATCH /api/invoices/:id/status
- * Updates the status of a single invoice.
- */
-// routes/invoices.js
-
-// router.get('/:id/preview', authenticateToken, async (req, res) => {
-//     try {
-//         const invoice = await Invoice.findByPk(req.params.id, { 
-//             include: [
-//                 { model: InvoiceItem, as: 'items' },
-//                 { model: Quote, as: 'quote', attributes: ['id', 'quoteNumber'], required: false }
-//             ] 
-//         });
-//         if (!invoice) {
-//             return res.status(404).json({ success: false, message: 'Invoice not found' });
-//         }
-//         const html = buildInvoiceHTML({ invoice: invoice.toJSON(), items: (invoice.items || []).map(i => i.toJSON()) });
-//         res.json({ success: true, html });
-//     } catch (e) {
-//         res.status(500).json({ success: false, message: 'Failed to generate preview: ' + e.message });
-//     }
-// });
-
 
 
 
@@ -426,141 +337,6 @@ router.get('/', authenticateToken, async (req, res) => {
         res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
     }
 });
-
-
-
-
-
-// router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
-//     const { quoteId } = req.params;
-//     const loggedInUserId = req.subjectId;
-//     const loggedInUserType = req.subjectType;
-
-//     const transaction = await sequelize.transaction();
-
-//     try {
-//         // --- 1. Fetch Quote with all necessary associations ---
-//         const quote = await Quote.findByPk(quoteId, {
-//             include: [
-//                 { model: QuoteItem, as: 'items' },
-//                 {
-//                     model: Lead,
-//                     as: 'lead',
-//                     attributes: ['id', 'salesmanId', 'customerId'],
-//                     include: [
-//                         { model: Customer, as: 'customer', attributes: ['id', 'companyName', 'address'] },
-//                         { model: Member, as: 'salesman', attributes: ['id', 'name'] }
-//                     ]
-//                 }
-//             ],
-//             transaction
-//         });
-
-//         // --- 2. Perform All Validations ---
-//         if (!quote) {
-//             await transaction.rollback();
-//             return res.status(404).json({ success: false, message: 'Quote not found.' });
-//         }
-
-//         const isAdmin = loggedInUserType === 'ADMIN';
-//         const isAssignedSalesman = quote.lead && String(quote.lead.salesmanId) === String(loggedInUserId);
-
-//         if (!isAdmin && !isAssignedSalesman) {
-//             await transaction.rollback();
-//             return res.status(403).json({
-//                 success: false,
-//                 message: 'Forbidden: You do not have permission to convert this quote.'
-//             });
-//         }
-
-//         if (quote.status !== 'Accepted') {
-//             await transaction.rollback();
-//             return res.status(400).json({ success: false, message: 'Only an "Accepted" quote can be converted to an invoice.' });
-//         }
-        
-//         if (!quote.lead || !quote.lead.customer) {
-//             await transaction.rollback();
-//             return res.status(400).json({ success: false, message: 'Data consistency error: The quote is not linked to a valid customer or lead.' });
-//         }
-
-//         const existingInvoice = await Invoice.findOne({ where: { quoteId: quote.id }, transaction });
-//         if (existingInvoice) {
-//             await transaction.rollback();
-//             return res.status(409).json({ success: false, message: `This quote has already been converted to Invoice #${existingInvoice.invoiceNumber}.` });
-//         }
-
-//         // --- 3. Calculations with proper data handling ---
-//         const FIXED_TAX_PERCENT = 5;
-//         let calculatedSubtotal = 0;
-//         let calculatedVatAmount = 0;
-
-//         const invoiceItemsData = quote.items.map((item, index) => {
-//             const rate = Number(item.itemRate) || 0;
-//             const quantity = Number(item.quantity) || 0;
-//             const discount = Number(item.lineDiscountAmount) || 0;
-//             const lineSubtotal = (quantity * rate) - discount;
-//             const taxAmount = lineSubtotal * (FIXED_TAX_PERCENT / 100);
-            
-//             calculatedSubtotal += lineSubtotal;
-//             calculatedVatAmount += taxAmount;
-
-//             // This object MUST match your InvoiceItem model definition
-//             return {
-//                 slNo: index + 1,
-//                 product: item.product,
-//                 description: item.description,
-//                 quantity: quantity,
-//                 itemRate: rate, // CRITICAL FIX: Ensure itemRate is included and is a number
-//                 taxPercent: FIXED_TAX_PERCENT,
-//                 taxAmount: taxAmount.toFixed(2),
-//                 lineTotal: (lineSubtotal + taxAmount).toFixed(2),
-//             };
-//         });
-
-//         const overallDiscountAmount = Number(quote.discountAmount) || 0;
-//         const calculatedGrandTotal = (calculatedSubtotal - overallDiscountAmount) + calculatedVatAmount;
-
-//         // --- 4. Database Creation within the transaction ---
-//         const newInvoice = await Invoice.create({
-//             quoteId: quote.id,
-//             invoiceNumber: await generateInvoiceNumber(),
-//             invoiceDate: new Date(),
-//             dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
-//             customerId: quote.lead.customerId,
-//             customerName: quote.lead.customer.companyName,
-//             address: quote.lead.customer.address,
-//             subtotal: calculatedSubtotal.toFixed(2),
-//             discountAmount: overallDiscountAmount.toFixed(2),
-//             vatAmount: calculatedVatAmount.toFixed(2),
-//             grandTotal: calculatedGrandTotal.toFixed(2),
-//             status: 'Draft',
-//             createdById: loggedInUserId,
-//             creatorType: loggedInUserType,
-//             salesmanId: quote.lead.salesmanId,
-//             salesmanName: quote.lead.salesman ? quote.lead.salesman.name : 'N/A',
-//         }, { transaction });
-
-//         const finalInvoiceItems = invoiceItemsData.map(item => ({ ...item, invoiceId: newInvoice.id }));
-        
-//         await InvoiceItem.bulkCreate(finalInvoiceItems, { transaction });
-        
-//         await quote.update({ invoiceId: newInvoice.id }, { transaction });
-
-//         // --- 5. Commit the transaction and Respond ---
-//         await transaction.commit();
-
-//         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'salesman'] });
-//         res.status(201).json({ success: true, message: 'Quote successfully converted to invoice.', invoice: fullInvoice });
-
-//     } catch (error) {
-//         if (transaction && !transaction.finished) {
-//             await transaction.rollback();
-//         }
-//         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-//         console.error(`[CONVERT_QUOTE] FAILED AND ROLLED BACK. Error: ${errorMessage}`, error);
-//         res.status(500).json({ success: false, message: 'Failed to convert quote to invoice: ' + errorMessage });
-//     }
-// });
 
 router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
     const { quoteId } = req.params;
@@ -674,7 +450,8 @@ router.post('/from-quote/:quoteId', authenticateToken, async (req, res) => {
 
         // --- 5. Commit the transaction and Respond ---
         await transaction.commit();
-
+  await writeLeadLog(req, invoice.leadId, 'QUOTE_CONVERTED_TO_INVOCIE', `${actorLabel(req)} converted invoice #${invoice.invoiceNumber}`).catch(() => {});
+            
         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: ['items', 'salesman'] });
         res.status(201).json({ success: true, message: 'Quote successfully converted to invoice.', invoice: fullInvoice });
 
@@ -769,6 +546,8 @@ router.post('/', authenticateToken, [
         await transaction.commit();
         
         const fullInvoice = await Invoice.findByPk(newInvoice.id, { include: 'items' });
+          await writeLeadLog(req, invoice.leadId, 'INVOICE_CREATED', `${actorLabel(req)} created invoice #${invoice.invoiceNumber}`).catch(() => {});
+            
         res.status(201).json({ success: true, invoice: fullInvoice });
 
     } catch (error) {

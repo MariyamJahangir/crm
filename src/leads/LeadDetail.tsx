@@ -498,14 +498,22 @@ const onDeleteAttachment = async (att: { filename: string; url: string }) => {
   </div>
 )}
 
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Actual Date : </span> {lead.actualDate ? new Date(lead.actualDate).toLocaleString() : '-'}</div>
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Created : </span> {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : '-'}</div>
-                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Updated : </span> {lead.updatedAt ? new Date(lead.updatedAt).toLocaleString() : '-'}</div>
-
+                 <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Updated : </span> {lead.updatedAt ? new Date(lead.updatedAt).toLocaleString() : '-'}</div>
+ <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Created By : </span> {lead.createdBy || '-'}</div>
+  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Salesman : </span> {lead.salesman.name || '-'}</div>
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Contact : </span> {lead.contactPerson || '-'}</div>
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Mobile : </span> {lead.mobile || '-'} {lead.mobileAlt ? `/ ${lead.mobileAlt}` : ''}</div>
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Email : </span> {lead.email || '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Address : </span> {lead.address || '-'}</div>
+                  <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Country : </span> {lead.country || '-'}</div>
                   <div><span className="font-medium text-midnight-500 dark:text-ivory-400">City : </span> {lead.city || '-'}</div>
+                 {lead?.sharedWith && (
+                    <div>
+                      <span className="font-medium text-midnight-500 dark:text-ivory-400">Shared With : </span> {lead.sharedWith[0].name || '-'}
+                    </div>
+                  )}
+                 
                   {/* <div><span className="font-medium text-midnight-500 dark:text-ivory-400">Creator:</span> {lead.creatorType ? `${lead.creatorType}` : '-'}</div> */}
                 </div>
                 {lead.previewUrl && (
