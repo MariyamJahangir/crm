@@ -89,13 +89,13 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ options, appliedFilters
 
         {/* The dropdown menu */}
         {isOpen && (
-          <div className="origin-top-left absolute left-0 mt-2 w-72 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+          <div className="origin-top-left absolute left-0 mt-2 w-80  rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
             <div className="flex border-b">
               {Object.keys(options).map(tab => (
                 <button
                   key={tab}
                   onClick={() => openTab(tab)}
-                  className={`flex-1 px-4 py-2 text-sm capitalize ${currentTab === tab ? 'font-bold border-b-2 border-blue-600' : 'text-gray-600'}`}
+                  className={`flex-1 px-4 py-2 text-sm capitalize ${currentTab === tab ? 'font-bold border-b-2 border-sky-400' : 'text-gray-600'}`}
                 >
                   {tab}
                 </button>
@@ -105,14 +105,14 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ options, appliedFilters
             <div className="max-h-60 overflow-y-auto p-2">
               {(options[currentTab] || []).map(option => (
                 <div key={option} className="flex items-center p-2 rounded-md hover:bg-gray-100 cursor-pointer" onClick={() => toggleOption(option)}>
-                  <input type="checkbox" className="mr-2 h-4 w-4" checked={selectedValues.includes(option)} readOnly />
+                  <input type="checkbox" className="mr-2 h-4 w-4 accent-sky-500 cursor-pointer " checked={selectedValues.includes(option)} readOnly />
                   <span className="text-sm">{option}</span>
                 </div>
               ))}
             </div>
 
             <div className="border-t px-4 py-3">
-              <button onClick={handleApply} className="w-full bg-blue-600 text-white rounded-md px-4 py-2 text-sm font-semibold hover:bg-blue-700">
+              <button onClick={handleApply} className="w-full bg-sky-500 text-white rounded-md px-4 py-2 text-sm font-semibold hover:bg-sky-600">
                 Apply Filters
               </button>
             </div>
@@ -123,10 +123,10 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({ options, appliedFilters
       {/* Display applied filters as pills below the button */}
       <div className="flex flex-wrap gap-2 mt-4">
         {appliedFilters.map(filter => (
-          <div key={filter.type} className="flex items-center bg-blue-100 text-blue-800 rounded-full px-3 py-1 text-sm">
+          <div key={filter.type} className="flex items-center bg-sky-100 text-sky-600 rounded-full px-3 py-1 text-sm">
             <span className="font-semibold mr-1">{filter.label}:</span>
             <span>{filter.values.join(', ')}</span>
-            <button onClick={() => handleRemoveFilter(filter.type)} className="ml-2 font-bold text-blue-600 hover:text-blue-900">&times;</button>
+            <button onClick={() => handleRemoveFilter(filter.type)} className="ml-2 font-bold text-sky-500 hover:text-sky-700">&times;</button>
           </div>
         ))}
       </div>

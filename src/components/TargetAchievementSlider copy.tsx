@@ -58,10 +58,9 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
     const visibleData = getVisibleItems();
 
     return (
-    <div className="bg-gray-100/30 backdrop-blur-md border border-gray-300/70 py-10 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500">
-      <h3 className="text-3xl font-bold text-center text-gray-800 tracking-tight">
-        Member Target Achievement 
-        {/* <span className="text-indigo-600">(This Month)</span> */}
+    <div className="bg-gray-100/50 backdrop-blur-sm border border-gray-200/60 py-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500">
+      <h3 className="text-2xl font-bold text-center text-gray-800 tracking-tight">
+        Member Target Achievement <span className="text-indigo-600">(This Month)</span>
       </h3>
       <div className="relative flex justify-center items-center h-[400px] max-w-[1200px] mx-auto" style={{ perspective: "1200px" }}>
         {visibleData.map((member, index) => {
@@ -88,10 +87,10 @@ const TargetAchievementSlider: React.FC<TargetAchievementSliderProps> = ({ data,
         {isSliderActive && (
           <>
             <button onClick={handlePrev} className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/70 backdrop-blur-md border rounded-full p-2 shadow-md hover:bg-gray-100 transition-all duration-300 z-40">
-              <ChevronLeft size={20} className="text-sky-600" />
+              <ChevronLeft size={20} className="text-indigo-600" />
             </button>
-            <button onClick={handleNext} className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/70 backdrop-blur-md  rounded-full p-2 shadow-md hover:bg-gray-100 transition-all duration-300 z-40">
-              <ChevronRight size={20} className="text-sky-600" />
+            <button onClick={handleNext} className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/70 backdrop-blur-md border rounded-full p-2 shadow-md hover:bg-gray-100 transition-all duration-300 z-40">
+              <ChevronRight size={20} className="text-indigo-600" />
             </button>
           </>
         )}

@@ -25,38 +25,10 @@ const PieChartCard = ({ title, chartData, centerTextLabel, centerTextValue, onSl
 
 
     const options = {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '75%',
-        layout: {
-            padding: {
-                top: 20,
-                bottom: 20,
-                left: 20,
-                right: 20,
-            },
-        },
+        responsive: true, maintainAspectRatio: false, cutout: '65%',
         plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    padding: 15,
-                    boxWidth: 12,
-                    font: {
-                        weight: 'bold'
-                    }
-                }
-            },
-            tooltip: {
-                ...chartData.options?.plugins?.tooltip,
-                bodySpacing: 6,
-                padding: 10,
-                multiKeyBackground: '#0000',
-                cornerRadius: 8,
-                backgroundColor: 'rgba(17, 24, 39, 0.9)',
-                titleColor: '#fff',
-                bodyColor: '#e2e8f0',
-            }
+            legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12, font: { weight: 'bold' } } },
+            tooltip: { ...chartData.options?.plugins?.tooltip, bodySpacing: 5, padding: 10, multiKeyBackground: '#0000' }
         },
     };
 
@@ -75,30 +47,21 @@ const PieChartCard = ({ title, chartData, centerTextLabel, centerTextValue, onSl
     };
 
     return (
-        <div className="
-        bg-gray-100/30 border border-gray-300/70
-        
-         backdrop-blur-lg p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col h-[450px]">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col h-[450px]">
             <h3 className="text-lg font-bold text-gray-800 mb-2 text-center truncate">{title}</h3>
-
             <div className="relative flex-grow w-full h-full">
                 {chartData && chartData.datasets[0].data.length > 0 ? (
                     <>
-
                         <Doughnut ref={chartRef} data={chartData} options={options} onClick={handleClick} />
-
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                            <span className="text-3xl font-extrabold text-midnight-900">{centerTextValue}</span>
-                            <span className="text-sm font-medium text-midnight-500">{centerTextLabel}</span>
+                            <span className="text-3xl font-extrabold text-gray-900">{centerTextValue}</span>
+                            <span className="text-sm font-medium text-gray-500">{centerTextLabel}</span>
                         </div>
                     </>
                 ) : (<div className="absolute inset-0 flex items-center justify-center"><p className="text-gray-500">No data for this period.</p></div>)}
-
             </div>
         </div>
     );
-
-
 };
 
 
@@ -154,28 +117,10 @@ const Dashboard = () => {
     const formatUSD = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
     const formatNumber = (value) => new Intl.NumberFormat('en-US').format(value);
 
-    const chartColors = [
-        "#415178", // Indigo Blue
-        "#EE5E5F", // Coral Red
-        "#A5599E", // Deep Purple Rose
-        "#54B4AF", // Teal Green
-        "#EBD332", // Vibrant Yellow
-
-        // new ones below 👇
-        "#F48C06", // Warm Orange
-        "#6A4C93", // Royal Violet
-        "#0096C7", // Strong Aqua Blue
-        "#16A34A", // Fresh Green
-        "#D7263D", // Crimson Red
-        "#845EC2", // Purple Blue
-        "#FF6F61", // Bright Coral
-        "#2C6975", // Ocean Teal
-        "#FFC75F", // Soft Gold
-        "#0081CF"  // Clear Sky Blue
-    ];
+    const chartColors = ['#4F46E5', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#6366F1'];
     const baseChartData = (labels, values) => ({
         labels,
-        datasets: [{ data: values, backgroundColor: chartColors, borderColor: '#a2a8b0ac', borderWidth: 2, hoverOffset: 15 }]
+        datasets: [{ data: values, backgroundColor: chartColors, borderColor: '#fff', borderWidth: 4, hoverOffset: 15 }]
     });
 
 
@@ -240,14 +185,11 @@ const Dashboard = () => {
         const { isAdmin, memberTargetAchievements } = dashboardData;
         return (
             <>
-                <div className="mb-8 py-6 rounded-2xl ">
-                    {/* <h2 className="text-xl font-bold text-gray-800 mb-4">This Month's Target Achievement</h2> */}
-                    {isAdmin ? (<TargetAchievementSlider data={memberTargetAchievements} onEdit={handleEditTarget} />) : (<div className="max-w-md mx-auto">{memberTargetAchievements.length > 0 ? <MemberTargetGauge {...memberTargetAchievements[0]} /> : <p className="text-center text-midnight-500">Your target is not set for this month.</p>}</div>)}
+                <div className="mb-8 bg-white p-6 rounded-2xl shadow-lg">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">This Month's Target Achievement</h2>
+                    {isAdmin ? (<TargetAchievementSlider data={memberTargetAchievements} onEdit={handleEditTarget} />) : (<div className="max-w-md mx-auto">{memberTargetAchievements.length > 0 ? <MemberTargetGauge {...memberTargetAchievements[0]} /> : <p className="text-center text-gray-500">Your target is not set for this month.</p>}</div>)}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-
-
-
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     <PieChartCard
                         title="Sales by Salesman (USD)"
                         chartData={salesBySalesmanChart}
@@ -255,7 +197,6 @@ const Dashboard = () => {
                         centerTextLabel={selectedSalesInfo ? selectedSalesInfo.label : "Total Sales"}
                         onSliceClick={setSelectedSalesInfo}
                     />
-
                     <PieChartCard
                         title="Leads by Salesman"
                         chartData={leadsBySalesmanChart}
@@ -290,7 +231,7 @@ const Dashboard = () => {
     };
 
 
-    const FilterButton = ({ value, label }) => (<button onClick={() => setPeriod(value)} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${period === value ? 'bg-sky-500 text-white shadow-md' : 'bg-cloud-50 text-midnight-700 hover:bg-gray-100'}`}>{label}</button>);
+    const FilterButton = ({ value, label }) => (<button onClick={() => setPeriod(value)} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${period === value ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-gray-100'}`}>{label}</button>);
 
 
     return (
@@ -305,8 +246,8 @@ const Dashboard = () => {
                             <p className="mt-1 text-gray-600">Welcome back, {user?.name || 'User'}.</p>
                         </div>
                         <div className="flex items-center gap-4 mt-4 sm:mt-0">
-                            {dashboardData?.isAdmin && <button onClick={() => setTargetModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-sky-500 text-white font-semibold rounded-lg shadow-md hover:bg-sky-600"><Target size={16} /> Set Target</button>}
-                            <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-md border">
+                            {dashboardData?.isAdmin && <button onClick={() => setTargetModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700"><Target size={16} /> Set Target</button>}
+                            <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm">
                                 <FilterButton value="this_month" label="This Month" />
                                 <FilterButton value="last_month" label="Last Month" />
                                 <FilterButton value="this_quarter" label="This Quarter" />

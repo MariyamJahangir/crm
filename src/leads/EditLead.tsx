@@ -107,7 +107,7 @@ const EditLead: React.FC = () => {
             setLoading(false);
         }
     };
-    
+
     const isCreatorOrAdmin = user?.id === lead?.creatorId || isAdmin;
 
     useEffect(() => {
@@ -182,33 +182,45 @@ const EditLead: React.FC = () => {
                             Update lead details.
                         </p>
                     </div>
+
+
+
                     <form onSubmit={save}
-                        className="space-y-8 bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl p-6 rounded-2xl shadow-xl border border-cloud-300/30 dark:border-midnight-700/30">
+                        className="space-y-6 bg-cloud-50/30 dark:bg-midnight-900/30 backdrop-blur-xl 
+                                p-6 rounded-2xl shadow-xl border border-cloud-300/30 dark:border-midnight-700/30">
                         <div>
+                            <div className="text-sm font-bold text-midnight-800 dark:text-ivory-200 mb-3 tracking-wide">
+                                Lead Stage
+                            </div>
                             <div ref={stageContainerRef}
-                                className="relative flex w-full flex-wrap items-center p-1 rounded-full bg-cloud-200/60 dark:bg-midnight-800/60 border border-cloud-300/40 dark:border-midnight-700/40">
-                                <span className="absolute rounded-full bg-sky-500 shadow-lg transition-all duration-300 ease-in-out"
+                                className="relative flex w-full items-center p-1 rounded-full bg-cloud-200/60 dark:bg-midnight-800/60 backdrop-blur-sm border border-cloud-300/40 dark:border-midnight-700/40">
+                                <span className="absolute top-1 bottom-1 h-auto rounded-full bg-sky-500 shadow-lg transition-all duration-300 ease-in-out"
                                     style={indicatorStyle} />
                                 {STAGES.map((s, index) => (
                                     <button key={s} ref={el => (stageButtonRefs.current[index] = el)} type="button"
-                                        className={`relative z-10 flex-1 h-11 flex items-center justify-center px-3 text-sm font-semibold rounded-full transition-colors duration-300 ${stage === s ? 'text-white' : 'text-midnight-600 dark:text-ivory-300 hover:text-midnight-900 dark:hover:text-ivory-100'}`}
+                                        className={`relative z-10 flex-1 px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500 focus-visible:ring-offset-cloud-100 dark:focus-visible:ring-offset-midnight-800 ${stage === s
+                                            ? 'text-white'
+                                            : 'text-midnight-600 dark:text-ivory-300 hover:text-midnight-900 dark:hover:text-ivory-100'
+                                            }`}
                                         onClick={() => setStage(s)}>
                                         {s}
                                     </button>
                                 ))}
                             </div>
                         </div>
+
                         <div>
-                            <div className="text-sm font-medium mb-2">Forecast</div>
+                            <div className="text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Forecast</div>
                             <div className="flex gap-4">
                                 {FORECASTS.map((f) => (
-                                    <label key={f} className="inline-flex items-center gap-2 text-sm">
+                                    <label key={f} className="inline-flex items-center gap-2 text-sm text-midnight-700 dark:text-ivory-200">
                                         <input type="radio" name="forecast" value={f} checked={forecastCategory === f} onChange={() => setForecastCategory(f)} />
                                         <span>{f}</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-medium mb-2">Company</label>
@@ -218,10 +230,7 @@ const EditLead: React.FC = () => {
                                     className="w-full h-10 px-3 rounded-xl border bg-gray-100 dark:bg-midnight-800 cursor-not-allowed"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Closing Date</label>
-                                <input type="date" value={closingDate} onChange={e => setClosingDate(e.target.value)} className="w-full h-10 px-3 rounded-xl border" />
-                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium mb-2">Source</label>
                                 <select value={source} onChange={(e) => setSource(e.target.value)} className="w-full h-10 px-3 rounded-xl border">
@@ -229,6 +238,7 @@ const EditLead: React.FC = () => {
                                 </select>
                             </div>
                         </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-medium mb-2">Contact Person</label>
@@ -260,17 +270,27 @@ const EditLead: React.FC = () => {
                                 <input type="email" value={emailField} onChange={e => setEmailField(e.target.value)} className="w-full h-10 px-3 rounded-xl border" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">City</label>
-                                <input value={city} onChange={e => setCity(e.target.value)} className="w-full h-10 px-3 rounded-xl border" />
+                                <label className="block text-sm font-medium mb-2">Closing Date</label>
+                                <input type="date" value={closingDate} onChange={e => setClosingDate(e.target.value)} className="w-full h-10 px-3 rounded-xl border" />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Country</label>
-                                <input value={country} onChange={e => setCountry(e.target.value)} className="w-full h-10 px-3 rounded-xl border" />
-                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium mb-2">Address</label>
                                 <textarea value={address} onChange={e => setAddress(e.target.value)} className="w-full px-3 py-2 rounded-xl border" rows={1} />
                             </div>
+                            <div className='flex gap-4 justify-between items-center'>
+
+
+                                <div className='flex-1'>
+                                    <label className="block text-sm font-medium mb-2">City</label>
+                                    <input value={city} onChange={e => setCity(e.target.value)} className="w-full h-10 px-3 rounded-xl border" />
+                                </div>
+                                <div className='flex-1'>
+                                    <label className="block text-sm font-medium mb-2">Country</label>
+                                    <input value={country} onChange={e => setCountry(e.target.value)} className="w-full h-10 px-3 rounded-xl border" />
+                                </div>
+                            </div>
+
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-2">Description / Notes</label>
@@ -283,7 +303,7 @@ const EditLead: React.FC = () => {
                             </div>
                         )}
                         {isCreatorOrAdmin && (
-                            <div className="p-4 border rounded-lg space-y-4">
+                            <div className="p-4 border border-cloud-300 dark:border-midnight-700 rounded-lg space-y-4">
                                 {isAlreadyShared ? (
                                     <div>
                                         <label className="block text-sm font-medium mb-1">Shared With</label>
@@ -296,19 +316,20 @@ const EditLead: React.FC = () => {
                                         </p>
                                     </div>
                                 ) : (
-                                    <>
+                                    <div>
                                         <div className="flex items-center">
                                             <input
                                                 id="accompany-salesman-checkbox"
                                                 type="checkbox"
                                                 checked={accompanySalesman}
                                                 onChange={(e) => setAccompanySalesman(e.target.checked)}
-                                                className="h-4 w-4 rounded"
+                                                className="h-4 w-4 text-sky-600 focus:ring-sky-500 border-gray-300 rounded"
                                             />
                                             <label htmlFor="accompany-salesman-checkbox" className="ml-3 block text-sm font-medium">
                                                 Accompany another Salesman
                                             </label>
                                         </div>
+                                        
                                         {accompanySalesman && (
                                             <div className="border-t pt-4">
                                                 <label className="block text-sm font-medium mb-1">Select Member to Accompany</label>
@@ -325,7 +346,7 @@ const EditLead: React.FC = () => {
                                                 </select>
                                             </div>
                                         )}
-                                    </>
+                                    </div>
                                 )}
                             </div>
                         )}

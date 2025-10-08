@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { customerService, Customer } from '../services/customerService';
 import NewCustomerModal from './NewCustomerModal';
 import { toast } from 'react-hot-toast';
-
+import CustomSelect from './CustomSelect'
 
 interface Props {
   open: boolean;
@@ -57,9 +57,9 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
         email: '',
         mobile: '',
         fax: '',
-        social:'',
+        social: '',
       });
-      
+
     }
   }, [open, isNewCustomerModalOpen]);
 
@@ -94,7 +94,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
     await fetchCustomers(); // Refresh the customer list
     setSelectedCustomerId(newCustomerId); // Pre-select the newly created customer
   };
-  
+
   const handleCloseNewCustomerModal = () => {
     setIsNewCustomerModalOpen(false);
   };
@@ -102,42 +102,42 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-      if (!selectedCustomerId) {
-        toast.error('Please select a customer.');
-        return;
+    if (!selectedCustomerId) {
+      toast.error('Please select a customer.');
+      return;
     }
 
     // 2. Check for a contact name
     if (!formData.name.trim()) {
-        toast.error('Contact name is required.');
-        return;
+      toast.error('Contact name is required.');
+      return;
     }
 
     // 3. Check for EITHER mobile or email
     if (!formData.mobile.trim() && !formData.email.trim()) {
-        toast.error('Either a mobile number or an email is required.');
-        return;
+      toast.error('Either a mobile number or an email is required.');
+      return;
     }
     if (formData.mobile.trim() && !/^\+?[0-9]{7,15}$/.test(formData.mobile.trim())) {
-        toast.error('Please enter a valid phone number (only digits and an optional +).');
-        return;
+      toast.error('Please enter a valid phone number (only digits and an optional +).');
+      return;
     }
     // 4. (Optional but recommended) Validate email format if it exists
     if (formData.email.trim() && !/^\S+@\S+\.\S+$/.test(formData.email)) {
-        toast.error('Please provide a valid email address.');
-        return;
+      toast.error('Please provide a valid email address.');
+      return;
     }
 
     setSubmitting(true);
-   
+
     try {
 
       await customerService.addContact(selectedCustomerId, formData, token);
       onSuccess(); // reload data in parent
-        toast.success(`Contact added succesfully`)
+      toast.success(`Contact added succesfully`)
       onClose();   // close modal
     } catch (err: any) {
-        toast.error(err?.data?.message || 'Failed to add contact.');
+      toast.error(err?.data?.message || 'Failed to add contact.');
     } finally {
       setSubmitting(false);
     }
@@ -172,18 +172,18 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
           <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
             {/* Body */}
             <div className="px-6 py-6 space-y-4 overflow-auto flex-1">
-              
+
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
 
                 {/* Customer */}
                 <div>
                   <label className="block text-sm font-medium text-midnight-700 dark:text-ivory-200 mb-2">Customer</label>
                   <div className="flex items-center gap-2">
-                    <select
+                    {/* <select
                       value={selectedCustomerId}
                       onChange={handleCustomerChange}
                      
-                      className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
+                      className="w-full h-10 px-3 rounded-xl border border-white/30 dark:border-midnight-700/30
                                  bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100
                                  shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
                     >
@@ -191,7 +191,21 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                       {customers.map(c => (
                         <option key={c.id} value={c.id}>{c.companyName}</option>
                       ))}
-                    </select>
+                    </select> */}
+                    <div className='w-full'>
+                    <CustomSelect
+                      value={selectedCustomerId}
+                      onChange={(val) => handleCustomerChange({ target: { value: val } })}
+                      options={[
+                        { value: "", label: "-- Select a Customer --", isDisabled: true },
+                        ...customers.map((c) => ({
+                          value: c.id,
+                          label: c.companyName,
+                        })),
+                      ]}
+                      placeholder="Select a Customer"
+                    />
+                    </div>
                     <button
                       type="button"
                       onClick={handleOpenNewCustomerModal}
@@ -211,8 +225,8 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                 
-                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30
+
+                    className="w-full h-10 px-3 rounded-xl border border-white/30 dark:border-midnight-700/30
                                bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100
                                shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
                   />
@@ -226,7 +240,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                     name="designation"
                     value={formData.designation}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                    className="w-full h-10 px-3 rounded-xl border border-white/30 dark:border-midnight-700/30 
                                bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                                shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
                   />
@@ -239,7 +253,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                     name="department"
                     value={formData.department}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                    className="w-full h-10 px-3 rounded-xl border border-white/30 dark:border-midnight-700/30 
                                bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                                shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
                   />
@@ -252,7 +266,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                    className="w-full h-10 px-3 rounded-xl border border-white/30 dark:border-midnight-700/30 
                                bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                                shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
                   />
@@ -265,7 +279,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                     name="mobile"
                     value={formData.mobile}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                    className="w-full h-10 px-3 rounded-xl border border-white/30 dark:border-midnight-700/30 
                                bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                                shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
                   />
@@ -278,7 +292,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                     name="fax"
                     value={formData.fax}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                    className="w-full h-10 px-3 rounded-xl border border-white/30 dark:border-midnight-700/30 
                                bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                                shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
                   />
@@ -291,7 +305,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                     name="social"
                     value={formData.social}
                     onChange={handleChange}
-                    className="w-full h-10 px-3 rounded-2xl border border-white/30 dark:border-midnight-700/30 
+                    className="w-full h-10 px-3 rounded-xl border border-white/30 dark:border-midnight-700/30 
                                bg-white/40 dark:bg-midnight-800/50 text-midnight-800 dark:text-ivory-100 
                                shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-300/50 text-sm transition"
                   />
@@ -306,7 +320,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
                 variant="secondary"
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2 rounded-2xl bg-cloud-100/60 dark:bg-midnight-700/60
+                className="px-5 py-2 rounded-xl bg-cloud-100/60 dark:bg-midnight-700/60
                            border border-cloud-300/40 dark:border-midnight-600/40
                            text-midnight-700 dark:text-ivory-200
                            hover:bg-cloud-200/70 dark:hover:bg-midnight-600/70 shadow-md transition"
@@ -316,7 +330,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2 rounded-2xl bg-sky-500/90 hover:bg-sky-600 text-white shadow-lg transition disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-sky-500/90 hover:bg-sky-600 text-white shadow-lg transition disabled:opacity-50"
               >
                 {submitting ? 'Saving...' : 'Save Contact'}
               </Button>
@@ -335,6 +349,7 @@ const AddContactModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
       )}
     </>
   );
+
 };
 
 

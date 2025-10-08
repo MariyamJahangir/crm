@@ -15,6 +15,8 @@ import {
   Users,
   Building2,
   Armchair,
+  FileSpreadsheet,
+  TextQuote
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import Button from './Button';
@@ -137,7 +139,7 @@ const Sidebar: React.FC = () => {
             `${linkBase} ${isActive ? linkActive : linkInactive}`
           }
         >
-          <FileText size={18} className="mr-3 flex-shrink-0" />
+          <TextQuote size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             Quote
           </span>
@@ -175,7 +177,7 @@ const Sidebar: React.FC = () => {
           to="/reports"
           className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
         >
-          <Store size={18} className="mr-3 flex-shrink-0" />
+          <FileSpreadsheet size={18} className="mr-3 flex-shrink-0" />
           <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           Reports
           </span>

@@ -166,7 +166,7 @@ const DataTable = <Row extends Record<string, any>>({
                     <th
                       key={c.key}
                       style={{ width: c.width }}
-                      className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 select-none ${canSort ? 'cursor-pointer' : ''}`}
+                      className={`px-4 py-3 text-xs font-bold uppercase tracking-wider text-midnight-700 dark:text-midnight-300 select-none ${canSort ? 'cursor-pointer' : ''}`}
                       onClick={() => canSort && onHeaderClick(c)}
                     >
                       <div className="inline-flex items-center gap-1">
@@ -273,6 +273,7 @@ const DataTable = <Row extends Record<string, any>>({
             </div>
           </div>
         </div>
+        
       </div>
     </div>
   );
