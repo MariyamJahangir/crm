@@ -95,6 +95,8 @@ const EditQuote: React.FC = () => {
       setLoading(true);
       try {
         const { quote } = await quotesService.getOneById(quoteIdToEdit, token);
+        console.log(quote);
+        
         setSelectedLeadId(quote.leadId);
         setCustomerName(quote.customerName || '');
         setContactPerson(quote.contactPerson || '');
@@ -136,7 +138,7 @@ const EditQuote: React.FC = () => {
         }
       } catch (error) {
         toast.error("Failed to load quote data for editing.");
-        navigate('/quotes');
+        navigate('/quote');
       } finally {
         setLoading(false);
       }
@@ -246,7 +248,7 @@ const EditQuote: React.FC = () => {
     try {
       await quotesService.update(quoteIdToEdit, payload, token!);
       toast.success("Quote updated successfully!");
-      navigate(selectedLeadId ? `/leads/${selectedLeadId}` : '/quotes');
+      navigate(selectedLeadId ? `/leads/${selectedLeadId}` : '/quote');
     } catch (err: any) {
       const errorMessage = err?.data?.errors?.[0]?.msg || err?.data?.message || 'Failed to update quote.';
       toast.error(errorMessage);
@@ -260,7 +262,7 @@ const EditQuote: React.FC = () => {
   }
 
   return (
-    <>
+     <>
       <style>{noSpinnersCSS}</style>
       <PreviewModal isOpen={preview.open} onClose={() => setPreview({ open: false, html: undefined })} htmlContent={preview.html} />
       <div className="flex min-h-screen z-10">

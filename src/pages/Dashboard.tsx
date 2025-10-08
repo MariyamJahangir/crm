@@ -75,10 +75,7 @@ const PieChartCard = ({ title, chartData, centerTextLabel, centerTextValue, onSl
     };
 
     return (
-        <div className="
-        bg-gray-100/30 border border-gray-300/70
-        
-         backdrop-blur-lg p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col h-[450px]">
+        <div className="bg-cloud-50/60 backdrop-blur-lg p-4 sm:p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col h-[450px]">
             <h3 className="text-lg font-bold text-gray-800 mb-2 text-center truncate">{title}</h3>
 
             <div className="relative flex-grow w-full h-full">

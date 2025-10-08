@@ -197,15 +197,21 @@ const EditLead: React.FC = () => {
                                 <span className="absolute top-1 bottom-1 h-auto rounded-full bg-sky-500 shadow-lg transition-all duration-300 ease-in-out"
                                     style={indicatorStyle} />
                                 {STAGES.map((s, index) => (
-                                    <button key={s} ref={el => (stageButtonRefs.current[index] = el)} type="button"
-                                        className={`relative z-10 flex-1 px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500 focus-visible:ring-offset-cloud-100 dark:focus-visible:ring-offset-midnight-800 ${stage === s
-                                            ? 'text-white'
-                                            : 'text-midnight-600 dark:text-ivory-300 hover:text-midnight-900 dark:hover:text-ivory-100'
-                                            }`}
-                                        onClick={() => setStage(s)}>
-                                        {s}
-                                    </button>
-                                ))}
+  <button
+    key={s}
+    ref={el => (stageButtonRefs.current[index] = el)}
+    type="button"
+    className={`relative z-10 flex-1 px-4 py-2 text-sm font-semibold rounded-full transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-500 focus-visible:ring-offset-cloud-100 dark:focus-visible:ring-offset-midnight-800
+      ${stage === s 
+         ? 'bg-sky-500 text-white' 
+         : 'text-midnight-600 dark:text-ivory-300 hover:text-midnight-900 dark:hover:text-ivory-100'}
+    `}
+    onClick={() => setStage(s)}
+  >
+    {s}
+  </button>
+))}
+
                             </div>
                         </div>
 

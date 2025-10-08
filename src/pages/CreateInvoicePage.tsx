@@ -15,7 +15,6 @@ import { contactsService, Contact, Company } from '../services/contactsService';
 import { teamService, TeamUser } from '../services/teamService';
 import { toast } from 'react-hot-toast';
 import CustomSelect from '../components/CustomSelect';
-
 const CreateInvoicePage: React.FC = () => {
     const { token, user } = useAuth();
     const navigate = useNavigate();
@@ -361,12 +360,12 @@ const CreateInvoicePage: React.FC = () => {
                             <table className="min-w-full border-collapse rounded-xl overflow-hidden shadow-sm text-sm">
                                 <thead className="bg-white/60 dark:bg-midnight-800/50 backdrop-blur-sm border border-cloud-500/20">
                                     <tr>
-                                        <th className="px-4 py-3 text-left font-bold text-midnight-700 dark:text-ivory-200 w-[20%]">Product / Service</th>
-                                        <th className="px-4 py-3 text-left font-bold text-midnight-700 dark:text-ivory-200 w-[30%]">Description</th>
-                                        <th className="px-3 py-3 text-center font-bold text-midnight-700 dark:text-ivory-200 w-[10%]">Qty</th>
-                                        <th className="px-3 py-3 text-center font-bold text-midnight-700 dark:text-ivory-200 w-[10%]">Rate</th>
-                                        <th className="px-3 py-3 text-center font-bold text-midnight-700 dark:text-ivory-200 w-[10%]">Tax %</th>
-                                        <th className="px-4 py-3 text-right font-bold text-midnight-700 dark:text-ivory-200 w-[15%]">Total (incl. Tax)</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-midnight-700 dark:text-ivory-200 w-[20%]">Product / Service</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-midnight-700 dark:text-ivory-200 w-[30%]">Description</th>
+                                        <th className="px-3 py-3 text-center font-semibold text-midnight-700 dark:text-ivory-200 w-[10%]">Qty</th>
+                                        <th className="px-3 py-3 text-center font-semibold text-midnight-700 dark:text-ivory-200 w-[10%]">Rate</th>
+                                        <th className="px-3 py-3 text-center font-semibold text-midnight-700 dark:text-ivory-200 w-[10%]">Tax %</th>
+                                        <th className="px-4 py-3 text-right font-semibold text-midnight-700 dark:text-ivory-200 w-[15%]">Total (incl. Tax)</th>
                                         <th className="px-2 py-3 text-center w-[5%]"></th>
                                     </tr>
                                 </thead>

@@ -13,8 +13,9 @@ const LeadLog = require('../models/LeadLog');
 const fs = require('fs/promises');
 const path = require('path');
 const router = express.Router();
+const Admin = require('../models/Admin');
 const { createNotification, notifyAdmins } = require('../utils/notify');
-const {  notifyAssignment ,notifyLeadUpdate  } = require('../utils/emailService')
+const {  notifyAssignment, notifyAllRelevantParties ,notifyLeadUpdate  } = require('../utils/emailService')
 const BASE_DIR = path.resolve(process.cwd());
 const UPLOADS_DIR = path.join(BASE_DIR, 'uploads');
 const STAGES = Lead.STAGES;
@@ -113,11 +114,11 @@ async function generateUniqueLeadNumber(transaction) {
 
     counter.currentValue += 1;
     await counter.save({ transaction: transaction });
-    return `L-${String(counter.currentValue).padStart(6, '0')}`;
+    return `L-${String(counter.currentValue).padStart(4, '0')}`;
 }
 
 
-// Logging helpers
+
 function actorLabel(req) { return req.subjectType === 'ADMIN' ? 'Admin' : 'Member'; }
 async function resolveActorName(req) {
   if (req.subjectType === 'ADMIN') return 'Admin';
@@ -200,7 +201,11 @@ router.delete('/:id/attachments', authenticateToken, async (req, res) => {
         io?.to(`lead:${lead.id}`).emit('attachment:deleted', { leadId: String(lead.id), attachment: removed });
 
         await writeLeadLog(req, lead.id, 'ATTACHMENT_DELETED', `${actorLabel(req)} removed attachment ${removed.filename}`);
+const actorName = await resolveActorName(req);
+    const subject = `Attachment Removed from Lead: ${lead.companyName}`;
+    const message = `<p>The attachment <strong>${removed.filename}</strong> was removed.</p>`;
 
+    await notifyAllRelevantParties(lead, subject, message, actorName);
         res.json({ success: true });
     } catch (e) {
         console.error('Delete attachment error:', e);
@@ -290,7 +295,11 @@ router.post('/:id/attachments', authenticateToken, upload.array('files', 10), as
         if (added.length) {
             await writeLeadLog(req, lead.id, 'ATTACHMENT_ADDED', `${actorLabel(req)} added ${added.length} attachment(s)`);
         }
-        
+        const actorName = await resolveActorName(req);
+    const subject = `Attachment Added to Lead: ${lead.companyName}`;
+    const message = `<p>${actorName} added ${added.length} new attachment(s).</p>`;
+    
+    await notifyAllRelevantParties(lead, subject, message, actorName);
         res.json({ success: true, attachments: added });
     } catch (e) {
         console.error('Upload attachments error:', e);
@@ -435,7 +444,8 @@ router.get('/', authenticateToken, async (req, res) => {
                 attachments: Array.isArray(l.attachmentsJson) ? l.attachmentsJson : [],
                 nextFollowupAt: nextByLead.get(l.id) || null,
                 createdAt: l.createdAt,
-                updatedAt: l.updatedAt
+                updatedAt: l.updatedAt,
+                createdBy: l.createdBy || null
             }))
         });
 
@@ -562,7 +572,10 @@ router.post(
   authenticateToken,
   [
     body('customerId').trim().notEmpty().withMessage('Customer is required.'),
-    body('shareGpData.sharedMemberId').optional().isUUID().withMessage('A valid member must be selected for sharing.'),
+    body('shareGpData.sharedMemberId')
+      .optional()
+      .isUUID()
+      .withMessage('A valid member must be selected for sharing.'),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -570,50 +583,60 @@ router.post(
       return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
 
+    let resolvedSalesmanId = null;
+    let resolvedCreatorId = null;
+    let resolvedCreatorType = null;
+    let sharingInitiatorId = null;
+    let customer = null;
     const t = await sequelize.transaction();
 
     try {
-      let resolvedSalesmanId = null;
-      let resolvedCreatorId = null;
-      let resolvedCreatorType = null;
-      let sharingInitiatorId = null; // This will hold the correct Member ID for the share
-
       if (isAdmin(req)) {
         if (!req.body.salesmanId) {
           await t.rollback();
           return res.status(400).json({ success: false, message: 'Salesman is required for admin-created leads.' });
         }
+
         const assignedSalesman = await Member.findByPk(req.body.salesmanId, { transaction: t });
         if (!assignedSalesman) {
           await t.rollback();
           return res.status(400).json({ success: false, message: 'Invalid primary salesman.' });
         }
-        
+
         resolvedSalesmanId = assignedSalesman.id;
         resolvedCreatorId = assignedSalesman.id;
         resolvedCreatorType = 'MEMBER';
-        // When an Admin acts, the share is initiated on behalf of the selected salesman
-        sharingInitiatorId = assignedSalesman.id; 
-        
+        sharingInitiatorId = assignedSalesman.id;
       } else {
         const creator = await Member.findByPk(req.subjectId, { transaction: t });
         if (!creator) {
           await t.rollback();
           return res.status(400).json({ success: false, message: 'Invalid creator: Your user account could not be found.' });
         }
-        
+
         resolvedSalesmanId = req.subjectId;
         resolvedCreatorId = req.subjectId;
         resolvedCreatorType = 'MEMBER';
-        // When a Member acts, they are the initiator of the share
         sharingInitiatorId = req.subjectId;
       }
 
-      const customer = await Customer.findByPk(req.body.customerId, { transaction: t });
+      customer = await Customer.findByPk(req.body.customerId, { transaction: t });
       if (!customer) {
         await t.rollback();
         return res.status(400).json({ success: false, message: 'Invalid customer.' });
       }
+
+    
+   let createdByName = 'System';
+if (req.subjectType === 'ADMIN') {
+  // Fetch admin user's name from Admin model or similar
+  const admin = await Admin.findByPk(req.subjectId, { attributes: ['name'] });
+  createdByName = admin?.name || 'Admin';
+} else if (req.subjectType === 'MEMBER') {
+  const member = await Member.findByPk(req.subjectId, { attributes: ['name'] });
+  createdByName = member?.name || 'Member';
+}
+
 
       const uniqueNumber = await generateUniqueLeadNumber(t);
 
@@ -635,40 +658,67 @@ router.post(
         salesmanId: resolvedSalesmanId,
         creatorId: resolvedCreatorId,
         creatorType: resolvedCreatorType,
+        createdBy: createdByName,        // Add creator's name here
       };
 
       const lead = await Lead.create(leadData, { transaction: t });
 
-      // --- FINALIZED SHARING LOGIC ---
       if (req.body.shareGpData && req.body.shareGpData.sharedMemberId) {
-        // Prevent sharing with the same person assigned as the primary salesman
         if (req.body.shareGpData.sharedMemberId === resolvedSalesmanId) {
-            await t.rollback();
-            return res.status(400).json({ success: false, message: 'You cannot share a lead with the primary salesman.' });
+          await t.rollback();
+          return res.status(400).json({ success: false, message: 'You cannot share a lead with the primary salesman.' });
         }
-        
-        await ShareGp.create({
-          leadId: lead.id,
-          memberId: sharingInitiatorId, // Use the correctly resolved Member ID
-          sharedMemberId: req.body.shareGpData.sharedMemberId,
-        }, { transaction: t });
-      }
-      // -----------------------------
-      
-      await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`, t);
-      await t.commit();
-      
-      res.status(201).json({ success: true, id: lead.id, uniqueNumber: lead.uniqueNumber });
 
+        await ShareGp.create(
+          {
+            leadId: lead.id,
+            memberId: sharingInitiatorId,
+            sharedMemberId: req.body.shareGpData.sharedMemberId,
+          },
+          { transaction: t }
+        );
+      }
+
+      await t.commit();
+
+      try {
+        await writeLeadLog(req, lead.id, 'LEAD_CREATED', `${actorLabel(req)} created lead #${lead.uniqueNumber}`);
+      } catch (logError) {
+        console.error('Failed to write lead log:', logError);
+      }
+
+      try {
+        const newLead = await Lead.findByPk(lead.id, {
+          include: [{ model: Member, as: 'salesman', attributes: ['name', 'email'] }],
+        });
+
+        if (newLead) {
+          const actorName = await resolveActorName(req);
+          const subject = `New Lead Created: ${newLead.companyName}`;
+          const message = `<p>A new lead has been created for <strong>${newLead.companyName}</strong> and assigned to <strong>${newLead.salesman?.name || 'N/A'}</strong>.</p>`;
+
+          await notifyAllRelevantParties(newLead, subject, message, actorName);
+        }
+      } catch (emailError) {
+        console.error('Failed to send lead creation email:', emailError);
+      }
+
+      return res.status(201).json({ success: true, id: lead.id, uniqueNumber: lead.uniqueNumber });
     } catch (e) {
       if (t && !t.finished) {
-        await t.rollback();
+        try {
+          await t.rollback();
+        } catch (rollbackErr) {
+          console.error('Rollback error:', rollbackErr);
+        }
       }
-      console.error('Create Lead Error:', e.message);
-      res.status(500).json({ success: false, message: e.message || 'Server error during lead creation.' });
+      console.error('Create Lead Error:', e);
+      return res.status(500).json({ success: false, message: e.message || 'Server error during lead creation.' });
     }
   }
 );
+
+
 
  
 // router.put('/:id', authenticateToken, async (req, res) => {
@@ -771,114 +821,143 @@ router.post(
 
 
 router.put('/:id', authenticateToken, async (req, res) => {
-    const t = await sequelize.transaction();
-    try {
-        // Step 1: Fetch the lead and include its existing shares to check against
-        const lead = await Lead.findByPk(req.params.id, {
-            include: [{ model: ShareGp, as: 'shares' }],
-            transaction: t
-        });
+  const t = await sequelize.transaction();
+  try {
+    // Step 1: Fetch lead with shares inside the transaction to lock necessary rows
+    const lead = await Lead.findByPk(req.params.id, {
+      include: [{ model: ShareGp, as: 'shares' }],
+      transaction: t,
+      lock: t.LOCK.UPDATE, // Lock lead row for update
+    });
 
-        if (!lead) {
-            await t.rollback();
-            return res.status(404).json({ success: false, message: 'Lead not found.' });
-        }
-
-        // Step 2: Your existing permission check
-        if (!(await canModifyLead(req, lead))) {
-            await t.rollback();
-            return res.status(403).json({ success: false, message: 'Forbidden: You do not have permission to edit this lead.' });
-        }
-
-        // Step 3: Your existing logic to build the updateData object
-        const updatableFields = [
-            'stage', 'forecastCategory', 'source', 'quoteNumber', 'previewUrl',
-            'contactPerson', 'mobile', 'mobileAlt', 'email', 'city', 'country', 'address',
-            'description', 'lostReason'
-        ];
-        
-        const updateData = {};
-        updatableFields.forEach(field => {
-            if (req.body[field] !== undefined) {
-                updateData[field] = req.body[field];
-            }
-        });
-
-        // Closing date logic
-        if (req.body.closingDate) {
-            const existingDates = lead.closingDates || [];
-            const newDate = new Date(req.body.closingDate);
-            const lastDate = existingDates.length > 0 ? new Date(existingDates[existingDates.length - 1]) : null;
-            if (!lastDate || lastDate.getTime() !== newDate.getTime()) {
-                updateData.closingDates = [...existingDates, newDate.toISOString()];
-            }
-        }
-
-        // Admin-only field updates
-        if (isAdmin(req)) {
-            if (req.body.customerId) {
-                const newCustomer = await Customer.findByPk(req.body.customerId, { transaction: t });
-                if (!newCustomer) throw new Error('Invalid customer.');
-                updateData.customerId = newCustomer.id;
-                updateData.companyName = newCustomer.companyName;
-            }
-            if (req.body.salesmanId) {
-                const sm = await Member.findByPk(req.body.salesmanId, { transaction: t });
-                if (!sm) throw new Error('Invalid salesman.');
-                updateData.salesmanId = sm.id;
-            }
-        }
-        
-        // Step 4: Perform the main lead update
-        await lead.update(updateData, { transaction: t });
-
-        // --- PERFECTED SHARING LOGIC ---
-        // Step 5: Check if sharing data is provided AND if the lead is not already shared
-        if (req.body.shareGpData?.sharedMemberId && lead.shares.length === 0) {
-            const initiatorId = lead.creatorId; // The original creator always initiates the share
-
-            const [share, created] = await ShareGp.findOrCreate({
-                where: {
-                    leadId: lead.id,
-                    sharedMemberId: req.body.shareGpData.sharedMemberId
-                },
-                defaults: {
-                    memberId: initiatorId, // Use the original creator's ID
-                },
-                transaction: t
-            });
-
-            // If a new share was created, log it
-            if (created) {
-                const sharedMember = await Member.findByPk(req.body.shareGpData.sharedMemberId, { attributes: ['name'], transaction: t });
-                await writeLeadLog(req, lead.id, 'LEAD_SHARED', `${actorLabel(req)} shared the lead with ${sharedMember.name}.`, t);
-            }
-        }
-        // ---------------------------------
-
-        await writeLeadLog(req, lead.id, 'LEAD_UPDATED', `${actorLabel(req)} updated lead details`, t);
-        
-        // Step 6: Commit the transaction
-        await t.commit();
-        
-        // Your existing notification logic
-        if (lead.salesmanId !== req.subjectId) {
-            const salesman = await Member.findByPk(lead.salesmanId);
-            if (salesman) {
-                await notifyLeadUpdate(salesman, lead, 'details updated');
-            }
-        }
-
-        res.json({ success: true });
-
-    } catch (e) {
-        if (t && !t.finished) {
-            await t.rollback();
-        }
-        console.error('Update Lead Error:', e.message, e.stack);
-        res.status(500).json({ success: false, message: e.message || 'Server error' });
+    if (!lead) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Lead not found.' });
     }
+
+    // Step 2: Permission check
+    if (!(await canModifyLead(req, lead))) {
+      await t.rollback();
+      return res.status(403).json({ success: false, message: 'Forbidden: You do not have permission to edit this lead.' });
+    }
+
+    // Step 3: Build updateData with allowed fields
+    const updatableFields = [
+      'stage',
+      'forecastCategory',
+      'source',
+      'quoteNumber',
+      'previewUrl',
+      'contactPerson',
+      'mobile',
+      'mobileAlt',
+      'email',
+      'city',
+      'country',
+      'address',
+      'description',
+      'lostReason',
+    ];
+    const updateData = {};
+    updatableFields.forEach(field => {
+      if (req.body[field] !== undefined) updateData[field] = req.body[field];
+    });
+
+    // Closing dates update logic with array comparison
+    if (req.body.closingDate) {
+      const existingDates = Array.isArray(lead.closingDates) ? lead.closingDates : [];
+      const newDate = new Date(req.body.closingDate);
+      const lastDate = existingDates.length ? new Date(existingDates[existingDates.length - 1]) : null;
+      if (!lastDate || lastDate.getTime() !== newDate.getTime()) {
+        updateData.closingDates = [...existingDates, newDate.toISOString()];
+      }
+    }
+
+    // Admin-only updates for customer and salesman
+    if (isAdmin(req)) {
+      if (req.body.customerId) {
+        const newCustomer = await Customer.findByPk(req.body.customerId, { transaction: t });
+        if (!newCustomer) throw new Error('Invalid customer.');
+        updateData.customerId = newCustomer.id;
+        updateData.companyName = newCustomer.companyName;
+      }
+      if (req.body.salesmanId) {
+        const sm = await Member.findByPk(req.body.salesmanId, { transaction: t });
+        if (!sm) throw new Error('Invalid salesman.');
+        updateData.salesmanId = sm.id;
+      }
+    }
+
+    // Step 4: Update lead
+    await lead.update(updateData, { transaction: t });
+
+    // Step 5: Handle lead sharing if applicable - only if not already shared
+    if (req.body.shareGpData?.sharedMemberId && lead.shares.length === 0) {
+      const initiatorId = lead.creatorId; // Original creator initiates sharing
+
+      const [share, created] = await ShareGp.findOrCreate({
+        where: {
+          leadId: lead.id,
+          sharedMemberId: req.body.shareGpData.sharedMemberId,
+        },
+        defaults: {
+          memberId: initiatorId,
+        },
+        transaction: t,
+      });
+
+      if (created) {
+        const sharedMember = await Member.findByPk(req.body.shareGpData.sharedMemberId, {
+          attributes: ['name'],
+          transaction: t,
+        });
+        await writeLeadLog(req, lead.id, 'LEAD_SHARED', `${actorLabel(req)} shared the lead with ${sharedMember.name}.`, t);
+      }
+    }
+
+    // Commit transaction after all DB changes
+    await t.commit();
+
+    // Step 6: Write lead updated log OUTSIDE transaction to reduce locking
+    try {
+      await writeLeadLog(req, lead.id, 'LEAD_UPDATED', `${actorLabel(req)} updated lead details`);
+    } catch (logError) {
+      console.error('Failed to write lead update log:', logError);
+    }
+
+    // Step 7: Notifications OUTSIDE transaction to avoid blocking
+    try {
+      const updatedLead = await Lead.findByPk(lead.id);
+      const actorName = await resolveActorName(req);
+      const subject = `Lead Updated: ${updatedLead.companyName}`;
+      const message = `<p>The details for the lead have been updated.</p>`;
+
+      await notifyAllRelevantParties(updatedLead, subject, message, actorName);
+
+      if (lead.salesmanId !== req.subjectId) {
+        const salesman = await Member.findByPk(lead.salesmanId);
+        if (salesman) {
+          await notifyLeadUpdate(salesman, lead, 'details updated');
+        }
+      }
+    } catch (notifyError) {
+      console.error('Failed to send lead update notifications:', notifyError);
+    }
+
+    return res.json({ success: true });
+  } catch (e) {
+    if (t && !t.finished) {
+      try {
+        await t.rollback();
+      } catch (rollbackError) {
+        console.error('Transaction rollback failure:', rollbackError);
+      }
+    }
+    console.error('Update Lead Error:', e.message, e.stack);
+    return res.status(500).json({ success: false, message: e.message || 'Server error' });
+  }
 });
+
 
 
 router.get('/leads/:leadId/quotes', authenticateToken, async (req, res) => {

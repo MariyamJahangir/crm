@@ -121,13 +121,13 @@ const Leads: React.FC = () => {
                                 { key: 'stage', header: 'Stage' },
                                 { key: 'forecastCategory', header: 'Forecast' },
                                 { key: 'salesman.name', header: 'Salesman' },
-                                 { key: 'source', header: 'Source' },
+                                 { key: 'createdBy', header: 'Created By' },
                                   
                                     {
-      key: 'nextFollowupAt',
-      header: 'nextFollowupAt',
-      render: (row: { nextFollowupAt?: string }) => 
-        row.nextFollowupAt ? <FormattedDateTime isoString={row.nextFollowupAt} /> : '-',
+      key: 'UpdatedAt',
+      header: 'Last Modified At',
+      render: (row: { updatedAt?: string }) => 
+        row.updatedAt ? <FormattedDateTime isoString={row.updatedAt} /> : '-',
       sortable: true
     },
                                    {

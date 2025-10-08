@@ -133,8 +133,8 @@ const NewCustomerModal: React.FC<Props> = ({ open, onClose, onCreated }) => {
     }
   };
 
-return (
-  <Modal
+  return (
+     <Modal
     open={open}
     onClose={onClose}
     title="New Customer"
@@ -405,7 +405,8 @@ return (
       </div>
     </div>
   </Modal>
-);
+
+  );
 
 
 

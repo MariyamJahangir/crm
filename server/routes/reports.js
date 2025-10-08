@@ -155,18 +155,22 @@ router.post('/leads', authenticateToken, async (req, res) => {
 router.get('/filter-options', authenticateToken, async (req, res) => {
     try {
         const totalValuationInUSD = literal(`(
-            SELECT
-                CASE
-                    WHEN currency = 'INR' THEN grandTotal / 83.0
-                    WHEN currency = 'EUR' THEN grandTotal / 0.92
-                    WHEN currency = 'GBP' THEN grandTotal / 0.79
-                    WHEN currency = 'AED' THEN grandTotal / 3.67
-                    ELSE grandTotal
-                END
-            FROM quotes
-            WHERE quotes.leadId = Lead.id AND quotes.quoteNumber = Lead.quoteNumber
-            LIMIT 1
-        )`);
+    SELECT
+        CASE
+            WHEN currency = 'INR' THEN grandTotal / 83.0
+            WHEN currency = 'EUR' THEN grandTotal / 0.92
+            WHEN currency = 'GBP' THEN grandTotal / 0.79
+            WHEN currency = 'AED' THEN grandTotal / 3.67
+            WHEN currency = 'QAR' THEN grandTotal / 3.64
+            WHEN currency = 'KWD' THEN grandTotal / 0.305
+            WHEN currency = 'BHD' THEN grandTotal / 0.376
+            WHEN currency = 'OMR' THEN grandTotal / 0.384
+            ELSE grandTotal
+        END
+    FROM quotes
+    WHERE quotes.leadId = Lead.id AND quotes.quoteNumber = Lead.quoteNumber
+    LIMIT 1
+)`);
 
         const [salesmen, leadNames, dbStats, valuationsByStage, valuationsByForecast] = await Promise.all([
             Member.findAll({ attributes: [[fn('DISTINCT', col('name')), 'name']], raw: true }),

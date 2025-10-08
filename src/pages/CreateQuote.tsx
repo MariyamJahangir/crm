@@ -10,8 +10,7 @@ import { teamService, TeamUser } from '../services/teamService';
 import { customerService } from '../services/customerService';
 import PreviewModal from '../components/PreviewModal';
 import { toast } from 'react-hot-toast';
-import { X } from 'lucide-react';
-
+import { X, Eye, Download } from 'lucide-react';
 
 // --- Type Definitions ---
 type ItemState = {
@@ -520,11 +519,11 @@ const CreateQuote: React.FC = () => {
               </div>
 
 
-              {/* Description Textarea */}
-              <div >
-                <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">Description</label>
-                <textarea rows={3} className="w-full px-4 py-3 rounded-xl border ..." value={description} onChange={(e) => setDescription(e.target.value)} />
-              </div>
+  {/* Description Textarea */}
+                  <div >
+                    <label className="block text-sm font-semibold text-midnight-800 dark:text-ivory-200 mb-2">Description</label>
+                    <textarea rows={3} className="w-full px-4 py-3 rounded-xl border ..." value={description} onChange={(e) => setDescription(e.target.value)} />
+                  </div>
 
 
 
@@ -559,8 +558,12 @@ const CreateQuote: React.FC = () => {
                       const totalPrice = unitPrice * item.quantity;
 
                       return (
-                        <tr key={idx} className="hover:bg-white/70 transition-all duration-150 text-[13px] text-midnight-800">
+                        <tr
+                          key={idx}
+                          className="hover:bg-white/70 transition-all duration-150 text-[13px] text-midnight-800"
+                        >
                           <td className="px-3 py-2 text-center font-medium">{item.slNo}</td>
+
                           <td className="px-3 py-2">
                             <input
                               value={item.product}
@@ -661,7 +664,6 @@ const CreateQuote: React.FC = () => {
 
 
               <div className="flex justify-between items-center mt-4 px-4 pb-4">
-                
                 <div className='pt-5 '>
                   <Button
                     size="sm"
@@ -671,7 +673,6 @@ const CreateQuote: React.FC = () => {
                     Add Item
                   </Button>
                 </div>
-
                 <div className="space-y-2 w-[30%]">
                   {/* Label */}
                   <label className="block text-sm font-semibold text-midnight-800/90">
@@ -717,11 +718,6 @@ const CreateQuote: React.FC = () => {
                 </div>
 
               </div>
-
-
-
-
-
               <div className="border-t border-cloud-300/40 dark:border-midnight-700/40 pt-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div className='grid grid-cols-1 gap-2'>
@@ -752,9 +748,9 @@ const CreateQuote: React.FC = () => {
                   {/* Totals Summary */}
                   {totals && (
                     <div className="mt-5 p-6 rounded-2xl bg-cloud-100/50 dark:bg-midnight-800/50 
-                        backdrop-blur-md border border-cloud-300/40 dark:border-midnight-600/40 
-                        shadow-sm   
-                        space-y-3">
+                backdrop-blur-md border border-cloud-300/40 dark:border-midnight-600/40 
+                shadow-sm   
+                space-y-3">
                       <p className="flex justify-between"><span className="font-medium">Subtotal:</span> {totals.subtotal?.toFixed(2) ?? '0.00'}</p>
                       <p className="flex justify-between text-red-600"><span className="font-medium">Business Cost:</span> {totals.businessTotalCost?.toFixed(2) ?? '0.00'}</p>
                       <p className="flex justify-between"><span className="font-medium">Discount:</span> {totals.discountAmount?.toFixed(2) ?? '0.00'}</p>

@@ -9,11 +9,9 @@ import { teamService, TeamUser } from '../services/teamService';
 import { customerService } from '../services/customerService';
 import NewCustomerModal from '../components/NewCustomerModal';
 import NewContactModal from '../components/NewContactModal';
-import { toast } from 'react-hot-toast';
-import { Plus } from 'lucide-react';
+import {toast} from 'react-hot-toast';
 import CustomSelect from '../components/CustomSelect';
-
-
+import { Plus } from 'lucide-react';
 type CustomerLite = { id: string; companyName: string };
 
 

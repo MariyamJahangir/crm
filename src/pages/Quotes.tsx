@@ -7,12 +7,15 @@ import { quotesService, Quote } from '../services/quotesService';
 import { invoiceService } from '../services/invoiceService';
 import DataTable from '../components/DataTable';
 import PreviewModal from '../components/PreviewModal';
-import { Eye, Download, File, Pen } from 'lucide-react';
+import { Eye, Download,Check,X, File, Pen } from 'lucide-react';
 import { Filter } from '../components/FilterDropdown';
 import FormattedDateTime from '../components/FormattedDateTime';
 import { toast } from 'react-hot-toast';
 
-// --- Rejection Dialog Sub-component ---
+
+
+
+// --- Rejection Dialog Sub-component --- 
 const RejectDialog: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -85,7 +88,6 @@ const Quotes: React.FC = () => {
       setLoading(true);
       try {
         const res = await quotesService.listAll(token);
-        console.log(res)
         setMasterQuotes(res.quotes);
         setQuotes(res.quotes);
       } catch (e: any) {
@@ -255,8 +257,8 @@ const Quotes: React.FC = () => {
 
           {isAdmin && isPendingApproval && !isFinal && (
             <div className="flex gap-2">
-              <Button size="sm" variant="success" onClick={() => approveQuote(quote)} disabled={isBusy} className='px-3'>Approve</Button>
-              <Button size="sm" variant="danger" onClick={() => setRejectFor(quote)} disabled={isBusy} className="px-3">Reject</Button>
+              <Button size="sm" variant="success" onClick={() => approveQuote(quote)} disabled={isBusy} className='px-3'><Check></Check></Button>
+              <Button size="sm" variant="danger" onClick={() => setRejectFor(quote)} disabled={isBusy} className="px-3"><X></X></Button>
             </div>
           )}
 

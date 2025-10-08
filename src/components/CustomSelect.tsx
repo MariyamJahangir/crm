@@ -8,7 +8,7 @@ const customSelectStyles = {
     borderColor: state.isFocused ? "#BFC5C7" : "#d1d5db",
     boxShadow: state.isFocused ? "0 0 0 2px rgba(191, 197, 199, 0.58)" : "none",
     padding: "2px 6px",
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
     transition: "all 0.2s ease",
     "&:hover": { borderColor: "#79A1B9" },
     fontSize: "0.875rem",
@@ -61,7 +61,6 @@ const CustomSelect = ({ label, options, value, onChange, placeholder = "Select..
         placeholder={placeholder}
         className="w-full"
         // isOptionDisabled={(option) => option.isDisabled}
-        // isDisabled={isDisabled}
       />
     </div>
   );
